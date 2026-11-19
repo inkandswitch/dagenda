@@ -1,0 +1,16 @@
+[package]
+name = "dagenda_core"
+version = "0.1.0"
+description = "The roadmap model behind dagenda: milestones, features, and tasks as a dependency graph"
+
+authors.workspace = true
+categories = ["no-std", "visualization"]
+edition.workspace = true
+keywords = ["dag", "gantt", "planning", "roadmap"]
+license.workspace = true
+readme = "../../README.md"
+repository.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true

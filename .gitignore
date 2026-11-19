@@ -1,0 +1,31 @@
+# Cargo
+debug/
+target/
+**/*.rs.bk
+**/mutants.out*/
+
+# Nix
+.direnv
+/result
+
+# JS / Wasm packaging
+**/dist/
+**/node_modules/
+**/pkg/
+**/pkg-node/
+
+# Local agent/session artifacts
+.claude/
+.ignore/
+CLAUDE.md
+
+# Editors and OS
+.DS_Store
+.vscode/
+.zed/
+
+# GitHub Pages build (`nix run .#site`)
+/_site/
+
+# pnpm keeps its content store here when it can't share one across filesystems
+/.pnpm-store/

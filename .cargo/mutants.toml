@@ -1,0 +1,9 @@
+# cargo-mutants: `nix run .#ci-mutants` (everything, slow) or
+# `nix run .#ci-mutants -- changes.diff` (just the lines a diff touches).
+
+# Mutants that can't change behaviour, matched by name (not line, so these
+# survive edits). Add one here only with the reason it's equivalent.
+exclude_re = []
+
+# Property tests run for ~1 s each by default; keep mutant runs bounded
+timeout_multiplier = 3.0
