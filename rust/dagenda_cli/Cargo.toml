@@ -1,0 +1,28 @@
+[package]
+name = "dagenda_cli"
+version = "0.1.0"
+description = "The dagenda command line: check roadmaps for errors and warnings"
+
+authors.workspace = true
+categories = ["command-line-utilities", "visualization"]
+edition.workspace = true
+keywords = ["dag", "planning", "roadmap"]
+license.workspace = true
+readme = "../../README.md"
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "dagenda"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true }
+dagenda_core = { workspace = true }
+thiserror = { workspace = true, features = ["std"] }
+
+[dev-dependencies]
+testresult = { workspace = true }
+
+[lints]
+workspace = true
