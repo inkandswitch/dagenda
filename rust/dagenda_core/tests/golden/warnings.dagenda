@@ -1,0 +1,26 @@
+roadmap
+title Every warning
+
+track work [Work]
+  [x] task shipped [Shipped]
+    needs unfinished
+  [ ] task unfinished [Unfinished]
+  [~] task dropped [Dropped]
+  [>] task deferred [Deferred]
+  [ ] task waiting [Waiting]
+    needs dropped
+  [x] task parent [Parent]
+    [ ] task child [Open child]
+    [x] task doneChild [Done child]
+    [~] task droppedChild [Dropped child]
+
+extend unfinished
+  dri @bob
+
+milestone stuck [Stuck]
+  dropped
+  deferred
+
+milestone empty [Empty]
+  ---
+  unfinished

@@ -177,6 +177,11 @@
             cargo check -p dagenda_core --target thumbv6m-none-eabi
           '';
 
+          ci-bolero = mkCheck "ci-bolero" ''
+            export BOLERO_RANDOM_ITERATIONS="''${BOLERO_RANDOM_ITERATIONS:-10000}"
+            cargo test --profile bolero -p dagenda_core --tests
+          '';
+
           ci-deny = mkCheck "ci-deny" ''
             cargo deny check
           '';

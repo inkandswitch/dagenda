@@ -1,0 +1,130 @@
+//! Plans made of several documents: a public plan and a private one that
+//! extends it.
+
+use dagenda_core::{
+    id::Id,
+    parser,
+    plan::{DocumentId, Plan, Readiness, ResolveErrorKind, warning::WarningKind},
+    text::Text,
+};
+use testresult::TestResult;
+
+const PUBLIC: &str = "roadmap
+title The public plan
+
+track automerge [Automerge]
+  [ ] task signatures [Signatures]
+  [x] task fragments [Fragments]
+
+milestone repo3 [Repo 3]
+  signatures
+";
+
+const PRIVATE: &str = "roadmap
+title The team's plan
+
+extend signatures
+  dri @alice
+  needs fragments
+  [ ] task wireFormat [Pick the wire format]
+    est 3d
+";
+
+fn resolve(sources: &[&str]) -> Result<Plan, Box<dyn std::error::Error>> {
+    let documents = sources
+        .iter()
+        .copied()
+        .map(parser::document)
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(Plan::resolve(&documents)?)
+}
+
+fn id(id: &str) -> Result<Id, Box<dyn std::error::Error>> {
+    Ok(Id::new(id)?)
+}
+
+#[test]
+fn extend_adds_details_and_subtasks_from_another_document() -> TestResult {
+    let plan = resolve(&[PUBLIC, PRIVATE])?;
+    assert!(plan.warnings().is_empty(), "{:?}", plan.warnings());
+
+    let signatures = plan.task(&id("signatures")?).ok_or("no signatures")?;
+    assert_eq!(
+        signatures
+            .dri
+            .as_ref()
+            .map(|dri| (dri.node.name(), dri.at.document)),
+        Some(("alice", DocumentId::new(1)))
+    );
+    assert_eq!(signatures.subtasks, [id("wireFormat")?]);
+
+    let wire_format = plan.task(&id("wireFormat")?).ok_or("no wireFormat")?;
+    assert_eq!(wire_format.parent, Some(id("signatures")?));
+    assert_eq!(wire_format.track, Some(id("automerge")?));
+    assert_eq!(wire_format.defined.document, DocumentId::new(1));
+
+    assert_eq!(
+        plan.readiness(&id("signatures")?),
+        Some(Readiness::Ready),
+        "fragments, from the private plan's `needs`, is done"
+    );
+    Ok(())
+}
+
+#[test]
+fn each_document_keeps_its_title() -> TestResult {
+    let plan = resolve(&[PUBLIC, PRIVATE])?;
+    let titles: Vec<_> = (0..2)
+        .map(|index| plan.title(DocumentId::new(index)).map(Text::as_str))
+        .collect();
+    assert_eq!(titles, [Some("The public plan"), Some("The team's plan")]);
+    Ok(())
+}
+
+#[test]
+fn the_public_plan_resolves_alone() -> TestResult {
+    let plan = resolve(&[PUBLIC])?;
+    let signatures = plan.task(&id("signatures")?).ok_or("no signatures")?;
+    assert!(signatures.dri.is_none());
+    assert!(signatures.subtasks.is_empty());
+    Ok(())
+}
+
+#[test]
+fn an_id_defined_in_two_documents_points_at_both() -> TestResult {
+    let documents = [
+        parser::document(PUBLIC)?,
+        parser::document("roadmap\n[ ] task fragments\n")?,
+    ];
+    let error = Plan::resolve(&documents).err().ok_or("resolved")?;
+    assert_eq!(error.location().document, DocumentId::new(1));
+    let ResolveErrorKind::Duplicate { first, .. } = error.kind() else {
+        return Err(format!("expected a duplicate, got {error}").into());
+    };
+    assert_eq!(first.document, DocumentId::new(0));
+    Ok(())
+}
+
+#[test]
+fn two_documents_cant_both_set_a_detail() -> TestResult {
+    let documents = [
+        parser::document(PUBLIC)?,
+        parser::document(PRIVATE)?,
+        parser::document("roadmap\nextend signatures\n  dri @bob\n")?,
+    ];
+    let error = Plan::resolve(&documents).err().ok_or("resolved")?;
+    assert_eq!(
+        error.to_string(),
+        "`dri` is already set for `signatures`; each detail has one owner"
+    );
+    assert_eq!(error.location().document, DocumentId::new(2));
+    Ok(())
+}
+
+#[test]
+fn extending_a_task_in_its_own_document_is_a_warning() -> TestResult {
+    let plan = resolve(&["roadmap\n[ ] task a\nextend a\n  est 1w\n"])?;
+    let kinds: Vec<_> = plan.warnings().iter().map(|w| &w.kind).collect();
+    assert_eq!(kinds, [&WarningKind::ExtendSameDocument(id("a")?)]);
+    Ok(())
+}

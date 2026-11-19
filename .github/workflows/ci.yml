@@ -22,6 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         check:
+          - ci-bolero
           - ci-clippy
           - ci-deny
           - ci-doc
