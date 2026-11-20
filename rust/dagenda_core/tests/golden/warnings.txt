@@ -13,7 +13,7 @@ Work
   [>] deferred · Deferred
   [ ] waiting · Waiting · waits on dropped
   [x] parent · Parent
-    [ ] child · Open child
-    [x] doneChild · Done child
-    [~] droppedChild · Dropped child
+  [ ] child · Open child
+  [x] doneChild · Done child
+  [~] droppedChild · Dropped child
 

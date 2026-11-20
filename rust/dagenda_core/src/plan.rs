@@ -332,13 +332,12 @@ pub struct Task {
     /// Where it stands.
     pub status: Status,
 
-    /// The track it lives in. A subtask lives in its parent's track.
+    /// The track it lives in. A task written under another lives in that
+    /// one's track.
     pub track: Option<Id>,
 
-    /// The task it's a subtask of.
-    pub parent: Option<Id>,
-
-    /// What it can't finish without.
+    /// What it can't finish without: its `needs`, then the tasks written
+    /// under it.
     pub needs: Vec<Located<Id>>,
 
     /// When it's expected to land.
@@ -358,9 +357,6 @@ pub struct Task {
 
     /// Notes about it.
     pub notes: Vec<Located<Note>>,
-
-    /// Its subtasks, from every document.
-    pub subtasks: Vec<Id>,
 
     /// Its `task` line.
     pub defined: Location,
@@ -537,35 +533,14 @@ fn flat(index: &BTreeMap<Id, Entry>, tasks: usize, id: &Id) -> Option<usize> {
     }
 }
 
-/// Ids in backticks, separated by `separator`.
-struct Ids<'a> {
-    ids: &'a [Id],
-    separator: &'static str,
-}
+/// Ids in backticks, in order: `a` → `b` → `c`.
+struct Chain<'a>(&'a [Id]);
 
-impl<'a> Ids<'a> {
-    /// `a` → `b` → `c`
-    const fn chain(ids: &'a [Id]) -> Self {
-        Self {
-            ids,
-            separator: " → ",
-        }
-    }
-
-    /// `a`, `b`, `c`
-    const fn list(ids: &'a [Id]) -> Self {
-        Self {
-            ids,
-            separator: ", ",
-        }
-    }
-}
-
-impl fmt::Display for Ids<'_> {
+impl fmt::Display for Chain<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (index, id) in self.ids.iter().enumerate() {
+        for (index, id) in self.0.iter().enumerate() {
             if index > 0 {
-                f.write_str(self.separator)?;
+                f.write_str(" → ")?;
             }
             write!(f, "`{id}`")?;
         }
@@ -584,7 +559,7 @@ impl fmt::Display for Loop<'_> {
             ids => write!(
                 f,
                 "these need each other, so none can finish: {}",
-                Ids::chain(ids)
+                Chain(ids)
             ),
         }
     }
@@ -664,8 +639,4 @@ pub enum ResolveErrorKind {
     /// Tasks and milestones that need each other.
     #[error("{}", Loop(.0))]
     Cycle(Vec<Id>),
-
-    /// A task that `extend`s make a subtask of itself.
-    #[error("`{0}` ends up as one of its own subtasks")]
-    SubtaskCycle(Id),
 }

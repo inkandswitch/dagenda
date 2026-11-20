@@ -115,8 +115,7 @@ fn message(source: &str, error: &Error) -> String {
             | ResolveErrorKind::Conflict { first, .. } => Some(first.span),
             ResolveErrorKind::Unknown(_)
             | ResolveErrorKind::WrongKind { .. }
-            | ResolveErrorKind::Cycle(_)
-            | ResolveErrorKind::SubtaskCycle(_) => None,
+            | ResolveErrorKind::Cycle(_) => None,
         },
         Error::Parse(_) => None,
     };

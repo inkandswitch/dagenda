@@ -25,6 +25,10 @@ pub(super) struct Builder<'d> {
     /// `extend` blocks, merged once every document's ids are known.
     extends: Vec<(DocumentId, &'d Spanned<ast::Extend>)>,
 
+    /// Tasks written under an `extend`, and the task each is under, so they
+    /// can take its track once every document's tracks are known.
+    under: Vec<(Id, Id)>,
+
     warnings: Vec<Warning>,
 }
 
@@ -44,8 +48,8 @@ impl<'d> Builder<'d> {
                 ast::Item::Task(task) => self.task(document, task, None, None)?,
                 ast::Item::Milestone(milestone) => self.milestone(document, milestone)?,
                 ast::Item::Extend(extend) => {
-                    for subtask in &extend.node.subtasks {
-                        self.task(document, subtask, None, Some(&extend.node.id.node))?;
+                    for under in &extend.node.under {
+                        self.task(document, under, None, Some(&extend.node.id.node))?;
                     }
                     self.extends.push((document, extend));
                 }
@@ -114,7 +118,7 @@ impl<'d> Builder<'d> {
         document: DocumentId,
         task: &'d Spanned<ast::Task>,
         track: Option<&Id>,
-        parent: Option<&Id>,
+        outer: Option<&Id>,
     ) -> Result<(), ResolveError> {
         let ast = &task.node;
         let details = &ast.details;
@@ -123,15 +127,18 @@ impl<'d> Builder<'d> {
             span: task.span,
         };
         self.define(&ast.id, defined, Node::Task(self.tasks.len()))?;
+        if let (None, Some(outer)) = (track, outer) {
+            self.under.push((ast.id.node.clone(), outer.clone()));
+        }
         self.tasks.push(Task {
             id: ast.id.node.clone(),
             label: ast.label.as_ref().map(|label| label.node.clone()),
             status: ast.status.node,
             track: track.cloned(),
-            parent: parent.cloned(),
             needs: details
                 .needs
                 .iter()
+                .chain(ast.under.iter().map(|under| &under.node.id))
                 .map(|need| locate(document, need))
                 .collect(),
             est: details.est.as_ref().map(|est| locate(document, est)),
@@ -151,11 +158,6 @@ impl<'d> Builder<'d> {
                 .iter()
                 .map(|note| locate(document, note))
                 .collect(),
-            subtasks: ast
-                .subtasks
-                .iter()
-                .map(|subtask| subtask.node.id.node.clone())
-                .collect(),
             defined,
             status_at: Location {
                 document,
@@ -163,8 +165,8 @@ impl<'d> Builder<'d> {
             },
         });
 
-        for subtask in &ast.subtasks {
-            self.task(document, subtask, track, Some(&ast.id.node))?;
+        for under in &ast.under {
+            self.task(document, under, track, Some(&ast.id.node))?;
         }
         Ok(())
     }
@@ -243,17 +245,20 @@ impl<'d> Builder<'d> {
                 });
             }
             merge(task, document, &ast.details)?;
-            task.subtasks.extend(
-                ast.subtasks
+            task.needs.extend(
+                ast.under
                     .iter()
-                    .map(|subtask| subtask.node.id.node.clone()),
+                    .map(|under| locate(document, &under.node.id)),
             );
         }
-        self.inherit_tracks()
+        self.inherit_tracks();
+        Ok(())
     }
 
-    /// Give each subtask that an `extend` added its parent's track.
-    fn inherit_tracks(&mut self) -> Result<(), ResolveError> {
+    /// Give each task written under an `extend` the track of the task it's
+    /// under, or of the one that's under, and so on.
+    fn inherit_tracks(&mut self) {
+        let under: BTreeMap<Id, Id> = core::mem::take(&mut self.under).into_iter().collect();
         for index in 0..self.tasks.len() {
             let Some(task) = self.tasks.get(index) else {
                 continue;
@@ -263,38 +268,30 @@ impl<'d> Builder<'d> {
             }
 
             let mut track = None;
-            let mut next = task.parent.as_ref();
-            let mut steps = 0;
-            while let Some(parent) = next {
-                steps += 1;
-                if steps > self.tasks.len() {
-                    return Err(ResolveError::new(
-                        task.defined,
-                        ResolveErrorKind::SubtaskCycle(task.id.clone()),
-                    ));
-                }
+            let mut next = under.get(&task.id);
+            for _ in 0..self.tasks.len() {
+                let Some(outer) = next else { break };
                 let Some(Entry {
-                    node: Node::Task(parent),
+                    node: Node::Task(outer),
                     ..
-                }) = self.index.get(parent)
+                }) = self.index.get(outer)
                 else {
                     break;
                 };
-                let Some(parent) = self.tasks.get(*parent) else {
+                let Some(outer) = self.tasks.get(*outer) else {
                     break;
                 };
-                if parent.track.is_some() {
-                    track.clone_from(&parent.track);
+                if outer.track.is_some() {
+                    track.clone_from(&outer.track);
                     break;
                 }
-                next = parent.parent.as_ref();
+                next = under.get(&outer.id);
             }
 
             if let Some(task) = self.tasks.get_mut(index) {
                 task.track = track;
             }
         }
-        Ok(())
     }
 
     /// Check that every `needs` and milestone member names a task or a
@@ -571,28 +568,6 @@ impl<'d> Builder<'d> {
                     continue;
                 };
                 warnings.push(Warning { at: need.at, kind });
-            }
-
-            if current.status == Status::Done {
-                let open: Vec<Id> = current
-                    .subtasks
-                    .iter()
-                    .filter(|subtask| {
-                        task(subtask).is_some_and(|subtask| {
-                            subtask.status != Status::Done && subtask.status != Status::Dropped
-                        })
-                    })
-                    .cloned()
-                    .collect();
-                if !open.is_empty() {
-                    warnings.push(Warning {
-                        at: current.status_at,
-                        kind: WarningKind::DoneWithOpenSubtasks {
-                            task: current.id.clone(),
-                            open,
-                        },
-                    });
-                }
             }
         }
         warnings

@@ -144,6 +144,10 @@ fn resolve_errors_name_the_ids() {
             "3:9: `a` needs itself, so it can never finish",
         ),
         (
+            "roadmap\n[ ] task a\n  [ ] task b\n    needs a",
+            "3:12: these need each other, so none can finish: `a` → `b` → `a`",
+        ),
+        (
             "roadmap\n[ ] task a\n  needs m\nmilestone m\n  a",
             "3:9: these need each other, so none can finish: `a` → `m` → `a`",
         ),

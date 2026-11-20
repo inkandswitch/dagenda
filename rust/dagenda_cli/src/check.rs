@@ -158,7 +158,6 @@ const fn first_location(kind: &ResolveErrorKind) -> Option<Location> {
         }
         ResolveErrorKind::Unknown(_)
         | ResolveErrorKind::WrongKind { .. }
-        | ResolveErrorKind::Cycle(_)
-        | ResolveErrorKind::SubtaskCycle(_) => None,
+        | ResolveErrorKind::Cycle(_) => None,
     }
 }

@@ -54,10 +54,54 @@ milestone m
         "but it's still there to follow"
     );
     assert_eq!(
+        tree.bands.len(),
+        1,
+        "no layer for work on no milestone: there's none"
+    );
+    assert_eq!(
         (row(&tree, "a"), row(&tree, "b"), row(&tree, "c")),
         (Some(0), Some(1), Some(2))
     );
     assert_eq!(row(&tree, "m"), Some(3));
+    Ok(())
+}
+
+#[test]
+fn a_path_through_a_band_doesnt_hide_a_line() -> TestResult {
+    let tree = tree(
+        "roadmap
+[ ] task x
+milestone m
+  x
+[ ] task y
+  needs x, m",
+    )?;
+    assert_eq!(
+        lines(&tree),
+        ["x → y", "m → y"],
+        "x → m isn't drawn, so it can't stand in for x → y"
+    );
+    assert_eq!(named(&tree, &tree.implied), ["x → m"]);
+    Ok(())
+}
+
+#[test]
+fn a_nice_to_have_the_milestone_needs_anyway_has_no_line() -> TestResult {
+    let tree = tree(
+        "roadmap
+[ ] task part
+[ ] task whole
+  needs part
+milestone m
+  whole
+  ---
+  part",
+    )?;
+    assert_eq!(
+        lines(&tree),
+        ["part → whole"],
+        "no dashed part → m: m needs part anyway, through whole"
+    );
     Ok(())
 }
 
@@ -183,9 +227,10 @@ milestone second
     };
     assert_eq!(
         ["a", "b", "c", "aside", "beyond"].map(band_of),
-        [Some(0), Some(0), Some(1), Some(0), Some(2)],
-        "finished work no milestone needs sits as early as it can; unfinished, beyond them all"
+        [Some(0), Some(0), Some(1), Some(2), Some(2)],
+        "work no milestone needs sits in its own layer on top, done or not"
     );
+    assert_eq!(tree.bands.last().and_then(|band| band.milestone), None);
     Ok(())
 }
 
@@ -213,28 +258,39 @@ milestone small
 }
 
 #[test]
-fn subtasks_fold_into_their_task() -> TestResult {
+fn a_task_written_under_another_is_one_it_needs() -> TestResult {
     let tree = tree(
         "roadmap
-[ ] task setup
-[ ] task parent
-  [x] task first
-  [ ] task second
-    needs setup",
+track core
+  [ ] task setup
+  [-] task parent
+    [x] task first
+    [ ] task second
+      needs setup",
     )?;
-    assert_eq!(tree.nodes.len(), 2);
-    assert_eq!(lines(&tree), ["setup → parent"]);
+    assert_eq!(tree.nodes.len(), 4, "every task is a card");
+    assert_eq!(
+        lines(&tree),
+        ["setup → second", "first → parent", "second → parent"]
+    );
+    assert!(row(&tree, "parent") > row(&tree, "first"));
+    assert!(row(&tree, "parent") > row(&tree, "second"));
+    assert!(
+        tree.nodes.iter().all(|node| node.branch == 0),
+        "all in core's branch"
+    );
 
     let parent = node(&tree, "parent").ok_or("no parent")?;
-    let Shape::Task {
-        subtasks, locked, ..
-    } = parent.shape
-    else {
-        return Err("parent isn't a task".into());
-    };
-    assert_eq!((subtasks.done, subtasks.total), (1, 2));
-    assert!(!locked, "parent itself waits on nothing");
-    assert_eq!(parent.caption.as_deref(), Some("1 of 2 subtasks"));
+    assert!(
+        matches!(parent.shape, Shape::Task { locked: true, .. }),
+        "it waits on its open parts"
+    );
+    assert!(parent.caption.is_none());
+    let svg = dagenda_core::parse("roadmap\n[-] task a\n  [ ] task b\n")?.to_svg();
+    assert!(
+        svg.contains(r#"class="node task in-progress waiting""#),
+        "under way, so not dimmed as locked"
+    );
     Ok(())
 }
 
@@ -254,21 +310,6 @@ fn tasks_waiting_on_unfinished_work_are_locked() -> TestResult {
     };
     assert_eq!(locked("afterDone"), Some(false));
     assert_eq!(locked("afterOpen"), Some(true));
-    Ok(())
-}
-
-#[test]
-fn a_loop_made_by_folding_subtasks_still_lays_out() -> TestResult {
-    let tree = tree(
-        "roadmap
-[ ] task parent
-  [ ] task child
-    needs other
-[ ] task other
-  needs parent",
-    )?;
-    assert_eq!(lines(&tree).len(), 2);
-    assert_eq!(tree.nodes.len(), 2);
     Ok(())
 }
 
@@ -415,15 +456,20 @@ track core [Core]
     link https://github.com/owner/repo/issues/3#issuecomment-9
     note Ask carol first.
     [ ] task part
-      dri @carol
-    [ ] task other
-      dri @bob",
+      dri @carol",
     )?;
     let card = node(&tree, "sync").ok_or("no sync")?;
     let facts: Vec<_> = card.facts.iter().flatten().map(Fact::text).collect();
+    assert_eq!(facts, ["@bob", "est 2026-11-19", "PR #7", "#3 comment"]);
+    let part = node(&tree, "part").ok_or("no part")?;
     assert_eq!(
-        facts,
-        ["@bob", "@carol", "est 2026-11-19", "PR #7", "#3 comment"]
+        part.facts
+            .iter()
+            .flatten()
+            .map(Fact::text)
+            .collect::<Vec<_>>(),
+        ["@carol"],
+        "a task written under another has a card of its own"
     );
     let links: Vec<_> = card.facts.iter().flatten().filter_map(Fact::url).collect();
     assert_eq!(

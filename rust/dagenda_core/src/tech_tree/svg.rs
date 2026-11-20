@@ -10,9 +10,10 @@
 //! | `data-track`          | branches, banners | the track's id                                          |
 //! | `data-milestone`      | bands, eras       | the milestone's id                                      |
 //! | `data-from`/`data-to` | edges             | the prerequisite's and the dependent's ids              |
-//! | `class`               | nodes             | `node task` or `node milestone`; a status; `locked` or `available`; `reached` |
+//! | `class`               | nodes             | `node task` or `node milestone`; a status; `locked`, `waiting` (under way, but waiting on something), or `available`; `reached` |
 //! | `class`               | branches, banners | `track`, `untracked`, or `milestones`; `hue-0` to `hue-7` for a track's colour |
 //! | `class`               | eras              | `era`, and `reached`                                    |
+//! | `class`               | bands             | `band reached` for a reached era; `band side` for the layer of work on no milestone |
 //! | `class`               | facts             | a `facts` row of `fact` spans: `dri`, `est`, `target`, `ref`, or `link`; the last two inside an `a` to their page |
 //! | `class`               | edges             | `edge`, then `met` or `waiting`, and `wanted`; or `edge member`, an empty `g` for a line the band implies (for scripts that follow the graph) |
 //!
@@ -82,6 +83,17 @@ impl Svg<'_> {
         }
 
         // Over the panels, so it shows on every track's colour
+        for band in tree.bands.iter().filter(|band| band.milestone.is_none()) {
+            writeln!(
+                f,
+                r#"<g class="band side"><rect x="0" y="{}" width="{}" height="{}"/><text x="{}" y="{}">Not on a milestone</text></g>"#,
+                band.top,
+                tree.width,
+                band.bottom.saturating_sub(band.top),
+                MARGIN + 6,
+                band.top + 16
+            )?;
+        }
         for band in tree.bands.iter().filter(|band| band.reached) {
             let Some(gate) = band.milestone.and_then(|gate| tree.nodes.get(gate)) else {
                 continue;
@@ -211,12 +223,18 @@ impl fmt::Display for Svg<'_> {
 
 fn task(f: &mut fmt::Formatter<'_>, node: &Node, status: Status, locked: bool) -> fmt::Result {
     let class = status_class(status);
-    let access = if locked {
-        " locked"
-    } else if matches!(status, Status::Done | Status::Dropped) {
-        ""
-    } else {
-        " available"
+    // Work under way that waits on something (a task waiting on its own
+    // parts, say) isn't dimmed: only work that hasn't started is locked
+    let access = match status {
+        Status::Done | Status::Dropped => "",
+        Status::InProgress | Status::NeedsAttention | Status::Research if locked => " waiting",
+        Status::NotStarted | Status::Deferred | Status::Idea if locked => " locked",
+        Status::NotStarted
+        | Status::Deferred
+        | Status::Idea
+        | Status::InProgress
+        | Status::NeedsAttention
+        | Status::Research => " available",
     };
     writeln!(
         f,
@@ -518,6 +536,8 @@ const STYLE: &str = r"<style>
 .dagenda .branch { fill: #f4f2ee; stroke: #e4e0d8; stroke-width: 1; }
 .dagenda .branch, .dagenda .banner rect { fill-opacity: 0.85; }
 .dagenda .band.reached { fill: #5aa362; fill-opacity: 0.08; }
+.dagenda .band.side rect { fill: #8a857c; fill-opacity: 0.08; }
+.dagenda .band.side text { fill: #8a857c; font-size: 11px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; }
 /* Track colours: teal, indigo, rose, ochre, sage, plum, sky, terracotta */
 .dagenda .branch.hue-0, .dagenda .banner.hue-0 rect { fill: #edf6f4; stroke: #c5e4de; }
 .dagenda .banner.hue-0 rect { fill: #c5e4de; }

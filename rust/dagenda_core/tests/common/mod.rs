@@ -62,9 +62,6 @@ impl Report<'_> {
             if let Some(track) = &task.track {
                 write!(f, ", in {track}")?;
             }
-            if let Some(parent) = &task.parent {
-                write!(f, ", under {parent}")?;
-            }
             match self.plan.readiness(&task.id) {
                 Some(Readiness::Finished) => writeln!(f, ": finished")?,
                 Some(Readiness::Dropped) => writeln!(f, ": dropped")?,

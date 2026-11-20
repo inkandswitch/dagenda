@@ -2,7 +2,7 @@
 //! every view is drawn from.
 //!
 //! A plan is a DAG of work. The text is a tree that says where each thing
-//! lives: a track holds tasks, and a task holds its details and subtasks.
+//! lives: a track holds tasks, and a task holds its details and the tasks it needs.
 //! `needs` lines and milestone members make the graph on top of the tree, by
 //! id, so they can cross tracks and documents.
 //!
@@ -30,10 +30,10 @@
 //! | `roadmap`                     | The header, always the first line                                       |
 //! | `title …`                     | The document's title                                                    |
 //! | `track <id> [<label>]`        | A bucket. Tracks nest                                                   |
-//! | `<box> task <id> [<label>]`   | A unit of work, in the track around it. Tasks nest: inner ones are subtasks |
+//! | `<box> task <id> [<label>]`   | A unit of work, in the track around it. A task written under another is one it needs |
 //! | `milestone <id> [<label>]`    | A gate, listing the tasks and milestones it needs, one per line         |
 //! | `---`                         | A milestone's cut line: the members below it are nice-to-haves          |
-//! | `extend <id>`                 | Details and subtasks for a task defined in another document             |
+//! | `extend <id>`                 | Details, and tasks it needs, for a task defined in another document     |
 //! | `needs <id>, <id>, …`         | This can't finish until those do                                        |
 //! | `est <date>`                  | When it's expected to land, as in `2026-11-19`                          |
 //! | `target <date>`               | When it should land, as in `2026-Q4` or `EOY26`                         |

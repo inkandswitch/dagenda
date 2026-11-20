@@ -26,7 +26,7 @@ milestone repo3 [Repo 3]
   docTypes
 ```
 
-The indentation is a tree that says where each thing lives: a track holds tasks, and a task holds its details and subtasks. `needs` lines and milestone members make the dependency graph on top of it, by id. A milestone is reached when everything above its cut line (`---`) is done; what's below is nice to have.
+The indentation says where each thing lives: a track holds tasks, and a task holds its details. The plan is one graph of what needs what: `needs` lines, by id, and milestone members. A task written under another is shorthand for one that task needs, in the same track, so a big task can be broken down in place. A milestone is reached when everything above its cut line (`---`) is done; what's below is nice to have.
 
 Every task starts with a status box, and only `[x]` counts as finished:
 
@@ -66,11 +66,11 @@ $ dagenda render ROADMAP.dagenda                 # milestones and tracks, as tex
 $ dagenda render ROADMAP.dagenda -o roadmap.svg  # the tech tree
 ```
 
-Files given together are one plan, so they can refer to each other's ids. Problems come out as `path:line:column: severity: message`. Errors are things that don't resolve (an unknown id, a task that needs itself); warnings are things that resolve but don't mean what they look like (a dropped must-have, a done task with open subtasks).
+Files given together are one plan, so they can refer to each other's ids. Problems come out as `path:line:column: severity: message`. Errors are things that don't resolve (an unknown id, a task that needs itself); warnings are things that resolve but don't mean what they look like (a dropped must-have, a done task that needs unfinished work).
 
-The tech tree grows upward, like a game's: everything a task needs sits below it, and each track is a branch in its own colour, with its name at the top. Milestones are eras. Each one is a dashed line across the tree with its gate at the end, and the work it needs sits in the band under it. Done work sits as early as it can, nice-to-haves sit in the era that wants them, and unscheduled work sits above the last line. Subtasks fold into their task, which shows how many are done. A card says who's on it, when it's expected, and links to its pull requests, issues, and anything else (a comment, a doc); a track's DRI is on its banner. Lines a longer path already implies are left out. Here's [`tour.dagenda`](rust/dagenda_core/tests/golden/tour.dagenda), which uses every form:
+The tech tree grows upward, like a game's: everything a task needs sits below it, and each track is a branch in its own colour, with its name at the top. Milestones are eras. Each one is a dashed line across the tree with its gate at the end, and the work it needs sits in the band under it. Nice-to-haves sit in the era that wants them. Work no milestone needs or wants, done or not, sits in a shaded layer of its own at the top, "Not on a milestone", so no era claims it. A card says who's on it, when it's expected, and links to its pull requests, issues, and anything else (a comment, a doc); a track's DRI is on its banner. Lines a longer path already implies are left out. Here's [`tour.dagenda`](rust/dagenda_core/tests/golden/tour.dagenda), which uses every form:
 
-![A tech tree that grows upward. At the bottom, in the Core branch, a done Parser (with a check) leads up to an in-progress Resolver (1 of 2 subtasks), under the dashed line of "It parses" (1 of 2, EOY26). Above that line, in the nested Views branch, Tech tree waits on It parses, and Skill tree, a nice-to-have, has a dashed line to "First picture" (0 of 2). Above the last line sit the unscheduled tasks: a research task, one that needs attention, a deferred one, a dropped one, and a task outside any track](rust/dagenda_core/tests/golden/tour.svg)
+![A tech tree that grows upward. At the bottom, in the Core branch, a done Parser (with a check) and the two tasks written under Resolver lead up to the in-progress Resolver, under the dashed line of "It parses" (1 of 2, EOY26). Above that line, in the nested Views branch, Tech tree waits on Resolver and on It parses, and Skill tree, a nice-to-have, has a dashed line to "First picture" (0 of 2). In the shaded layer on top, not on a milestone, sit a research task, one that needs attention, a deferred one, a dropped one, and a task outside any track](rust/dagenda_core/tests/golden/tour.svg)
 
 ## In the Browser
 

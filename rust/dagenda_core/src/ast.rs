@@ -1,8 +1,8 @@
 //! One document as written, before its ids are resolved.
 //!
 //! The types follow the indentation: a [`Track`] holds tracks and tasks, a
-//! [`Task`] holds its [`Details`] and subtasks, and a [`Milestone`] lists
-//! what it needs and wants. A structure the notation doesn't allow, such as a
+//! [`Task`] holds its [`Details`] and the tasks written under it (each one
+//! it needs), and a [`Milestone`] lists what it needs and wants. A structure the notation doesn't allow, such as a
 //! track inside a task, has no representation here.
 
 use crate::{
@@ -28,8 +28,8 @@ pub struct Document {
 
 impl Document {
     /// Every track, task, and milestone the document defines, in source
-    /// order, with the span of its first line. Subtasks an `extend` adds are
-    /// definitions too; the `extend` itself isn't.
+    /// order, with the span of its first line. Tasks written under an
+    /// `extend` are definitions too; the `extend` itself isn't.
     ///
     /// ```
     /// let document = dagenda_core::parser::document(
@@ -48,8 +48,8 @@ impl Document {
                 Item::Task(task) => task_definitions(task, &mut found),
                 Item::Milestone(milestone) => found.push((&milestone.node.id.node, milestone.span)),
                 Item::Extend(extend) => {
-                    for subtask in &extend.node.subtasks {
-                        task_definitions(subtask, &mut found);
+                    for under in &extend.node.under {
+                        task_definitions(under, &mut found);
                     }
                 }
             }
@@ -118,8 +118,10 @@ pub struct Task {
     /// Its `needs`, `est`, `dri`, and so on.
     pub details: Details,
 
-    /// The tasks indented under it.
-    pub subtasks: Vec<Spanned<Task>>,
+    /// The tasks written under it: shorthand for tasks it needs, in its
+    /// track. Kept apart from `needs` so the text keeps the form it was
+    /// written in.
+    pub under: Vec<Spanned<Task>>,
 }
 
 /// What a task, or an `extend` of one, can say about it.
@@ -173,7 +175,7 @@ pub struct Milestone {
     pub cut: Option<Span>,
 }
 
-/// Details and subtasks for a task defined in another document. Its span
+/// Details, and tasks it needs, for a task defined in another document. Its span
 /// covers its first line.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Extend {
@@ -183,8 +185,9 @@ pub struct Extend {
     /// What it adds.
     pub details: Details,
 
-    /// Subtasks it adds, which live here rather than in the task's document.
-    pub subtasks: Vec<Spanned<Task>>,
+    /// Tasks written under it, which the task needs. They live here rather
+    /// than in the task's document.
+    pub under: Vec<Spanned<Task>>,
 }
 
 fn track_definitions<'a>(track: &'a Spanned<Track>, found: &mut Vec<(&'a Id, Span)>) {
@@ -199,7 +202,7 @@ fn track_definitions<'a>(track: &'a Spanned<Track>, found: &mut Vec<(&'a Id, Spa
 
 fn task_definitions<'a>(task: &'a Spanned<Task>, found: &mut Vec<(&'a Id, Span)>) {
     found.push((&task.node.id.node, task.span));
-    for subtask in &task.node.subtasks {
-        task_definitions(subtask, found);
+    for under in &task.node.under {
+        task_definitions(under, found);
     }
 }

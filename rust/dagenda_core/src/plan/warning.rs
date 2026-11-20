@@ -3,9 +3,8 @@
 //! These are warnings rather than errors, as in rain: a plan is sometimes
 //! mid-edit, and sometimes shows a problem on purpose.
 
-use super::{Ids, Location};
+use super::Location;
 use crate::id::Id;
-use alloc::vec::Vec;
 use core::fmt;
 
 /// Something worth a second look, and where it is.
@@ -66,15 +65,6 @@ pub enum WarningKind {
         need: Id,
     },
 
-    /// A done task with subtasks that are neither done nor dropped.
-    DoneWithOpenSubtasks {
-        /// The task.
-        task: Id,
-
-        /// The open subtasks.
-        open: Vec<Id>,
-    },
-
     /// An `extend` of a task defined in the same document.
     ExtendSameDocument(Id),
 }
@@ -100,15 +90,6 @@ impl fmt::Display for WarningKind {
             ),
             Self::DoneBeforeNeeds { task, need } => {
                 write!(f, "`{task}` is done, but it needs `{need}`, which isn't")
-            }
-            Self::DoneWithOpenSubtasks { task, open } => {
-                let ids = Ids::list(open);
-                let (noun, verb) = if open.len() == 1 {
-                    ("subtask", "isn't")
-                } else {
-                    ("subtasks", "aren't")
-                };
-                write!(f, "`{task}` is done, but its {noun} {ids} {verb}")
             }
             Self::ExtendSameDocument(id) => write!(
                 f,

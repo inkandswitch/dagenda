@@ -1,6 +1,6 @@
 //! The plan as text, for terminals, READMEs, and CI logs: each milestone
 //! with its progress and what's next, then each track's tasks with their
-//! status boxes, subtasks indented under them.
+//! status boxes and what they wait on.
 //!
 //! ```text
 //! It parses
@@ -116,7 +116,7 @@ impl Outline<'_> {
             for task in plan
                 .tasks()
                 .iter()
-                .filter(|task| task.parent.is_none() && task.track.as_ref() == Some(&track.id))
+                .filter(|task| task.track.as_ref() == Some(&track.id))
             {
                 self.task(f, task, depth + 1)?;
             }
@@ -135,7 +135,7 @@ impl Outline<'_> {
         let untracked: Vec<_> = plan
             .tasks()
             .iter()
-            .filter(|task| task.parent.is_none() && task.track.is_none())
+            .filter(|task| task.track.is_none())
             .collect();
         if !untracked.is_empty() {
             writeln!(f, "Other tasks")?;
@@ -147,38 +147,21 @@ impl Outline<'_> {
         Ok(())
     }
 
-    /// A task, its subtasks under it.
+    /// A task, and what it waits on.
     fn task(&self, f: &mut fmt::Formatter<'_>, task: &Task, depth: usize) -> fmt::Result {
         let plan = self.0;
-        let mut stack = alloc::vec![(task, depth)];
-        let mut shown = 0;
-        while let Some((task, depth)) = stack.pop() {
-            shown += 1;
-            if shown > plan.tasks().len() {
-                break;
-            }
-            write!(
-                f,
-                "{}{} {}",
-                Indent(depth),
-                task.status,
-                Named(&task.id, task.label.as_ref())
-            )?;
-            if let Some(Readiness::Blocked(by)) = plan.readiness(&task.id) {
-                let waits: Vec<_> = by.iter().collect();
-                write!(f, " · waits on {}", List(&waits))?;
-            }
-            writeln!(f)?;
-
-            stack.extend(
-                task.subtasks
-                    .iter()
-                    .rev()
-                    .filter_map(|subtask| plan.task(subtask))
-                    .map(|subtask| (subtask, depth + 1)),
-            );
+        write!(
+            f,
+            "{}{} {}",
+            Indent(depth),
+            task.status,
+            Named(&task.id, task.label.as_ref())
+        )?;
+        if let Some(Readiness::Blocked(by)) = plan.readiness(&task.id) {
+            let waits: Vec<_> = by.iter().collect();
+            write!(f, " · waits on {}", List(&waits))?;
         }
-        Ok(())
+        writeln!(f)
     }
 }
 

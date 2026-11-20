@@ -262,15 +262,15 @@ impl<'a> Parser<'a> {
     ) -> Result<Spanned<Task>, ParseError> {
         let (id, label) = id_and_label("task", rest)?;
         let mut details = Details::default();
-        let mut subtasks = Vec::new();
-        self.task_body(line, Place::Task, &mut details, &mut subtasks)?;
+        let mut under = Vec::new();
+        self.task_body(line, Place::Task, &mut details, &mut under)?;
 
         let task = Task {
             status,
             id,
             label,
             details,
-            subtasks,
+            under,
         };
         Ok(Spanned::new(task, line.span()))
     }
@@ -282,28 +282,24 @@ impl<'a> Parser<'a> {
         }
 
         let mut details = Details::default();
-        let mut subtasks = Vec::new();
-        self.task_body(line, Place::Extend, &mut details, &mut subtasks)?;
+        let mut under = Vec::new();
+        self.task_body(line, Place::Extend, &mut details, &mut under)?;
 
-        let extend = Extend {
-            id,
-            details,
-            subtasks,
-        };
+        let extend = Extend { id, details, under };
         Ok(Spanned::new(extend, line.span()))
     }
 
-    /// The lines under a task or an `extend`: details and subtasks.
+    /// The lines under a task or an `extend`: details and tasks.
     fn task_body(
         &mut self,
         line: Line<'a>,
         place: Place,
         details: &mut Details,
-        subtasks: &mut Vec<Spanned<Task>>,
+        under: &mut Vec<Spanned<Task>>,
     ) -> Result<(), ParseError> {
         self.children(Some(line.indent), |parser, child| {
             match Head::read(child)? {
-                Head::Task(status, rest) => subtasks.push(parser.task(child, status, rest)?),
+                Head::Task(status, rest) => under.push(parser.task(child, status, rest)?),
                 Head::Detail(key, word, value) => {
                     let detail = parser.detail(place, child, key, word, value)?;
                     add(details, detail, place)?;

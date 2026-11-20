@@ -2,15 +2,15 @@ A tour of the notation
 
 Milestones
   ◇ itParses · It parses · EOY26
-    ▰▰▰▰▰▱▱▱▱▱ 1 of 2 · next: resolver
+    ▰▰▰▰▰▱▱▱▱▱ 1 of 2 · next: cycles → resolver
   ◇ firstPicture · First picture
-    ▱▱▱▱▱▱▱▱▱▱ 0 of 2 · next: resolver → techTree
+    ▱▱▱▱▱▱▱▱▱▱ 0 of 2 · next: cycles → resolver → techTree
 
 Core
   [x] parser · Parser
-  [-] resolver · Resolver
-    [x] duplicates · Duplicate ids
-    [ ] cycles · Cycles
+  [-] resolver · Resolver · waits on cycles
+  [x] duplicates · Duplicate ids
+  [ ] cycles · Cycles
   Views [nested]
     [ ] techTree · Tech tree · waits on resolver, itParses
     [?] skillTree · Skill tree

@@ -164,9 +164,8 @@ fn assert_in_bounds(span: Span, source: &str) {
 /// The tech tree fits: every card inside the canvas and inside its branch,
 /// and no two cards overlapping. Every line runs in right angles from the
 /// top of its prerequisite to the bottom of what waits on it, and never
-/// passes behind any other card. The bands stack, and (with no subtasks
-/// folded in to make loops) every must-have line points up and everything
-/// a milestone needs sits under its line.
+/// passes behind any other card. The bands stack, every must-have line
+/// points up, and everything a milestone needs sits under its line.
 fn assert_laid_out(plan: &Plan) {
     let tree = TechTree::new(plan);
     for node in &tree.nodes {
@@ -192,7 +191,6 @@ fn assert_laid_out(plan: &Plan) {
         }
     }
 
-    let flat = plan.tasks().iter().all(|task| task.parent.is_none());
     for edge in &tree.edges {
         assert_ne!(edge.from, edge.to);
         let (from, to) = (tree.nodes.get(edge.from), tree.nodes.get(edge.to));
@@ -200,7 +198,7 @@ fn assert_laid_out(plan: &Plan) {
         let (Some(from), Some(to)) = (from, to) else {
             continue;
         };
-        if flat && !edge.wanted {
+        if !edge.wanted {
             assert!(from.row < to.row, "{} → {} points down", from.id, to.id);
         }
         assert_routed(&tree, edge, from, to);
@@ -210,7 +208,7 @@ fn assert_laid_out(plan: &Plan) {
         let [below, above] = pair else { continue };
         assert_eq!(below.top, above.bottom, "bands stack without gaps");
     }
-    for band in tree.bands.iter().filter(|_| flat) {
+    for band in &tree.bands {
         let Some(gate) = band.milestone.and_then(|gate| tree.nodes.get(gate)) else {
             continue;
         };

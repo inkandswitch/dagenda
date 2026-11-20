@@ -44,7 +44,7 @@ fn id(id: &str) -> Result<Id, Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn extend_adds_details_and_subtasks_from_another_document() -> TestResult {
+fn extend_adds_details_and_tasks_from_another_document() -> TestResult {
     let plan = resolve(&[PUBLIC, PRIVATE])?;
     assert!(plan.warnings().is_empty(), "{:?}", plan.warnings());
 
@@ -56,17 +56,25 @@ fn extend_adds_details_and_subtasks_from_another_document() -> TestResult {
             .map(|dri| (dri.node.name(), dri.at.document)),
         Some(("alice", DocumentId::new(1)))
     );
-    assert_eq!(signatures.subtasks, [id("wireFormat")?]);
+    let needs: Vec<_> = signatures.needs.iter().map(|need| &need.node).collect();
+    assert_eq!(
+        needs,
+        [&id("fragments")?, &id("wireFormat")?],
+        "a task written under an `extend` is one it needs"
+    );
 
     let wire_format = plan.task(&id("wireFormat")?).ok_or("no wireFormat")?;
-    assert_eq!(wire_format.parent, Some(id("signatures")?));
-    assert_eq!(wire_format.track, Some(id("automerge")?));
+    assert_eq!(
+        wire_format.track,
+        Some(id("automerge")?),
+        "and lives in its track"
+    );
     assert_eq!(wire_format.defined.document, DocumentId::new(1));
 
     assert_eq!(
         plan.readiness(&id("signatures")?),
-        Some(Readiness::Ready),
-        "fragments, from the private plan's `needs`, is done"
+        Some(Readiness::Blocked(vec![id("wireFormat")?])),
+        "fragments, from the private plan's `needs`, is done; wireFormat isn't"
     );
     Ok(())
 }
@@ -86,7 +94,10 @@ fn the_public_plan_resolves_alone() -> TestResult {
     let plan = resolve(&[PUBLIC])?;
     let signatures = plan.task(&id("signatures")?).ok_or("no signatures")?;
     assert!(signatures.dri.is_none());
-    assert!(signatures.subtasks.is_empty());
+    assert!(
+        signatures.needs.is_empty(),
+        "the private plan's needs aren't here"
+    );
     Ok(())
 }
 

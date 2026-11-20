@@ -8,16 +8,16 @@ tracks
 tasks
   [x] parser [Parser], in core: finished
     est 2026-11-19; pr gh:owner/repo#1 (https://github.com/owner/repo/pull/1)
-  [-] resolver [Resolver], in core: ready
-    needs parser; est 2026-12; target 2026-Q4; issue gh:owner/repo#2 (https://github.com/owner/repo/issues/2); link https://github.com/owner/repo/issues/2#issuecomment-3 (#2 comment); link https://example.com/resolver-design [Design doc] (Design doc)
+  [-] resolver [Resolver], in core: blocked by cycles
+    needs parser, duplicates, cycles; est 2026-12; target 2026-Q4; issue gh:owner/repo#2 (https://github.com/owner/repo/issues/2); link https://github.com/owner/repo/issues/2#issuecomment-3 (#2 comment); link https://example.com/resolver-design [Design doc] (Design doc)
     | Resolves ids across every document.
     |
     | ```
     | // Not a comment: this is inside the note.
     | ```
-  [x] duplicates [Duplicate ids], in core, under resolver: finished
+  [x] duplicates [Duplicate ids], in core: finished
     dri @bob
-  [ ] cycles [Cycles], in core, under resolver: ready
+  [ ] cycles [Cycles], in core: ready
   [ ] techTree [Tech tree], in views: blocked by resolver, itParses
     needs resolver, itParses
   [?] skillTree [Skill tree], in views: ready
@@ -29,9 +29,9 @@ tasks
 
 milestones
   itParses [It parses]: not reached; 1/2 needed, 0/1 wanted, target EOY26
-    critical path: resolver
+    critical path: cycles → resolver
   firstPicture [First picture]: not reached; 0/2 needed, 0/1 wanted
-    critical path: resolver → techTree
+    critical path: cycles → resolver → techTree
     | Waits on a milestone, through a task that needs it.
 
 warnings

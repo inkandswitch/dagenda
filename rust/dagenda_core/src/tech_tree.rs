@@ -4,10 +4,10 @@
 //! Each row is a tier: one more than the deepest thing in it waits on, so
 //! the roots are at the bottom and everything sits above what it builds on.
 //! Each track is a branch, a column panel under its banner, with nested
-//! tracks' banners stacked under their parent's. Subtasks fold into their
-//! top-level task, which shows how many of them are done. A card also says
-//! who's on it, when it's expected, and links to its issues, pull requests,
-//! and anything else written about it.
+//! tracks' banners stacked under their parent's. Every task is a card: a
+//! task written under another is just one it needs, so it sits below it. A
+//! card says who's on it, when it's expected, and links to its issues, pull
+//! requests, and anything else written about it.
 //!
 //! Milestones are eras: each is a dashed line across the whole tree, with
 //! its gate (label and progress) at the right end. Work sits in the band
@@ -16,9 +16,9 @@
 //! that work sits in an earlier band, or is a nice-to-have. Milestones go
 //! in the order they're written, except that one whose work includes all of
 //! another's goes above it. Nice-to-haves sit in the band of the milestone
-//! that wants them. Finished work no milestone needs sits as early as it
-//! can; unfinished work no milestone needs is unscheduled, so it sits above
-//! the last line.
+//! that wants them. Work no milestone needs or wants, done or not, sits in
+//! a layer of its own above the last line: nothing on a milestone waits on
+//! it, so it never sits under what it builds on, and no era claims it.
 //!
 //! Lines are routed like circuit traces: up into the gap above a row,
 //! across, and up into the next. A line that spans more than that climbs
@@ -84,17 +84,22 @@ pub struct TechTree {
     /// tracks' branches too), and one for tasks outside any track.
     pub banners: Vec<Banner>,
 
-    /// The eras, bottom to top: one under each milestone's line, then one
-    /// for the work beyond them all. Empty when there are no milestones.
+    /// The eras, bottom to top: one under each milestone's line, then the
+    /// layer of work on no milestone, if there is any. Empty when there are
+    /// no milestones.
     pub bands: Vec<Band>,
 
     /// The top-level tasks, then the milestones.
     pub nodes: Vec<Node>,
 
     /// What waits on what, from prerequisite to dependent, leaving out any
-    /// line a longer path already implies (if A needs B and B needs C, a
-    /// line from C to A would only add clutter), and any from work to the
-    /// milestone whose band it sits in.
+    /// from work to the milestone whose band it sits in (the band says it),
+    /// and any line a longer path of drawn lines already implies (if A needs
+    /// B and B needs C, a line from C to A would only add clutter). A path
+    /// through a band's milestone doesn't hide a must-have line, since its
+    /// first step isn't drawn: if Y needs both X and X's milestone, X gets a
+    /// line to Y. A nice-to-have line goes if the milestone needs the work
+    /// anyway, by any path.
     pub edges: Vec<Edge>,
 
     /// The must-have lines from work to the milestone whose band it sits
@@ -114,9 +119,20 @@ impl TechTree {
         for (node, &row) in nodes.iter_mut().zip(&tiers.rows) {
             node.row = row;
         }
-        let (implied, edges): (Vec<Edge>, Vec<Edge>) = reduce(nodes.len(), edges)
+        // The band says what's in it, so those lines aren't drawn, and a
+        // path through one doesn't stand in for a must-have line that is.
+        // A nice-to-have line goes whenever its milestone needs the work
+        // anyway, by any path.
+        let every = successors(nodes.len(), &edges);
+        let (members, drawn): (Vec<Edge>, Vec<Edge>) = edges
             .into_iter()
             .partition(|edge| tiers.in_own_band(&nodes, edge));
+        let visible = successors(nodes.len(), &drawn);
+        let implied = reduce(&every, members);
+        let edges: Vec<Edge> = drawn
+            .into_iter()
+            .filter(|edge| !self::implied(if edge.wanted { &every } else { &visible }, edge))
+            .collect();
 
         let (kinds, banners, branch_of) = branches(plan, &nodes);
         for (node, branch) in nodes.iter_mut().zip(branch_of) {
@@ -220,7 +236,7 @@ pub struct Banner {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Band {
     /// The milestone whose line tops it, an index into [`TechTree::nodes`];
-    /// `None` for the work beyond every milestone.
+    /// `None` for the layer of work on no milestone.
     pub milestone: Option<usize>,
 
     /// Its top edge: its milestone's line, or the top of the tree.
@@ -245,8 +261,7 @@ pub struct Node {
     /// Its label (or its id), wrapped to fit.
     pub lines: Vec<String>,
 
-    /// A smaller line under the label: subtasks done, or a milestone's
-    /// progress and target.
+    /// A smaller line under a milestone's label: its progress and target.
     pub caption: Option<String>,
 
     /// What it says under that, a row at a time: who's on it, when it's
@@ -297,13 +312,10 @@ impl Node {
 /// What a node is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Shape {
-    /// A top-level task.
+    /// A task.
     Task {
         /// Its status box.
         status: Status,
-
-        /// How many of its subtasks, at any depth, are done.
-        subtasks: Count,
 
         /// Whether it waits on something unfinished: locked, in game terms.
         locked: bool,
@@ -322,7 +334,7 @@ pub enum Shape {
 /// Something a card says about its task, under the label.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Fact {
-    /// Someone on it: the task's DRI, or a subtask's.
+    /// Who's on it: the task's DRI.
     Dri(Handle),
 
     /// When it's expected to land.
@@ -456,7 +468,7 @@ const GUTTER: u32 = 30;
 /// A branch's padding at its sides, above its top row, and below its bottom
 /// row (room for the badges).
 const PANEL_SIDE: u32 = 14;
-const PANEL_TOP: u32 = 18;
+const PANEL_TOP: u32 = 28;
 const PANEL_BOTTOM: u32 = 28;
 
 /// Each level of banner, the space between them, and its heading's size
@@ -466,20 +478,18 @@ const BANNER_GAP: u32 = 6;
 const BANNER_FONT: u32 = 12;
 const BANNER_PAD: u32 = 12;
 
-/// The top-level tasks and the milestones, and where every task and
-/// milestone id lands among them (a subtask lands on its top-level task).
+/// The tasks and the milestones, and where each id is among them.
 fn nodes(plan: &Plan) -> (Vec<Node>, BTreeMap<Id, usize>) {
     let mut nodes = Vec::new();
     let mut index = BTreeMap::new();
 
-    for task in plan.tasks().iter().filter(|task| task.parent.is_none()) {
+    for task in plan.tasks() {
         index.insert(task.id.clone(), nodes.len());
         let shape = Shape::Task {
             status: task.status,
-            subtasks: subtasks(plan, &task.id),
             locked: matches!(plan.readiness(&task.id), Some(Readiness::Blocked(_))),
         };
-        let mut card = node(&task.id, task.label.as_ref(), shape, facts(plan, task));
+        let mut card = node(&task.id, task.label.as_ref(), shape, facts(task));
         card.notes = task.notes.iter().map(|note| note.node.clone()).collect();
         nodes.push(card);
     }
@@ -503,12 +513,6 @@ fn nodes(plan: &Plan) -> (Vec<Node>, BTreeMap<Id, usize>) {
         nodes.push(gate);
     }
 
-    for task in plan.tasks().iter().filter(|task| task.parent.is_some()) {
-        if let Some(&node) = top(plan, &task.id).and_then(|top| index.get(top)) {
-            index.insert(task.id.clone(), node);
-        }
-    }
-
     (nodes, index)
 }
 
@@ -516,9 +520,6 @@ fn nodes(plan: &Plan) -> (Vec<Node>, BTreeMap<Id, usize>) {
 fn node(id: &Id, label: Option<&Text>, shape: Shape, facts: Vec<Fact>) -> Node {
     let lines = wrap(label.map_or(id.as_str(), Text::as_str), CARD - PAD_X * 2);
     let caption = match &shape {
-        Shape::Task { subtasks, .. } if subtasks.total > 0 => {
-            Some(format!("{} of {} subtasks", subtasks.done, subtasks.total))
-        }
         Shape::Task { .. } => None,
         Shape::Milestone { progress, target } => {
             let state = if progress.is_reached() {
@@ -579,28 +580,12 @@ fn node(id: &Id, label: Option<&Text>, shape: Shape, facts: Vec<Fact>) -> Node {
     }
 }
 
-/// What a task's card says about it: everyone on it (its DRI, then its
-/// subtasks'), when it's expected and should land, and its links.
-fn facts(plan: &Plan, task: &Task) -> Vec<Fact> {
-    let mut people: Vec<Handle> = Vec::new();
-    let mut stack: Vec<&Task> = vec![task];
-    let mut seen = 0;
-    while let Some(task) = stack.pop() {
-        seen += 1;
-        if seen > plan.tasks().len() {
-            break;
-        }
-        if let Some(dri) = &task.dri
-            && !people.contains(&dri.node)
-        {
-            people.push(dri.node.clone());
-        }
-        stack.extend(task.subtasks.iter().rev().filter_map(|id| plan.task(id)));
-    }
-
-    people
-        .into_iter()
-        .map(Fact::Dri)
+/// What a task's card says about it: who's on it, when it's expected and
+/// should land, and its links.
+fn facts(task: &Task) -> Vec<Fact> {
+    task.dri
+        .iter()
+        .map(|dri| Fact::Dri(dri.node.clone()))
         .chain(task.est.as_ref().map(|est| Fact::Est(est.node)))
         .chain(task.target.as_ref().map(|target| Fact::Target(target.node)))
         .chain(
@@ -632,40 +617,6 @@ fn fact_rows(facts: Vec<Fact>, max: u32) -> Vec<Vec<Fact>> {
         }
     }
     rows
-}
-
-/// How many of a task's subtasks, at any depth, are done.
-fn subtasks(plan: &Plan, id: &Id) -> Count {
-    let mut count = Count { done: 0, total: 0 };
-    let mut stack: Vec<&Id> = plan
-        .task(id)
-        .map(|task| task.subtasks.iter().collect())
-        .unwrap_or_default();
-    while let Some(subtask) = stack.pop() {
-        if count.total > plan.tasks().len() {
-            break;
-        }
-        if let Some(subtask) = plan.task(subtask) {
-            count.total += 1;
-            if subtask.status.is_finished() {
-                count.done += 1;
-            }
-            stack.extend(&subtask.subtasks);
-        }
-    }
-    count
-}
-
-/// The top-level task a subtask belongs to.
-fn top<'a>(plan: &'a Plan, id: &'a Id) -> Option<&'a Id> {
-    let mut current = id;
-    for _ in 0..=plan.tasks().len() {
-        match plan.task(current)?.parent.as_ref() {
-            Some(parent) => current = parent,
-            None => return Some(current),
-        }
-    }
-    None
 }
 
 /// Every prerequisite-to-dependent line between nodes, once each, not yet
@@ -711,23 +662,27 @@ fn edges(plan: &Plan, index: &BTreeMap<Id, usize>) -> Vec<Edge> {
     edges.into_values().collect()
 }
 
-/// Leave out every line that a longer path of must-haves already implies,
-/// the transitive reduction (as Graphviz's `tred` does). Rows don't change,
-/// since a longer path already pushes the dependent further up.
-fn reduce(count: usize, edges: Vec<Edge>) -> Vec<Edge> {
-    let successors = successors(count, &edges);
+/// Leave out every line that a longer path of must-haves through `graph`
+/// already implies, the transitive reduction (as Graphviz's `tred` does).
+/// Rows don't change, since a longer path already pushes the dependent
+/// further up.
+fn reduce(graph: &[Vec<usize>], edges: Vec<Edge>) -> Vec<Edge> {
     edges
         .into_iter()
-        .filter(|edge| {
-            let others = successors
-                .get(edge.from)
-                .into_iter()
-                .flatten()
-                .copied()
-                .filter(|&next| next != edge.to);
-            !reaches(&successors, others, edge.to)
-        })
+        .filter(|edge| !implied(graph, edge))
         .collect()
+}
+
+/// Whether a path of must-haves through `graph`, other than `edge` itself,
+/// leads from its prerequisite to its dependent.
+fn implied(graph: &[Vec<usize>], edge: &Edge) -> bool {
+    let others = graph
+        .get(edge.from)
+        .into_iter()
+        .flatten()
+        .copied()
+        .filter(|&next| next != edge.to);
+    reaches(graph, others, edge.to)
 }
 
 /// Each node's must-have successors.
@@ -814,13 +769,11 @@ impl Tiers {
 
 /// Each node's row and band. Within a band, each task's tier is one more
 /// than the deepest work it waits on in that band. A band's tiers come
-/// first, then its milestone's gate row.
-///
-/// Folding subtasks into their parents can make a loop (a subtask that
-/// needs something that needs its parent), so lines that would close one
-/// are left out of the count. Nice-to-haves don't count either.
+/// first, then its milestone's gate row. Nice-to-haves don't count: a plan
+/// that resolves has no loops among its must-haves, but may among its
+/// nice-to-haves.
 fn tiers(nodes: &[Node], edges: &[Edge]) -> Tiers {
-    let forward = without_back_edges(&successors(nodes.len(), edges));
+    let forward = successors(nodes.len(), edges);
     let predecessors = predecessors(&forward);
     let order = topological(&forward);
     let milestones = milestone_order(nodes, &predecessors);
@@ -957,12 +910,13 @@ fn milestone_order(nodes: &[Node], predecessors: &[Vec<usize>]) -> Vec<usize> {
 }
 
 /// Each node's band, an index into `milestones`, or one past the last for
-/// the band beyond them all. A milestone's band is its own. Work goes in the
-/// band of the first milestone that needs it, directly or through other
-/// work. Work no milestone needs, but one wants (directly, or through work
-/// it wants), goes in that one's band, or later if what it waits on is.
-/// Otherwise, finished work goes as early as what it waits on allows, and
-/// unfinished work goes beyond every milestone: it isn't scheduled.
+/// the layer of work on no milestone. A milestone's band is its own. Work
+/// goes in the band of the first milestone that needs it, directly or
+/// through other work. Work no milestone needs, but one wants (directly, or
+/// through work it wants), goes in that one's band, or later if what it
+/// waits on is. Anything else goes in the layer on top, done or not: putting
+/// finished work as early as it could go put it in the first era, which
+/// claimed it for the first milestone.
 fn bands_of(
     nodes: &[Node],
     edges: &[Edge],
@@ -1009,11 +963,8 @@ fn bands_of(
             .unwrap_or(0);
         let band = match nodes.get(node).map(|node| &node.shape) {
             Some(Shape::Milestone { .. }) => milestones.iter().position(|&m| m == node),
-            Some(Shape::Task { status, .. }) => first(&needed_by, node).or_else(|| {
-                first(&wanted_by, node)
-                    .map(|band| band.max(floor))
-                    .or_else(|| status.is_finished().then_some(floor))
-            }),
+            Some(Shape::Task { .. }) => first(&needed_by, node)
+                .or_else(|| first(&wanted_by, node).map(|band| band.max(floor))),
             None => None,
         };
         if let Some(slot) = bands.get_mut(node) {
@@ -1049,58 +1000,6 @@ fn local_tiers(
         }
     }
     tiers
-}
-
-/// `successors` without the edges a depth-first search finds pointing back
-/// up its own path, which leaves no cycles.
-fn without_back_edges(successors: &[Vec<usize>]) -> Vec<Vec<usize>> {
-    #[derive(Clone, Copy, PartialEq, Eq)]
-    enum Visit {
-        New,
-        Open,
-        Done,
-    }
-
-    let mut visit = vec![Visit::New; successors.len()];
-    let mut forward: Vec<Vec<usize>> = vec![Vec::new(); successors.len()];
-    for root in 0..successors.len() {
-        if visit.get(root) != Some(&Visit::New) {
-            continue;
-        }
-        let mut stack = vec![(root, 0_usize)];
-        if let Some(state) = visit.get_mut(root) {
-            *state = Visit::Open;
-        }
-        while let Some((node, next)) = stack.last_mut() {
-            let node = *node;
-            let Some(&to) = successors.get(node).and_then(|edges| edges.get(*next)) else {
-                if let Some(state) = visit.get_mut(node) {
-                    *state = Visit::Done;
-                }
-                stack.pop();
-                continue;
-            };
-            *next += 1;
-            match visit.get(to).copied() {
-                Some(Visit::Open) | None => {}
-                Some(Visit::Done) => {
-                    if let Some(edges) = forward.get_mut(node) {
-                        edges.push(to);
-                    }
-                }
-                Some(Visit::New) => {
-                    if let Some(edges) = forward.get_mut(node) {
-                        edges.push(to);
-                    }
-                    if let Some(state) = visit.get_mut(to) {
-                        *state = Visit::Open;
-                    }
-                    stack.push((to, 0));
-                }
-            }
-        }
-    }
-    forward
 }
 
 /// A banner before placing: what it heads, its text and depth, the branches
@@ -1442,12 +1341,15 @@ fn bands(frame: &Frame, nodes: &[Node], tiers: &Tiers) -> Vec<Band> {
         });
         bottom = top;
     }
-    bands.push(Band {
-        milestone: None,
-        top: frame.panel_top,
-        bottom,
-        reached: false,
-    });
+    let beyond = tiers.milestones.len();
+    if tiers.bands.contains(&beyond) {
+        bands.push(Band {
+            milestone: None,
+            top: frame.panel_top,
+            bottom,
+            reached: false,
+        });
+    }
     bands
 }
 

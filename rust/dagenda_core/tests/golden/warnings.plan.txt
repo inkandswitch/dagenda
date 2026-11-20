@@ -13,9 +13,10 @@ tasks
   [ ] waiting [Waiting], in work: blocked by dropped
     needs dropped
   [x] parent [Parent], in work: finished
-  [ ] child [Open child], in work, under parent: ready
-  [x] doneChild [Done child], in work, under parent: finished
-  [~] droppedChild [Dropped child], in work, under parent: dropped
+    needs child, doneChild, droppedChild
+  [ ] child [Open child], in work: ready
+  [x] doneChild [Done child], in work: finished
+  [~] droppedChild [Dropped child], in work: dropped
 
 milestones
   stuck [Stuck]: not reached; 0/2 needed, 0/0 wanted
@@ -25,7 +26,8 @@ milestones
 warnings
   6:11: `shipped` is done, but it needs `unfinished`, which isn't
   11:11: `waiting` needs `dropped`, which is dropped, so `waiting` can never finish
-  12:3: `parent` is done, but its subtask `child` isn't
+  13:14: `parent` is done, but it needs `child`, which isn't
+  15:14: `parent` is done, but it needs `droppedChild`, which isn't
   17:8: `unfinished` is defined in this document, so put these details on it directly
   21:3: `dropped` is dropped, so `stuck` can never be reached; take it off the list, or move it below the cut line
   22:3: `deferred` is deferred but still holds up `stuck`; move it below the cut line if `stuck` can go without it
