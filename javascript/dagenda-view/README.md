@@ -36,8 +36,9 @@ The notation's indentation is relative, so inline source can be indented to matc
 
 | Property   | Meaning                                                                 |
 |------------|-------------------------------------------------------------------------|
-| `source`   | The plan's text; setting it redraws                                     |
-| `problems` | The current source's problems: `{ line, column, severity, message }`    |
+| `source`   | The plan's text, for a plan of one document; setting it redraws         |
+| `documents` | A plan of several documents, `[{ name, source }]`; setting it redraws from all of them |
+| `problems` | The plan's problems: `{ document, line, column, severity, message }`    |
 | `selected` | The selected node's id, or `null`                                       |
 | `svg`      | The drawn SVG's markup, for export                                      |
 | `select(id)` | Select a node (`null` clears)                                         |

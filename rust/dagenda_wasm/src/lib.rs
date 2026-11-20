@@ -1,15 +1,16 @@
 //! Wasm bindings for dagenda roadmaps.
 //!
 //! This crate only moves data across the JS boundary; all logic lives in
-//! [`dagenda_core`]. The functions take one document's source text; plans
-//! made of several documents come with the collaborative editor.
+//! [`dagenda_core`]. A plan is one or more documents, so they can refer to
+//! each other's ids: the `…Plan` functions take the documents' names and
+//! texts as two arrays, in the same order. The others are shorthands for a
+//! plan of one unnamed document.
 
 use dagenda_core::{
-    Error,
+    check::{self, Source},
     id::Id,
     parser,
-    plan::{Plan, ResolveErrorKind},
-    span::Span,
+    plan::Plan,
 };
 use wasm_bindgen::prelude::{JsError, wasm_bindgen};
 
@@ -17,6 +18,9 @@ use wasm_bindgen::prelude::{JsError, wasm_bindgen};
 #[wasm_bindgen(getter_with_clone)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Problem {
+    /// Which document it's in, from 0.
+    pub document: u32,
+
     /// 1-based line.
     pub line: u32,
 
@@ -30,16 +34,27 @@ pub struct Problem {
     pub message: String,
 }
 
-impl Problem {
-    fn new(source: &str, span: Span, severity: &str, message: String) -> Self {
-        let (line, column) = span.line_col(source);
+impl From<check::Problem> for Problem {
+    fn from(problem: check::Problem) -> Self {
         Self {
-            line: u32::try_from(line).unwrap_or(u32::MAX),
-            column: u32::try_from(column).unwrap_or(u32::MAX),
-            severity: severity.into(),
-            message,
+            document: number(problem.document),
+            line: number(problem.line),
+            column: number(problem.column),
+            severity: problem.severity.to_string(),
+            message: problem.message,
         }
     }
+}
+
+/// Where something is defined: which document, and which line.
+#[wasm_bindgen]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Place {
+    /// Which document, from 0.
+    pub document: u32,
+
+    /// 1-based line.
+    pub line: u32,
 }
 
 /// Every problem with `source`: its error if it doesn't parse or resolve,
@@ -47,19 +62,19 @@ impl Problem {
 #[wasm_bindgen]
 #[must_use]
 pub fn check(source: &str) -> Vec<Problem> {
-    match dagenda_core::parse(source) {
-        Ok(plan) => plan
-            .warnings()
-            .iter()
-            .map(|warning| Problem::new(source, warning.at.span, "warning", warning.to_string()))
-            .collect(),
-        Err(error) => vec![Problem::new(
-            source,
-            error.span(),
-            "error",
-            message(source, &error),
-        )],
-    }
+    check_plan(Vec::new(), vec![source.into()])
+}
+
+/// Every problem with a plan's documents: each document's parse error, or
+/// the plan's first resolve error, or else its warnings.
+#[wasm_bindgen(js_name = checkPlan)]
+#[must_use]
+pub fn check_plan(names: Vec<String>, texts: Vec<String>) -> Vec<Problem> {
+    check::check(&sources(names, texts))
+        .1
+        .into_iter()
+        .map(Problem::from)
+        .collect()
 }
 
 /// Draw `source`'s tech tree as a standalone SVG document.
@@ -70,7 +85,19 @@ pub fn check(source: &str) -> Vec<Problem> {
 /// or resolve.
 #[wasm_bindgen(js_name = renderSvg)]
 pub fn render_svg(source: &str) -> Result<String, JsError> {
-    Ok(plan(source)?.to_svg())
+    render_plan_svg(Vec::new(), vec![source.into()])
+}
+
+/// Draw a plan's tech tree, from all its documents, as a standalone SVG
+/// document.
+///
+/// # Errors
+///
+/// Throws with the first problem and its `name:line:column` if a document
+/// doesn't parse or the plan doesn't resolve.
+#[wasm_bindgen(js_name = renderPlanSvg)]
+pub fn render_plan_svg(names: Vec<String>, texts: Vec<String>) -> Result<String, JsError> {
+    Ok(plan(names, texts)?.to_svg())
 }
 
 /// Write `source` as text: milestones, then tracks and their tasks.
@@ -81,7 +108,18 @@ pub fn render_svg(source: &str) -> Result<String, JsError> {
 /// or resolve.
 #[wasm_bindgen(js_name = renderText)]
 pub fn render_text(source: &str) -> Result<String, JsError> {
-    Ok(plan(source)?.to_text())
+    render_plan_text(Vec::new(), vec![source.into()])
+}
+
+/// Write a plan, from all its documents, as text.
+///
+/// # Errors
+///
+/// Throws with the first problem and its `name:line:column` if a document
+/// doesn't parse or the plan doesn't resolve.
+#[wasm_bindgen(js_name = renderPlanText)]
+pub fn render_plan_text(names: Vec<String>, texts: Vec<String>) -> Result<String, JsError> {
+    Ok(plan(names, texts)?.to_text())
 }
 
 /// The line where `id`'s track, task, or milestone is defined, if it is.
@@ -90,40 +128,59 @@ pub fn render_text(source: &str) -> Result<String, JsError> {
 #[wasm_bindgen]
 #[must_use]
 pub fn locate(source: &str, id: &str) -> Option<u32> {
-    let id = Id::new(id).ok()?;
-    let document = parser::document(source).ok()?;
-    let (_, span) = document
-        .definitions()
-        .into_iter()
-        .find(|(found, _)| **found == id)?;
-    u32::try_from(span.line_col(source).0).ok()
+    locate_plan(vec![source.into()], id).map(|place| place.line)
 }
 
-fn plan(source: &str) -> Result<Plan, JsError> {
-    dagenda_core::parse(source).map_err(|error| {
-        let (line, column) = error.span().line_col(source);
-        JsError::new(&format!("{line}:{column}: {}", message(source, &error)))
+/// Which document, and which line, defines `id`, if any does. Documents
+/// that don't parse are skipped.
+#[wasm_bindgen(js_name = locatePlan)]
+#[must_use]
+pub fn locate_plan(texts: Vec<String>, id: &str) -> Option<Place> {
+    let id = Id::new(id).ok()?;
+    texts.into_iter().enumerate().find_map(|(document, text)| {
+        let parsed = parser::document(&text).ok()?;
+        let (_, span) = parsed
+            .definitions()
+            .into_iter()
+            .find(|(found, _)| **found == id)?;
+        Some(Place {
+            document: number(document),
+            line: number(span.line_col(&text).0),
+        })
     })
 }
 
-/// An error's message, saying where the first definition is for a
-/// duplicate or a conflict.
-fn message(source: &str, error: &Error) -> String {
-    let first = match error {
-        Error::Resolve(resolve) => match resolve.kind() {
-            ResolveErrorKind::Duplicate { first, .. }
-            | ResolveErrorKind::Conflict { first, .. } => Some(first.span),
-            ResolveErrorKind::Unknown(_)
-            | ResolveErrorKind::WrongKind { .. }
-            | ResolveErrorKind::Cycle(_) => None,
-        },
-        Error::Parse(_) => None,
-    };
-    match first {
-        Some(span) => {
-            let (line, column) = span.line_col(source);
-            format!("{error} (first at {line}:{column})")
-        }
-        None => error.to_string(),
-    }
+/// Each text with its name, or no name if there are fewer names.
+fn sources(names: Vec<String>, texts: Vec<String>) -> Vec<Source> {
+    names
+        .into_iter()
+        .chain(core::iter::repeat_with(String::new))
+        .zip(texts)
+        .map(|(name, text)| Source { name, text })
+        .collect()
+}
+
+/// The plan, or its first problem as an error: `name:line:column: message`,
+/// or `line:column: message` for an unnamed document.
+fn plan(names: Vec<String>, texts: Vec<String>) -> Result<Plan, JsError> {
+    let (plan, problems) = check::check(&sources(names, texts));
+    plan.ok_or_else(|| {
+        let message = problems.first().map_or_else(
+            || String::from("the plan doesn't resolve"),
+            |problem| {
+                let place = format!("{}:{}", problem.line, problem.column);
+                if problem.name.is_empty() {
+                    format!("{place}: {}", problem.message)
+                } else {
+                    format!("{}:{place}: {}", problem.name, problem.message)
+                }
+            },
+        );
+        JsError::new(&message)
+    })
+}
+
+/// A count or position, as JS gets it.
+fn number(value: usize) -> u32 {
+    u32::try_from(value).unwrap_or(u32::MAX)
 }

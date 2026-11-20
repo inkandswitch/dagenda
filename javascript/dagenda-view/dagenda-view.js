@@ -9,7 +9,8 @@
 //   </script></dagenda-view>
 //
 // or <dagenda-view src="./plan.dagenda"></dagenda-view>, or set `.source`
-// from script. The notation's indentation is relative, so inline source can
+// from script. A plan of several documents (public and private, say) is
+// `.documents = [{ name, source }, …]`: one picture from all of them. The notation's indentation is relative, so inline source can
 // be indented to match the page. Add theme="light" or theme="dark" to
 // override the system's colour scheme, and zoom="1.5" to scale.
 //
@@ -28,7 +29,7 @@
 // All logic lives in the Wasm (`dagenda_wasm`); this file only wires the
 // SVG's data-* hooks to the page.
 
-import init, { check, renderSvg } from "./pkg/dagenda_wasm.js"
+import init, { checkPlan, renderPlanSvg } from "./pkg/dagenda_wasm.js"
 
 const ready = init()
 
@@ -61,7 +62,13 @@ const reach = (start, next) => {
 
 /** A problem from the Wasm, as a plain object (the Wasm's own is freed). */
 const plain = (problem) => {
-  const copy = { line: problem.line, column: problem.column, severity: problem.severity, message: problem.message }
+  const copy = {
+    document: problem.document,
+    line: problem.line,
+    column: problem.column,
+    severity: problem.severity,
+    message: problem.message,
+  }
   problem.free()
   return copy
 }
@@ -69,7 +76,7 @@ const plain = (problem) => {
 class DagendaView extends HTMLElement {
   static observedAttributes = ["src", "theme", "zoom"]
 
-  #source = ""
+  #documents = [{ name: "", source: "" }]
   #problems = []
   #selected = null
   #canvas
@@ -104,7 +111,7 @@ class DagendaView extends HTMLElement {
 
   connectedCallback() {
     if (!this.hasAttribute("tabindex")) this.tabIndex = 0
-    if (this.hasAttribute("src") || this.#source) return
+    if (this.hasAttribute("src") || this.#documents.some((document) => document.source)) return
     const script = this.querySelector('script[type="text/dagenda"]')
     const text = (script ?? this).textContent ?? ""
     if (text.trim()) this.source = text
@@ -115,17 +122,26 @@ class DagendaView extends HTMLElement {
     else this.#style()
   }
 
-  /** The plan's source text. Setting it redraws. */
+  /** The plan's source text, for a plan of one document. Setting it redraws. */
   get source() {
-    return this.#source
+    return this.#documents[0]?.source ?? ""
   }
 
   set source(text) {
-    this.#source = text
+    this.documents = [{ name: "", source: text }]
+  }
+
+  /** The plan's documents, `[{ name, source }]`, in order. Setting them redraws. */
+  get documents() {
+    return this.#documents.map((document) => ({ ...document }))
+  }
+
+  set documents(documents) {
+    this.#documents = documents.map(({ name = "", source = "" }) => ({ name, source }))
     this.#render()
   }
 
-  /** The problems with the current source: `{ line, column, severity, message }`. */
+  /** The problems with the plan: `{ document, line, column, severity, message }`. */
   get problems() {
     return this.#problems
   }
@@ -157,13 +173,15 @@ class DagendaView extends HTMLElement {
 
   async #render() {
     await ready
-    const source = this.#source
-    const problems = check(source).map(plain)
-    // A newer source arrived while this one waited for the Wasm
-    if (source !== this.#source) return
+    const documents = this.#documents
+    const names = documents.map((document) => document.name)
+    const texts = documents.map((document) => document.source)
+    const problems = checkPlan(names, texts).map(plain)
+    // Newer documents arrived while these waited for the Wasm
+    if (documents !== this.#documents) return
 
     const ok = !problems.some((problem) => problem.severity === "error")
-    if (ok) this.#draw(renderSvg(source))
+    if (ok) this.#draw(renderPlanSvg(names, texts))
     this.#problems = problems
     this.dispatchEvent(new CustomEvent("dagenda-render", { bubbles: true, detail: { problems, ok } }))
   }
