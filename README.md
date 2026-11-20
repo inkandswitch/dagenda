@@ -114,9 +114,12 @@ A shared plan can be edited from the command line too, as files, alongside the p
 ```console
 $ nix run .#collab -- pull plan/ automerge:…   # the first time; the URL is kept in plan/workspace.url
 $ nix run .#collab -- status plan/             # what has edits to push, or to pull
-$ nix run .#collab -- push plan/
+$ nix run .#collab -- push plan/ --as=claude   # named, so people know whose edits these are
+$ nix run .#collab -- undo plan/               # take back the last push, keeping what's been typed since
 $ nix run .#collab -- new plan/                # a new workspace from the .dagenda files there
 ```
+
+It's built so nothing gets lost or broken: `pull` won't overwrite edits you haven't pushed, and `push` checks the plan with this repo's parser and with the deployed editor's, refusing if either finds errors (`--ahead-of-site` to push syntax the deployed editor doesn't know yet).
 
 Until Keyhive, a private document is one whose URL isn't linked from anything public.
 

@@ -171,7 +171,7 @@
         # inside `nix develop`; directories are relative to where you run it.
         collab = pkgs.writeShellApplication {
           name = "dagenda-collab";
-          runtimeInputs = js-pkgs;
+          runtimeInputs = [rust-toolchain pkgs.stdenv.cc] ++ wasm-pkgs ++ js-pkgs;
           text = ''
             root="''${WORKSPACE_ROOT:-$PWD}"
             if [ ! -f "$root/javascript/editor/cli/collab.mjs" ]; then
@@ -179,6 +179,12 @@
               exit 1
             fi
             [ -d "$root/javascript/editor/node_modules" ] || (cd "$root" && pnpm install --frozen-lockfile >&2)
+            # `push` and `new` check the plan with this repo's parser first
+            case "''${1:-}" in
+              push | new)
+                (cd "$root" && wasm-pack --log-level warn build --dev --target web --out-dir ../../javascript/dagenda-view/pkg rust/dagenda_wasm >&2)
+                ;;
+            esac
             exec node "$root/javascript/editor/cli/collab.mjs" "$@"
           '';
         };
@@ -318,6 +324,7 @@
             # Through node, not the .bin shim: its #!/bin/sh is not everywhere
             (cd javascript/editor && node node_modules/vite/bin/vite.js build)
             CHROMIUM=chromium node --test --test-concurrency=1 javascript/editor/browser-test/*.test.mjs
+            node --test javascript/editor/cli/*.test.mjs
           '';
 
           ci-doc = mkCheck "ci-doc" ''

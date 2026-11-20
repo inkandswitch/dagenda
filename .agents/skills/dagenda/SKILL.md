@@ -20,8 +20,9 @@ Run these from the repo root (or anywhere inside `nix develop`):
 | `nix run .#collab -- pull <dir> <automerge:URL>`   | First pull of a shared workspace: each document into `<dir>/<name>.dagenda` |
 | `nix run .#collab -- pull <dir>`                   | Pull again (the URL is saved in `<dir>/workspace.url`)                |
 | `nix run .#collab -- status <dir>`                 | Each document, and whether it has edits to push or to pull           |
-| `nix run .#collab -- push <dir>`                   | Push edited files back, merged with what others typed since the pull |
-| `nix run .#collab -- new <dir>`                    | A new workspace from the `.dagenda` files in `<dir>` (`plan` first)  |
+| `nix run .#collab -- push <dir> --as=<you>`        | Push edited files back, merged with what others typed since the pull |
+| `nix run .#collab -- undo <dir> --as=<you>`        | Take back your last push, keeping what others typed since            |
+| `nix run .#collab -- new <dir> --as=<you>`         | A new workspace from the `.dagenda` files in `<dir>` (`plan` first)  |
 
 `cargo run -q -p dagenda_cli -- check …` works without Nix. The editor for a workspace is `https://inkandswitch.github.io/dagenda/collab/#automerge:…`; `pull` and `new` print the link. Give it to the user when you make a workspace.
 
@@ -113,15 +114,17 @@ When you move things between documents or restructure (merging documents, reinde
 
 A workspace is an Automerge document listing the plan's documents; each is a tab in the editor. Other people may be typing in it while you work, so:
 
-1. `pull` before every edit. Edit only the pulled files.
+1. `pull` before every edit. Edit only the pulled files. `pull` refuses to write over edits you haven't pushed; push them, or `--discard` them.
 2. `check` them all together.
-3. `push`. It applies your edits against the version you pulled, so concurrent typing merges instead of being overwritten, waits until the sync server has everything, and pulls the merged result.
-4. Run `status` (or `pull` into a fresh directory) to confirm the server has it.
+3. `push --as=<you>` (say who you are: "claude", "codex"). It checks the whole plan with the repo's parser and with the deployed editor's, and refuses if either finds errors, since people would see them. It applies your edits against the version you pulled, so concurrent typing merges instead of being overwritten, waits until the sync server has everything, and pulls the merged result.
+4. Run `status` to confirm: it shows each document and the last push.
+
+If a push was wrong, `undo` takes it back. It makes the inverse edit at your push's version, so anything typed since stays. If the deployed editor is older than the syntax you used, `push` says so; push anyway only with `--ahead-of-site` and when the user agrees, since their editor will show errors until the site is redeployed.
 
 A new `<name>.dagenda` in the directory becomes a new document (a new tab) on `push`. Emptying a document to `roadmap` leaves its tab; nothing deletes one.
 
 > [!NOTE]
-> The editor people use is the deployed site, which can lag the repo. Syntax that's newer than the last deploy shows as an error there, even though the repo's `check` passes. Say so when you use something new.
+> The editor people use is the deployed site, which can lag the repo. Syntax that's newer than the last deploy shows as an error there, even though the repo's `check` passes. `push` catches this; say so when it does.
 
 ## Writing a good plan
 
