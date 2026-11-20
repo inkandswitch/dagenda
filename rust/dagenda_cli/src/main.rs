@@ -9,9 +9,16 @@
 //!
 //! Files given together are one plan, so a private plan can `extend` a task
 //! in a public one, or say it `needs` one. Problems are printed as
-//! `path:line:column: severity: message`. Exit status: 0 on success, 1 if
-//! there are errors (or warnings, with `--deny-warnings`) or a file can't be
-//! read or written, 2 for bad arguments.
+//! `path:line:column: severity: message`.
+//!
+//! `render -o` takes the format from the output's extension (`.svg` or
+//! `.txt`, in any case), or from `--format`; any other extension is refused
+//! rather than guessed at. It never writes over one of the plan's own
+//! documents, however the path is spelled.
+//!
+//! Exit status: 0 on success, 1 if there are errors (or warnings, with
+//! `--deny-warnings`) or a file can't be read or written, 2 for bad
+//! arguments (including an output it won't write).
 
 use clap::{Parser, Subcommand};
 use dagenda_cli::render::Format;
@@ -50,8 +57,8 @@ enum Command {
         #[arg(required = true)]
         inputs: Vec<PathBuf>,
 
-        /// The output format (default: from the output file's extension,
-        /// else text)
+        /// The output format (default: from the output's extension, `.svg`
+        /// or `.txt`; text on stdout)
         #[arg(short, long, value_enum)]
         format: Option<Format>,
 
@@ -66,7 +73,7 @@ fn main() -> ExitCode {
         Ok(code) => code,
         Err(e) => {
             eprintln!("dagenda: {e}");
-            ExitCode::FAILURE
+            e.exit_code()
         }
     }
 }
@@ -97,15 +104,33 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             format,
             output,
         } => {
+            // Settle where it goes before reading anything, so a bad output
+            // is refused whatever state the plan is in. Writing over one of
+            // the plan's own documents is the worse mistake, so it's named
+            // first.
+            if let Some(input) = output
+                .as_deref()
+                .and_then(|output| overwritten(output, &inputs))
+            {
+                return Err(CliError::Overwrite {
+                    path: input.clone(),
+                });
+            }
+            let format = match (format, output.as_deref()) {
+                (Some(format), _) => format,
+                (None, None) => Format::Text,
+                (None, Some(path)) => {
+                    Format::for_path(path).ok_or_else(|| CliError::UnknownFormat {
+                        path: path.to_owned(),
+                    })?
+                }
+            };
+
             let (plan, problems) = check(&read_all(&inputs)?);
             report(&problems);
             let Some(plan) = plan else {
                 return Ok(ExitCode::FAILURE);
             };
-
-            let format = format
-                .or_else(|| output.as_deref().and_then(Format::for_path))
-                .unwrap_or_default();
             let rendered = format.render(&plan);
             match output {
                 Some(path) => std::fs::write(&path, rendered)
@@ -131,6 +156,17 @@ fn report(problems: &[Problem]) {
             break;
         }
     }
+}
+
+/// The input `output` would write over, if any: the same file, however it's
+/// spelled (`./plan.dagenda`, through a symlink). An output that doesn't
+/// exist yet can't be one, since every input has to.
+fn overwritten<'a>(output: &Path, inputs: &'a [PathBuf]) -> Option<&'a PathBuf> {
+    let output = std::fs::canonicalize(output).ok()?;
+    inputs
+        .iter()
+        .filter(|input| input.as_path() != Path::new("-"))
+        .find(|input| std::fs::canonicalize(input).is_ok_and(|input| input == output))
 }
 
 fn read_all(inputs: &[PathBuf]) -> Result<Vec<Source>, CliError> {
@@ -169,4 +205,27 @@ enum CliError {
 
     #[error("can't write {}: {source}", path.display())]
     Write { path: PathBuf, source: io::Error },
+
+    #[error(
+        "can't tell what to write to {} from its name; end it in .svg or .txt, or pass --format svg or --format text",
+        path.display()
+    )]
+    UnknownFormat { path: PathBuf },
+
+    #[error(
+        "won't write over {}, which is one of the plan's documents; pick another --output",
+        path.display()
+    )]
+    Overwrite { path: PathBuf },
+}
+
+impl CliError {
+    /// 2 for an argument it won't act on, like clap's own; 1 for a file
+    /// that couldn't be read or written.
+    fn exit_code(&self) -> ExitCode {
+        match self {
+            Self::Read { .. } | Self::Write { .. } => ExitCode::FAILURE,
+            Self::UnknownFormat { .. } | Self::Overwrite { .. } => ExitCode::from(2),
+        }
+    }
 }

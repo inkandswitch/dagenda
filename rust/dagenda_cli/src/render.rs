@@ -16,22 +16,27 @@ pub enum Format {
 }
 
 impl Format {
-    /// The format a path's extension asks for: `.svg` for SVG, `.txt` for
-    /// text.
+    /// The format a path's extension asks for, in any case: `.svg` for SVG,
+    /// `.txt` for text. Anything else asks for nothing.
     ///
     /// ```
     /// use dagenda_cli::render::Format;
     /// use std::path::Path;
     ///
     /// assert_eq!(Format::for_path(Path::new("plan.svg")), Some(Format::Svg));
+    /// assert_eq!(Format::for_path(Path::new("PLAN.SVG")), Some(Format::Svg));
     /// assert_eq!(Format::for_path(Path::new("plan.md")), None);
+    /// assert_eq!(Format::for_path(Path::new("plan.dagenda")), None);
     /// ```
     #[must_use]
     pub fn for_path(path: &Path) -> Option<Self> {
-        match path.extension()?.to_str()? {
-            "svg" => Some(Self::Svg),
-            "txt" => Some(Self::Text),
-            _ => None,
+        let extension = path.extension()?.to_str()?;
+        if extension.eq_ignore_ascii_case("svg") {
+            Some(Self::Svg)
+        } else if extension.eq_ignore_ascii_case("txt") {
+            Some(Self::Text)
+        } else {
+            None
         }
     }
 
