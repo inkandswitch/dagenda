@@ -72,19 +72,6 @@ const reach = (start, next) => {
   return seen
 }
 
-/** A problem from the Wasm, as a plain object (the Wasm's own is freed). */
-const plain = (problem) => {
-  const copy = {
-    document: problem.document,
-    line: problem.line,
-    column: problem.column,
-    severity: problem.severity,
-    message: problem.message,
-  }
-  problem.free()
-  return copy
-}
-
 class DagendaView extends HTMLElement {
   static observedAttributes = ["src", "theme", "zoom"]
 
@@ -193,14 +180,12 @@ class DagendaView extends HTMLElement {
   async #render() {
     await ready
     const documents = this.#documents
-    const names = documents.map((document) => document.name)
-    const texts = documents.map((document) => document.source)
-    const problems = checkPlan(names, texts).map(plain)
+    const problems = checkPlan(documents)
     // Newer documents arrived while these waited for the Wasm
     if (documents !== this.#documents) return
 
     const ok = !problems.some((problem) => problem.severity === "error")
-    if (ok) this.#draw(renderPlanSvg(names, texts))
+    if (ok) this.#draw(renderPlanSvg(documents))
     this.#problems = problems
     this.dispatchEvent(new CustomEvent("dagenda-render", { bubbles: true, detail: { problems, ok } }))
   }

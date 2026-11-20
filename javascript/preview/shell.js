@@ -75,12 +75,8 @@ export const shell = ({ prefix, documents, goTo, onRender = () => {}, wasm }) =>
 
   let view = load("view", "tree")
   const showText = () => {
-    const all = documents()
     try {
-      $("text").textContent = wasm.renderPlanText(
-        all.map((document) => document.name),
-        all.map((document) => document.source),
-      )
+      $("text").textContent = wasm.renderPlanText(documents())
     } catch {
       // Keep the last good text, as the picture does
     }

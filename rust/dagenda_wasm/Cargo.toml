@@ -18,6 +18,9 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 dagenda_core = { workspace = true }
+js-sys = { workspace = true, features = ["std"] }
+serde = { workspace = true }
+serde-wasm-bindgen = { workspace = true }
 wasm-bindgen = { workspace = true, features = ["std"] }
 
 [package.metadata.wasm-pack.profile.release]

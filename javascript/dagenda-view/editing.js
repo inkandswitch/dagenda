@@ -157,16 +157,14 @@ export const attachEditing = ({ host, root, canvas, svg, documents }) => {
    */
   const edit = (kind, where, ...makes) => {
     const drawn = documents()
-    const names = drawn.map((document) => document.name)
-    const texts = drawn.map((document) => document.source)
+    const plan = drawn.map(({ name, source }) => ({ name, source }))
     const touched = new Set()
     const refused = []
     for (const make of makes) {
       try {
-        for (const made of make(names, texts)) {
-          texts[made.document] = made.text
+        for (const made of make(plan)) {
+          plan[made.document] = { ...plan[made.document], source: made.source }
           touched.add(made.document)
-          made.free()
         }
       } catch (error) {
         refused.push(error.message ?? String(error))
@@ -174,7 +172,7 @@ export const attachEditing = ({ host, root, canvas, svg, documents }) => {
     }
     if (refused.length > 0) say([...new Set(refused)].join("; "), where)
     if (touched.size === 0) return
-    const edits = [...touched].map((document) => ({ document, source: texts[document], base: drawn[document]?.source ?? "" }))
+    const edits = [...touched].map((document) => ({ document, source: plan[document].source, base: drawn[document]?.source ?? "" }))
     host.dispatchEvent(new CustomEvent("dagenda-edit", { bubbles: true, detail: { kind, edits } }))
   }
 
@@ -205,7 +203,7 @@ export const attachEditing = ({ host, root, canvas, svg, documents }) => {
       button.append(label)
       button.addEventListener("click", () => {
         closeMenu()
-        edit("status", { clientX: place.left, clientY: place.bottom }, (names, texts) => setStatus(names, texts, id, mark))
+        edit("status", { clientX: place.left, clientY: place.bottom }, (plan) => setStatus(plan, id, mark))
       })
       menu.append(button)
     }
@@ -293,7 +291,7 @@ export const attachEditing = ({ host, root, canvas, svg, documents }) => {
 
     if (kind === "badge") {
       const target = nodeAt(e.clientX, e.clientY, node)
-      if (target) edit("need", e, (names, texts) => addNeed(names, texts, id, target.dataset.id))
+      if (target) edit("need", e, (plan) => addNeed(plan, id, target.dataset.id))
       return
     }
 
@@ -301,7 +299,7 @@ export const attachEditing = ({ host, root, canvas, svg, documents }) => {
       if (eras().length === 0) return
       const was = node.dataset.era ?? null
       const to = bandAt(here.y)
-      if (to !== was) edit("rescope", e, (names, texts) => rescope(names, texts, id, was ?? undefined, to ?? undefined))
+      if (to !== was) edit("rescope", e, (plan) => rescope(plan, id, was, to))
       return
     }
 
@@ -312,16 +310,16 @@ export const attachEditing = ({ host, root, canvas, svg, documents }) => {
     const moved = boundary(id, own.y + (here.y - from.y))
     if (moved.reorder) {
       const { other, above } = moved.reorder
-      edit("reorder", e, (names, texts) => reorder(names, texts, id, other, above))
+      edit("reorder", e, (plan) => reorder(plan, id, other, above))
     } else if (moved.into?.length > 0) {
       // Brought in: this milestone needs them now (a later one still may)
-      edit("rescope", e, ...moved.into.map((card) => (names, texts) => rescope(names, texts, card.id, undefined, id)))
+      edit("rescope", e, ...moved.into.map((card) => (plan) => rescope(plan, card.id, null, id)))
     } else if (moved.out?.length > 0) {
       // Handed up: off this milestone, onto the one above (or none)
       edit(
         "rescope",
         e,
-        ...moved.out.map((card) => (names, texts) => rescope(names, texts, card.id, id, moved.above ?? undefined)),
+        ...moved.out.map((card) => (plan) => rescope(plan, card.id, id, moved.above)),
       )
     } else if (moved.lines.length < 2) {
       say("Drag the line past cards to bring them into this milestone, or to hand them to the era above", e)

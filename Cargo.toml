@@ -20,6 +20,10 @@ dagenda_core = { version = "0.1.0", path = "rust/dagenda_core" }
 # External crates
 bolero = "0.13.4"
 clap = { version = "4.6", features = ["derive"] }
+# Released with wasm-bindgen; Cargo picks the one matching its pin
+js-sys = { version = "0.3", default-features = false }
+serde = { version = "1.0", features = ["derive"] }
+serde-wasm-bindgen = "0.6.5"
 testresult = "0.4.1"
 thiserror = { version = "2.0", default-features = false }
 # Pinned exactly: must match the `wasm-bindgen-cli` in the Nix dev shell

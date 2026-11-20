@@ -179,13 +179,10 @@ export const mountWorkspace = async ({ repo, workspace, find, onHandles = () => 
   picture.addEventListener("dagenda-select", ({ detail: { id } }) => {
     if (id === null) return
     const place = locatePlan(
-      tabs.map((tab) => sourceOf(tab.handle)),
+      tabs.map((tab) => ({ source: sourceOf(tab.handle) })),
       id,
     )
-    if (!place) return
-    const { document, line } = place
-    place.free()
-    goTo(document, line)
+    if (place) goTo(place.document, place.line)
   })
 
   // --- Tabs ------------------------------------------------------------------
