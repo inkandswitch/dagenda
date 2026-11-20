@@ -179,12 +179,12 @@
 <g class="banner track hue-0 depth-0" data-track="work"><rect x="16" y="50" width="506" height="24" rx="8"/><text x="269" y="66" text-anchor="middle">Work</text></g>
 <g class="era" data-milestone="stuck"><line class="hit" x1="16" y1="643" x2="566" y2="643" style="stroke-opacity:0;stroke-width:14;stroke-dasharray:none"/><line x1="16" y1="643" x2="566" y2="643"/><text x="22" y="636">Stuck</text></g>
 <g class="era reached" data-milestone="empty"><line class="hit" x1="16" y1="418" x2="566" y2="418" style="stroke-opacity:0;stroke-width:14;stroke-dasharray:none"/><line x1="16" y1="418" x2="566" y2="418"/><text x="22" y="411">Empty</text></g>
-<path class="edge waiting" data-from="unfinished" data-to="shipped" d="M269,500 L269,486 Q269,478 261,478 L113,478 Q105,478 105,470 L105,260"/>
-<path class="edge waiting wanted" data-from="unfinished" data-to="empty" d="M269,500 L269,486 Q269,478 277,478 L645,478 Q653,478 653,470 L653,444"/>
+<path class="edge waiting" data-from="unfinished" data-to="shipped" d="M265,500 L265,478 Q265,470 257,470 L113,470 Q105,470 105,462 L105,260"/>
+<path class="edge waiting wanted" data-from="unfinished" data-to="empty" d="M273,500 L273,492 Q273,485 280,485 L533,485 A4,4 0 0 1 541,485 L645,485 Q653,485 653,477 L653,444"/>
 <path class="edge waiting" data-from="dropped" data-to="waiting" d="M187,725 L187,711 Q187,703 195,703 L529,703 Q537,703 537,695 L537,378 Q537,370 529,370 L277,370 Q269,370 269,362 L269,275"/>
-<path class="edge waiting" data-from="child" data-to="parent" d="M433,207 L433,201 Q433,196 428,196 L277,196 Q269,196 269,188 L269,161"/>
-<path class="edge met" data-from="doneChild" data-to="parent" d="M187,293 L187,182 Q187,174 195,174 L263,174 Q269,174 269,168 L269,161"/>
-<path class="edge waiting" data-from="droppedChild" data-to="parent" d="M351,293 L351,193 Q351,185 343,185 L277,185 Q269,185 269,177 L269,161"/>
+<path class="edge waiting" data-from="child" data-to="parent" d="M433,207 L433,185 Q433,177 425,177 L285,177 Q277,177 277,169 L277,157"/>
+<path class="edge met" data-from="doneChild" data-to="parent" d="M187,293 L187,185 Q187,177 195,177 L253,177 Q261,177 261,169 L261,157"/>
+<path class="edge waiting" data-from="droppedChild" data-to="parent" d="M351,293 L351,200 Q351,192 343,192 L277,192 Q269,192 269,184 L269,161"/>
 <g class="edge member" data-from="dropped" data-to="stuck"/>
 <g class="edge member" data-from="deferred" data-to="stuck"/>
 <g class="node task done" data-id="shipped" data-status="done">

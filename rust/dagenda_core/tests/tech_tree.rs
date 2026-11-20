@@ -516,6 +516,60 @@ track sync [Sync]
     Ok(())
 }
 
+/// Lines out of one card, or into one, never run together: each leaves
+/// from a port of its own and arrives at a port of its own, so Resolver's
+/// and It parses' lines into Tech tree stay apart, as do It parses' lines to
+/// Tech tree and First picture, and Skill tree's beside them.
+#[test]
+fn every_line_has_ports_of_its_own() -> TestResult {
+    let tree = tree(
+        "roadmap
+[x] task parser
+[-] task resolver
+  needs parser
+[ ] task techTree
+  needs resolver, itParses
+[?] task skillTree
+milestone itParses
+  parser
+  resolver
+milestone firstPicture
+  itParses
+  techTree
+  nice-to-have
+    skillTree",
+    )?;
+    assert_eq!(
+        lines(&tree),
+        [
+            "parser → resolver",
+            "resolver → techTree",
+            "skillTree → firstPicture (wanted)",
+            "itParses → techTree",
+            "itParses → firstPicture",
+        ]
+    );
+    for (index, edge) in tree.edges.iter().enumerate() {
+        for other in tree.edges.iter().skip(index + 1) {
+            if edge.from == other.from {
+                assert_ne!(
+                    edge.route.first(),
+                    other.route.first(),
+                    "{edge:?} and {other:?} leave together"
+                );
+            }
+            if edge.to == other.to {
+                assert_ne!(
+                    edge.route.last(),
+                    other.route.last(),
+                    "{edge:?} and {other:?} arrive together"
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
 #[test]
 fn long_labels_wrap() -> TestResult {
     let tree = tree(

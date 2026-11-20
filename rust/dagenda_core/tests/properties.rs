@@ -10,9 +10,9 @@ use dagenda_core::{
     plan::{Plan, Readiness},
     span::Span,
     status::Status,
-    tech_tree::{Edge, Node, TechTree},
+    tech_tree::{Edge, Node, Point, TechTree},
 };
-use std::{fs, path::Path};
+use std::{fmt::Write as _, fs, path::Path};
 use testresult::TestResult;
 
 /// Arbitrary text never panics, and every span lies within it, on character
@@ -40,6 +40,81 @@ fn plans_are_consistent() {
                 Err(error) => assert_in_bounds(error.span(), &source),
             }
         });
+}
+
+/// Well-formed plans (a DAG of up to 14 tasks over nested tracks, under up
+/// to three milestones) lay out, with every line routed apart from the rest.
+#[test]
+fn tech_trees_route_every_line_apart() {
+    check!()
+        .with_type::<(Vec<(u8, u8, u16)>, Vec<(u16, u16)>)>()
+        .for_each(|(tasks, milestones)| {
+            let source = dag(tasks, milestones);
+            let plan = dagenda_core::parse(&source);
+            assert!(plan.is_ok(), "{source}\n{plan:?}");
+            if let Ok(plan) = plan {
+                assert_laid_out(&plan);
+            }
+        });
+}
+
+/// A well-formed plan: each task in one of three tracks (one nested in
+/// another) or none, with some status, needing some of the tasks before it;
+/// each milestone needing some tasks (and maybe the milestone before it),
+/// and wanting some others.
+fn dag(tasks: &[(u8, u8, u16)], milestones: &[(u16, u16)]) -> String {
+    let tasks = tasks.get(..tasks.len().min(14)).unwrap_or_default();
+    let ids = |mask: u16, below: usize| -> Vec<String> {
+        (0..below.min(15))
+            .filter(|&bit| mask & (1 << bit) != 0)
+            .map(|bit| format!("x{bit}"))
+            .collect()
+    };
+
+    let mut source = String::from("roadmap\n");
+    for (track, header, indent) in [
+        (0, "track t0\n", 2),
+        (1, "  track t1\n", 4),
+        (2, "track t2\n", 2),
+        (3, "", 0),
+    ] {
+        source.push_str(header);
+        for (index, &(_, mark, needs)) in tasks
+            .iter()
+            .enumerate()
+            .filter(|(_, (which, _, _))| which % 4 == track)
+        {
+            let mark = BOXES
+                .get(usize::from(mark) % BOXES.len())
+                .copied()
+                .unwrap_or(' ');
+            let pad = " ".repeat(indent);
+            let _ = writeln!(source, "{pad}[{mark}] task x{index}");
+            let needs = ids(needs, index);
+            if !needs.is_empty() {
+                let _ = writeln!(source, "{pad}  needs {}", needs.join(", "));
+            }
+        }
+    }
+
+    for (index, &(needs, wants)) in milestones.iter().take(3).enumerate() {
+        let _ = writeln!(source, "milestone m{index}");
+        let mut members = ids(needs, tasks.len());
+        if index > 0 && needs & (1 << 15) != 0 {
+            members.push(format!("m{}", index - 1));
+        }
+        for member in &members {
+            let _ = writeln!(source, "  {member}");
+        }
+        let wanted: Vec<String> = ids(wants & !needs, tasks.len());
+        if !wanted.is_empty() {
+            source.push_str("  nice-to-have\n");
+            for member in wanted {
+                let _ = writeln!(source, "    {member}");
+            }
+        }
+    }
+    source
 }
 
 /// Edits made on the picture leave a plan that resolves, changed only as
@@ -254,9 +329,10 @@ fn assert_in_bounds(span: Span, source: &str) {
 
 /// The tech tree fits: every card inside the canvas and inside its branch,
 /// and no two cards overlapping. Every line runs in right angles from the
-/// top of its prerequisite to the bottom of what waits on it, and never
-/// passes behind any other card. The bands stack, every must-have line
-/// points up, and everything a milestone needs sits under its line.
+/// top of its prerequisite to the bottom of what waits on it, never passes
+/// behind any other card, and never runs along another line. The bands
+/// stack, every must-have line points up, and everything a milestone needs
+/// sits under its line.
 fn assert_laid_out(plan: &Plan) {
     let tree = TechTree::new(plan);
     for node in &tree.nodes {
@@ -294,6 +370,7 @@ fn assert_laid_out(plan: &Plan) {
         }
         assert_routed(&tree, edge, from, to);
     }
+    assert_apart(&tree);
 
     for pair in tree.bands.windows(2) {
         let [below, above] = pair else { continue };
@@ -324,18 +401,22 @@ fn assert_laid_out(plan: &Plan) {
 
 fn assert_routed(tree: &TechTree, edge: &Edge, from: &Node, to: &Node) {
     let route = &edge.route;
-    assert_eq!(
-        route.first().map(|p| (p.x, p.y)),
-        Some((from.middle(), from.y)),
-        "{} → {} starts at the top of {}",
+    assert!(
+        route
+            .first()
+            .is_some_and(|p| p.y == from.y && from.x < p.x && p.x < from.x + from.width),
+        "{} → {} starts on the top edge of {}",
         from.id,
         to.id,
         from.id
     );
-    assert_eq!(
-        route.last().map(|p| (p.x, p.y)),
-        Some((to.middle(), to.entry())),
-        "{} → {} ends at the bottom of {}",
+    assert!(
+        route
+            .last()
+            .is_some_and(|p| (to.y + to.height..=to.entry()).contains(&p.y)
+                && to.x < p.x
+                && p.x < to.x + to.width),
+        "{} → {} ends on the bottom of {}",
         from.id,
         to.id,
         to.id
@@ -365,6 +446,54 @@ fn assert_routed(tree: &TechTree, edge: &Edge, from: &Node, to: &Node) {
             assert!(!behind, "{} → {} passes behind {}", from.id, to.id, card.id);
         }
     }
+}
+
+/// No two lines run along each other, or closer than half a lane apart, so
+/// every line can be followed from end to end.
+fn assert_apart(tree: &TechTree) {
+    let segments: Vec<(usize, Point, Point)> = tree
+        .edges
+        .iter()
+        .enumerate()
+        .flat_map(|(line, edge)| {
+            edge.route.windows(2).filter_map(move |pair| match pair {
+                [a, b] => Some((line, *a, *b)),
+                _ => None,
+            })
+        })
+        .collect();
+    let name = |line: usize| {
+        tree.edges.get(line).map_or_else(String::new, |edge| {
+            let id = |node: usize| tree.nodes.get(node).map(|node| node.id.to_string());
+            format!("{:?} → {:?}", id(edge.from), id(edge.to))
+        })
+    };
+    for (index, &(line, a, b)) in segments.iter().enumerate() {
+        for &(other, c, d) in segments.iter().skip(index + 1) {
+            if line == other {
+                continue;
+            }
+            let along = if a.x == b.x && c.x == d.x {
+                a.x.abs_diff(c.x) < 4 && overlap((a.y, b.y), (c.y, d.y))
+            } else if a.y == b.y && c.y == d.y {
+                a.y.abs_diff(c.y) < 4 && overlap((a.x, b.x), (c.x, d.x))
+            } else {
+                false
+            };
+            assert!(
+                !along,
+                "{} runs along {}: {a:?}–{b:?} and {c:?}–{d:?}",
+                name(line),
+                name(other)
+            );
+        }
+    }
+}
+
+/// Whether two spans meet, even at a point: two lines meeting end to end
+/// read as one.
+fn overlap((a, b): (u32, u32), (c, d): (u32, u32)) -> bool {
+    a.max(b).min(c.max(d)) >= a.min(b).max(c.min(d))
 }
 
 /// What's derived agrees with itself: readiness with statuses and needs,

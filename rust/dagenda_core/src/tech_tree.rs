@@ -45,6 +45,7 @@
 //! # Ok::<(), Box<dyn core::error::Error>>(())
 //! ```
 
+mod route;
 pub mod svg;
 
 use crate::{
@@ -153,8 +154,10 @@ impl TechTree {
         } else {
             MARGIN
         };
-        let frame = place(&mut nodes, kinds, &banners, &tiers, top);
-        let edges = route(&nodes, edges, &frame, &tiers.gates);
+        let courses = route::courses(&nodes, &edges, &tiers.gates);
+        let room = route::Room::new(&edges, &courses, nodes.len(), kinds.len());
+        let mut frame = place(&mut nodes, kinds, &banners, &tiers, top, &room);
+        let edges = route::route(&mut nodes, edges, &courses, &mut frame, &tiers);
 
         let title_width = title.as_ref().map_or(0, |title| {
             MARGIN * 2 + text_width(title.as_str(), TITLE_FONT)
@@ -305,14 +308,15 @@ pub struct Node {
 }
 
 impl Node {
-    /// Its horizontal middle, where lines leave and arrive.
+    /// Its horizontal middle. Lines leave and arrive spread either side of
+    /// it, a port each.
     #[must_use]
     pub const fn middle(&self) -> u32 {
         self.x + self.width / 2
     }
 
-    /// Where lines into it arrive, from below: the bottom of a task's badge,
-    /// or the bottom of a milestone's gate.
+    /// Where a line into its middle arrives, from below: the bottom of a
+    /// task's badge, or the bottom of a milestone's gate.
     #[must_use]
     pub const fn entry(&self) -> u32 {
         match self.shape {
@@ -477,10 +481,18 @@ const PER_ROW: usize = 3;
 
 /// Gaps: between cards in a row, between a wrapped row's lines, between
 /// rows (where lines run), and between branches (where long lines climb).
+/// Rows and branches move apart when more lines need to run between them.
 const NODE_GAP: u32 = 14;
 const WRAP_GAP: u32 = 28;
 const ROW_GAP: u32 = 56;
 const GUTTER: u32 = 30;
+
+/// Lines: how far apart side by side (ports on a card, lanes in a gutter),
+/// how far apart their runs across a gap, and how far a port keeps from the
+/// end of a card's edge.
+const LANE: u32 = 8;
+const TRACK: u32 = 10;
+const CLEAR: u32 = 12;
 
 /// A branch's padding at its sides, above its top row, and below its bottom
 /// row (room for the badges).
@@ -1201,11 +1213,13 @@ fn order(nodes: &mut [Node], edges: &[Edge]) {
     }
 }
 
-/// Where everything ended up: the branches, banners, and bands, each row's
-/// top and height, the branches' top and bottom, and the canvas's size.
+/// Where everything ended up: the branches, each gutter's width (from the
+/// one left of the first branch), the banners, and bands, each row's top
+/// and height, the branches' top and bottom, and the canvas's size.
 #[derive(Debug)]
 struct Frame {
     branches: Vec<Branch>,
+    gutters: Vec<u32>,
     banners: Vec<Banner>,
     bands: Vec<Band>,
     rows: Vec<(u32, u32)>,
@@ -1244,13 +1258,14 @@ impl Frame {
     /// The middle of a gutter: the one left of branch `gutter`, or the one
     /// right of the last branch.
     fn gutter(&self, gutter: usize) -> u32 {
+        let half = self.gutters.get(gutter).copied().unwrap_or(GUTTER) / 2;
         self.branches.get(gutter).map_or_else(
             || {
                 self.branches
                     .last()
-                    .map_or(MARGIN, |last| last.x + last.width + GUTTER / 2)
+                    .map_or(MARGIN, |last| last.x + last.width + half)
             },
-            |branch| branch.x.saturating_sub(GUTTER / 2),
+            |branch| branch.x.saturating_sub(half),
         )
     }
 
@@ -1266,13 +1281,15 @@ impl Frame {
 type Cells = BTreeMap<(usize, usize), Vec<usize>>;
 
 /// Give every card, branch, banner, and band its place, starting `top`
-/// pixels down. `order` left each card's place in its cell in `x`.
+/// pixels down, with the `room` the lines need. `order` left each card's
+/// place in its cell in `x`.
 fn place(
     nodes: &mut [Node],
     kinds: Vec<BranchKind>,
     banners: &[BannerSpec],
     tiers: &Tiers,
     top: u32,
+    room: &route::Room,
 ) -> Frame {
     let mut cells: Cells = BTreeMap::new();
     for (index, node) in nodes.iter().enumerate() {
@@ -1284,8 +1301,9 @@ fn place(
     for cell in cells.values_mut() {
         cell.sort_by_key(|&index| nodes.get(index).map_or(0, |node| node.x));
     }
-    let (mut inner, heights) = measure(nodes, &cells, kinds.len(), tiers.gates.len());
-    fit_banners(&mut inner, banners);
+    let fans = &room.fans;
+    let (mut inner, heights) = measure(nodes, &cells, fans, kinds.len(), tiers.gates.len());
+    fit_banners(&mut inner, banners, &room.gutters);
 
     // Banners first, stacked outermost at the top; then the rows, the
     // highest at the top: time goes up
@@ -1312,7 +1330,7 @@ fn place(
 
     let mut branches = Vec::with_capacity(kinds.len());
     let mut x = MARGIN;
-    for (kind, inner) in kinds.into_iter().zip(&inner) {
+    for (index, (kind, inner)) in kinds.into_iter().zip(&inner).enumerate() {
         let width = inner + PANEL_SIDE * 2;
         let hue = banners
             .iter()
@@ -1326,16 +1344,17 @@ fn place(
             width,
             height: panel_bottom - panel_top,
         });
-        x += width + GUTTER;
+        x += width + room.gutters.get(index + 1).copied().unwrap_or(GUTTER);
     }
 
-    put(nodes, &cells, &branches, &rows);
+    put(nodes, &cells, fans, &branches, &rows);
     let banners = place_banners(banners, &branches, banner_top, panel_top);
     let mut frame = Frame {
         // Room for the gutter beyond the last branch, where lines can climb
         width: x + MARGIN / 2,
         height: panel_bottom + MARGIN,
         branches,
+        gutters: room.gutters.clone(),
         banners,
         bands: Vec::new(),
         rows,
@@ -1383,7 +1402,13 @@ fn bands(frame: &Frame, nodes: &[Node], tiers: &Tiers) -> Vec<Band> {
 
 /// How wide each branch's inside must be, and how tall each of `rows`
 /// rows, with each cell wrapped onto at most two lines.
-fn measure(nodes: &[Node], cells: &Cells, branches: usize, rows: usize) -> (Vec<u32>, Vec<u32>) {
+fn measure(
+    nodes: &[Node],
+    cells: &Cells,
+    fans: &[usize],
+    branches: usize,
+    rows: usize,
+) -> (Vec<u32>, Vec<u32>) {
     let mut inner = vec![CARD; branches];
     let mut heights = vec![0_u32; rows];
     for (&(branch, row), cell) in cells {
@@ -1396,7 +1421,7 @@ fn measure(nodes: &[Node], cells: &Cells, branches: usize, rows: usize) -> (Vec<
             }
         }
         if let Some(inner) = inner.get_mut(branch) {
-            *inner = (*inner).max(cell_width(nodes, cell));
+            *inner = (*inner).max(cell_width(nodes, cell, fans));
         }
         if let Some(tallest) = heights.get_mut(row) {
             *tallest = (*tallest).max(height);
@@ -1406,8 +1431,9 @@ fn measure(nodes: &[Node], cells: &Cells, branches: usize, rows: usize) -> (Vec<
 }
 
 /// Widen branches so every banner's heading fits across the branches it
-/// spans, narrowest banners first, widening the last branch it spans.
-fn fit_banners(inner: &mut [u32], banners: &[BannerSpec]) {
+/// spans (and the `gutters` between), narrowest banners first, widening the
+/// last branch it spans.
+fn fit_banners(inner: &mut [u32], banners: &[BannerSpec], gutters: &[u32]) {
     let mut specs: Vec<&BannerSpec> = banners.iter().collect();
     specs.sort_by_key(|spec| spec.last.saturating_sub(spec.first));
     for spec in specs {
@@ -1417,7 +1443,11 @@ fn fit_banners(inner: &mut [u32], banners: &[BannerSpec]) {
             .flatten()
             .map(|inner| inner + PANEL_SIDE * 2)
             .sum();
-        let gutters = u32::try_from(spec.last.saturating_sub(spec.first)).unwrap_or(0) * GUTTER;
+        let gutters: u32 = gutters
+            .get(spec.first + 1..=spec.last)
+            .into_iter()
+            .flatten()
+            .sum();
         let wanted = heading_width(&spec.heading, spec.dri.as_ref()) + BANNER_PAD * 2;
         if let Some(last) = inner.get_mut(spec.last) {
             *last += wanted.saturating_sub(panels + gutters);
@@ -1445,13 +1475,30 @@ const fn per_line(count: usize) -> usize {
 
 /// The distance between card slots in a cell: its widest card, and a gap.
 /// Every card sits in the middle of a slot.
-fn pitch(nodes: &[Node], cell: &[usize]) -> u32 {
+fn pitch(nodes: &[Node], cell: &[usize], fans: &[usize]) -> u32 {
     cell.iter()
         .filter_map(|&index| nodes.get(index))
         .map(|node| node.width)
         .max()
         .unwrap_or(CARD)
-        + NODE_GAP
+        + gap(cell, fans)
+}
+
+/// The gap between cards in a cell. A wrapped cell's lines climb between
+/// the cards of its other line (see [`stagger`]), so its gaps are wide
+/// enough for its widest fan of lines, a [`LANE`] apart.
+fn gap(cell: &[usize], fans: &[usize]) -> u32 {
+    if cell.len() <= per_line(cell.len()) {
+        return NODE_GAP;
+    }
+    let fan = cell
+        .iter()
+        .filter_map(|&index| fans.get(index))
+        .max()
+        .copied()
+        .unwrap_or(1);
+    NODE_GAP
+        + u32::try_from(fan.saturating_sub(1)).map_or(u32::MAX, |more| more.saturating_mul(LANE))
 }
 
 /// How far a wrapped line is pushed right: half a slot on the second line,
@@ -1462,13 +1509,13 @@ const fn stagger(line_index: usize, pitch: u32) -> u32 {
 }
 
 /// How wide a cell is: its widest line, counting the second line's stagger.
-fn cell_width(nodes: &[Node], cell: &[usize]) -> u32 {
-    let pitch = pitch(nodes, cell);
+fn cell_width(nodes: &[Node], cell: &[usize], fans: &[usize]) -> u32 {
+    let (pitch, gap) = (pitch(nodes, cell, fans), gap(cell, fans));
     cell.chunks(per_line(cell.len()))
         .enumerate()
         .map(|(line_index, line)| {
             let slots = u32::try_from(line.len()).unwrap_or(u32::MAX);
-            stagger(line_index, pitch) + slots.saturating_mul(pitch).saturating_sub(NODE_GAP)
+            stagger(line_index, pitch) + slots.saturating_mul(pitch).saturating_sub(gap)
         })
         .max()
         .unwrap_or(0)
@@ -1476,21 +1523,27 @@ fn cell_width(nodes: &[Node], cell: &[usize]) -> u32 {
 
 /// Put each cell's cards in their branch and row: the cell centred, each
 /// card in the middle of its slot, the second line staggered.
-fn put(nodes: &mut [Node], cells: &Cells, branches: &[Branch], rows: &[(u32, u32)]) {
+fn put(
+    nodes: &mut [Node],
+    cells: &Cells,
+    fans: &[usize],
+    branches: &[Branch],
+    rows: &[(u32, u32)],
+) {
     for (&(branch, row), cell) in cells {
         let (Some(panel), Some(&(row_top, _))) = (branches.get(branch), rows.get(row)) else {
             continue;
         };
-        let pitch = pitch(nodes, cell);
+        let (pitch, gap) = (pitch(nodes, cell, fans), gap(cell, fans));
         let room = panel.width - PANEL_SIDE * 2;
-        let base = panel.x + PANEL_SIDE + room.saturating_sub(cell_width(nodes, cell)) / 2;
+        let base = panel.x + PANEL_SIDE + room.saturating_sub(cell_width(nodes, cell, fans)) / 2;
         let mut line_top = row_top;
         for (line_index, line) in cell.chunks(per_line(cell.len())).enumerate() {
             let mut slot = base + stagger(line_index, pitch);
             let mut tallest = 0;
             for &index in line {
                 if let Some(node) = nodes.get_mut(index) {
-                    node.x = slot + (pitch - NODE_GAP).saturating_sub(node.width) / 2;
+                    node.x = slot + (pitch - gap).saturating_sub(node.width) / 2;
                     node.y = line_top;
                     tallest = tallest.max(node.height);
                 }
@@ -1533,192 +1586,13 @@ fn place_banners(
         .collect()
 }
 
-/// Route every line, circuit style: up from the prerequisite into the gap
-/// above its row, across, and up into what waits on it. Rows that hold
-/// only a milestone's gate are open ground, so a line climbs straight
-/// through them. Any other line that spans more than one row (or climbs
-/// back down) runs across to the gutter beside the target's branch, along
-/// it, and across again under the target, so it never passes behind a card.
-///
-/// Lines share runs like a bus: everything leaving one card shares one run
-/// across the gap above it, and everything arriving at one card from afar
-/// shares one climb up the gutter and one run across the gap below it. Each
-/// run gets a track of its own, so different runs never overlap.
-fn route(nodes: &[Node], mut edges: Vec<Edge>, frame: &Frame, gates: &[bool]) -> Vec<Edge> {
-    let courses = courses(nodes, &edges, gates);
-    let (gap_y, gutter_offset) = tracks(nodes, &courses, frame);
-
-    for (edge, course) in edges.iter_mut().zip(courses) {
-        let Some(course) = course else { continue };
-        let first_gap = course.gaps.first().copied().unwrap_or(Gap::BeforeFirst);
-        let y1 = gap_y
-            .get(&(first_gap, Trunk::From(course.from)))
-            .copied()
-            .unwrap_or(course.start.y);
-        let mut route = vec![
-            course.start,
-            Point {
-                x: course.start.x,
-                y: y1,
-            },
-        ];
-        if let Some(gutter) = course.gutter {
-            let last_gap = course.gaps.last().copied().unwrap_or(first_gap);
-            let y2 = gap_y
-                .get(&(last_gap, Trunk::To(course.to)))
-                .copied()
-                .unwrap_or(course.end.y);
-            let offset = gutter_offset
-                .get(&(gutter, course.to))
-                .copied()
-                .unwrap_or(0);
-            let x = u32::try_from(i64::from(frame.gutter(gutter)) + offset).unwrap_or(0);
-            route.extend([
-                Point { x, y: y1 },
-                Point { x, y: y2 },
-                Point {
-                    x: course.end.x,
-                    y: y2,
-                },
-            ]);
-        } else {
-            route.push(Point {
-                x: course.end.x,
-                y: y1,
-            });
-        }
-        route.push(course.end);
-        route.dedup();
-        edge.route = route;
-    }
-    edges
-}
-
-/// Which gaps (and gutter) each line uses, and where its ends are.
-fn courses(nodes: &[Node], edges: &[Edge], gates: &[bool]) -> Vec<Option<Course>> {
-    edges
-        .iter()
-        .map(|edge| {
-            let (from, to) = (nodes.get(edge.from)?, nodes.get(edge.to)?);
-            let start = Point {
-                x: from.middle(),
-                y: from.y,
-            };
-            let end = Point {
-                x: to.middle(),
-                y: to.entry(),
-            };
-
-            // Straight up if only open ground lies under the target: gate
-            // rows, for a task, or rows of work, for a gate (only gates sit
-            // in their column)
-            let into_task = matches!(to.shape, Shape::Task { .. });
-            let open = to.row > from.row
-                && (from.row + 1..to.row)
-                    .all(|row| gates.get(row).copied().unwrap_or(false) == into_task);
-            let (gaps, gutter) = if open {
-                (vec![Gap::After(from.row)], None)
-            } else {
-                let gutter = if from.branch < to.branch {
-                    to.branch
-                } else {
-                    to.branch + 1
-                };
-                let under = to.row.checked_sub(1).map_or(Gap::BeforeFirst, Gap::After);
-                (vec![Gap::After(from.row), under], Some(gutter))
-            };
-            Some(Course {
-                from: edge.from,
-                to: edge.to,
-                start,
-                end,
-                gaps,
-                gutter,
-            })
-        })
-        .collect()
-}
-
-/// A track for every run: each source's run across the gap above it, each
-/// far target's run across the gap below it, and each far target's climb up
-/// its gutter. Runs in one gap are spread evenly, ordered by where they
-/// start, and climbs in one gutter alternate either side of its middle.
-fn tracks(nodes: &[Node], courses: &[Option<Course>], frame: &Frame) -> (GapTracks, GutterTracks) {
-    let anchor = |trunk: Trunk| {
-        let (Trunk::From(node) | Trunk::To(node)) = trunk;
-        nodes.get(node).map_or(0, Node::middle)
-    };
-
-    let mut in_gap: BTreeMap<Gap, Vec<(u32, Trunk)>> = BTreeMap::new();
-    let mut in_gutter: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
-    for course in courses.iter().flatten() {
-        let trunks = [Trunk::From(course.from), Trunk::To(course.to)];
-        for (&gap, trunk) in course.gaps.iter().zip(trunks) {
-            in_gap.entry(gap).or_default().push((anchor(trunk), trunk));
-        }
-        if let Some(gutter) = course.gutter {
-            in_gutter.entry(gutter).or_default().push(course.to);
-        }
-    }
-
-    let mut gap_y = BTreeMap::new();
-    for (&gap, trunks) in &mut in_gap {
-        trunks.sort_unstable();
-        trunks.dedup();
-        let (top, bottom) = frame.bounds(gap);
-        let count = u32::try_from(trunks.len())
-            .unwrap_or(u32::MAX)
-            .saturating_add(1);
-        for (track, &(_, trunk)) in (1_u32..).zip(trunks.iter()) {
-            gap_y.insert((gap, trunk), top + (bottom - top) * track / count);
-        }
-    }
-
-    let mut gutter_offset = BTreeMap::new();
-    for (&gutter, targets) in &mut in_gutter {
-        targets.sort_unstable();
-        targets.dedup();
-        for (track, &target) in (0_i64..).zip(targets.iter()) {
-            let side = if track % 2 == 0 { 1 } else { -1 };
-            let step = ((track + 1) / 2 * 4).min(i64::from(GUTTER / 2 - 3));
-            gutter_offset.insert((gutter, target), side * step);
-        }
-    }
-    (gap_y, gutter_offset)
-}
-
-/// Each run's height across its gap.
-type GapTracks = BTreeMap<(Gap, Trunk), u32>;
-
-/// Each climb's offset from the middle of its gutter, by gutter and target.
-type GutterTracks = BTreeMap<(usize, usize), i64>;
-
-/// A gap between rows: the one above a row (between it and the next), or
-/// the one under the bottom row.
+/// A gap between rows, where lines run across: the one above a row
+/// (between it and the next), or the one under the bottom row. Higher gaps
+/// sort later.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum Gap {
     BeforeFirst,
     After(usize),
-}
-
-/// A shared run across a gap: everything leaving a node, or everything
-/// arriving at one from afar.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum Trunk {
-    From(usize),
-    To(usize),
-}
-
-/// Which nodes a line joins, which gaps (and gutter) it uses, and where its
-/// ends are.
-#[derive(Debug)]
-struct Course {
-    from: usize,
-    to: usize,
-    start: Point,
-    end: Point,
-    gaps: Vec<Gap>,
-    gutter: Option<usize>,
 }
 
 /// Split `text` into lines no wider than `max` pixels at [`FONT`], at

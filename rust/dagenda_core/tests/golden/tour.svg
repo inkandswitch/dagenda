@@ -182,13 +182,13 @@
 <g class="banner untracked depth-0"><rect x="1088" y="50" width="178" height="54" rx="8"/><text x="1177" y="66" text-anchor="middle">Other tasks</text></g>
 <g class="era" data-milestone="itParses"><line class="hit" x1="16" y1="556" x2="1310" y2="556" style="stroke-opacity:0;stroke-width:14;stroke-dasharray:none"/><line x1="16" y1="556" x2="1310" y2="556"/><text x="22" y="549">It parses</text></g>
 <g class="era" data-milestone="firstPicture"><line class="hit" x1="16" y1="334" x2="1310" y2="334" style="stroke-opacity:0;stroke-width:14;stroke-dasharray:none"/><line x1="16" y1="334" x2="1310" y2="334"/><text x="22" y="327">First picture</text></g>
-<path class="edge met" data-from="parser" data-to="resolver" d="M105,812 L105,787 Q105,779 113,779 L263,779 Q269,779 269,773 L269,766"/>
-<path class="edge waiting" data-from="resolver" data-to="techTree" d="M269,638 L269,624 Q269,616 277,616 L879,616 Q887,616 887,608 L887,484"/>
+<path class="edge met" data-from="parser" data-to="resolver" d="M105,812 L105,798 Q105,790 113,790 L253,790 Q261,790 261,782 L261,762"/>
+<path class="edge waiting" data-from="resolver" data-to="techTree" d="M269,638 L269,624 Q269,616 277,616 L875,616 Q883,616 883,608 L883,483"/>
 <path class="edge met" data-from="duplicates" data-to="resolver" d="M269,812 L269,766"/>
-<path class="edge waiting" data-from="cycles" data-to="resolver" d="M433,812 L433,806 Q433,801 428,801 L277,801 Q269,801 269,793 L269,766"/>
-<path class="edge waiting wanted" data-from="skillTree" data-to="firstPicture" d="M723,416 L723,402 Q723,394 731,394 L1389,394 Q1397,394 1397,386 L1397,360"/>
-<path class="edge waiting" data-from="itParses" data-to="techTree" d="M1397,530 L1397,516 Q1397,508 1389,508 L895,508 Q887,508 887,500 L887,484"/>
-<path class="edge waiting" data-from="itParses" data-to="firstPicture" d="M1397,530 L1397,360"/>
+<path class="edge waiting" data-from="cycles" data-to="resolver" d="M433,812 L433,798 Q433,790 425,790 L285,790 Q277,790 277,782 L277,762"/>
+<path class="edge waiting wanted" data-from="skillTree" data-to="firstPicture" d="M723,416 L723,402 Q723,394 731,394 L1385,394 Q1393,394 1393,386 L1393,360"/>
+<path class="edge waiting" data-from="itParses" data-to="techTree" d="M1393,530 L1393,516 Q1393,508 1385,508 L899,508 Q891,508 891,500 L891,483"/>
+<path class="edge waiting" data-from="itParses" data-to="firstPicture" d="M1401,530 L1401,360"/>
 <g class="edge member" data-from="resolver" data-to="itParses"/>
 <g class="edge member" data-from="techTree" data-to="firstPicture"/>
 <g class="node task done" data-id="parser" data-status="done" data-era="itParses">

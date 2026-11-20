@@ -157,13 +157,44 @@ impl Svg<'_> {
         Ok(())
     }
 
+    /// Each line, hopping over every line it crosses on its runs across, so
+    /// a crossing never reads as a junction.
     fn edges(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let tree = self.0;
-        for edge in &tree.edges {
+        let climbs: Vec<(usize, u32, u32, u32)> = tree
+            .edges
+            .iter()
+            .enumerate()
+            .flat_map(|(line, edge)| {
+                edge.route.windows(2).filter_map(move |pair| match pair {
+                    [a, b] if a.x == b.x && a.y != b.y => {
+                        Some((line, a.x, a.y.min(b.y), a.y.max(b.y)))
+                    }
+                    _ => None,
+                })
+            })
+            .collect();
+        for (line, edge) in tree.edges.iter().enumerate() {
             let (Some(from), Some(to)) = (tree.nodes.get(edge.from), tree.nodes.get(edge.to))
             else {
                 continue;
             };
+            let hops: Vec<Point> = edge
+                .route
+                .windows(2)
+                .filter_map(|pair| match pair {
+                    [a, b] if a.y == b.y => Some((a.y, a.x.min(b.x), a.x.max(b.x))),
+                    _ => None,
+                })
+                .flat_map(|(y, left, right)| {
+                    climbs
+                        .iter()
+                        .filter(move |&&(other, x, top, bottom)| {
+                            other != line && left < x && x < right && top < y && y < bottom
+                        })
+                        .map(move |&(_, x, _, _)| Point { x, y })
+                })
+                .collect();
             let state = if edge.met { "met" } else { "waiting" };
             let wanted = if edge.wanted { " wanted" } else { "" };
             writeln!(
@@ -171,7 +202,10 @@ impl Svg<'_> {
                 r#"<path class="edge {state}{wanted}" data-from="{}" data-to="{}" d="{}"/>"#,
                 from.id,
                 to.id,
-                Route(&edge.route)
+                Route {
+                    points: &edge.route,
+                    hops: &hops,
+                }
             )?;
         }
         for edge in &tree.implied {
@@ -437,51 +471,85 @@ impl fmt::Display for Dri<'_> {
 }
 
 /// A route's path: straight runs between its corners, each corner rounded,
-/// and straight through any point that isn't a corner.
-struct Route<'a>(&'a [Point]);
+/// and straight through any point that isn't a corner. Each of `hops` on a
+/// run across, clear of its corners, is a small arch over the line it
+/// crosses.
+struct Route<'a> {
+    points: &'a [Point],
+    hops: &'a [Point],
+}
 
 impl fmt::Display for Route<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         const RADIUS: i64 = 8;
+        const HOP: i64 = 4;
 
         let points: Vec<(i64, i64)> = self
-            .0
+            .points
             .iter()
             .map(|point| (i64::from(point.x), i64::from(point.y)))
             .collect();
-        let Some(&(x, y)) = points.first() else {
+        let Some(&first) = points.first() else {
             return Ok(());
         };
-        write!(f, "M{x},{y}")?;
+        write!(f, "M{},{}", first.0, first.1)?;
 
         let step = |from: (i64, i64), to: (i64, i64), distance: i64| {
             let (dx, dy) = ((to.0 - from.0).signum(), (to.1 - from.1).signum());
             (from.0 + dx * distance, from.1 + dy * distance)
         };
-        for window in points.windows(3) {
-            let &[before, corner, after] = window else {
-                continue;
-            };
-            let turns = (corner.0 - before.0).signum() != (after.0 - corner.0).signum()
-                || (corner.1 - before.1).signum() != (after.1 - corner.1).signum();
-            if !turns {
-                continue;
-            }
-            let span_in = (corner.0 - before.0).abs() + (corner.1 - before.1).abs();
-            let span_out = (after.0 - corner.0).abs() + (after.1 - corner.1).abs();
-            let radius = RADIUS.min(span_in / 2).min(span_out / 2);
-            let (start, end) = (step(corner, before, radius), step(corner, after, radius));
-            write!(
-                f,
-                " L{},{} Q{},{} {},{}",
-                start.0, start.1, corner.0, corner.1, end.0, end.1
-            )?;
-        }
+        // Each straight stretch runs from where the last corner's curve
+        // ends to where the next one's begins
+        let mut from = first;
+        for (index, window) in points.windows(2).enumerate() {
+            let &[before, corner] = window else { continue };
+            let curve = points.get(index + 2).and_then(|&after| {
+                let turns = (corner.0 - before.0).signum() != (after.0 - corner.0).signum()
+                    || (corner.1 - before.1).signum() != (after.1 - corner.1).signum();
+                let span_in = (corner.0 - before.0).abs() + (corner.1 - before.1).abs();
+                let span_out = (after.0 - corner.0).abs() + (after.1 - corner.1).abs();
+                let radius = RADIUS.min(span_in / 2).min(span_out / 2);
+                turns.then(|| (step(corner, before, radius), step(corner, after, radius)))
+            });
+            let until = curve.map_or(corner, |(start, _)| start);
 
-        if let Some(&(x, y)) = points.last()
-            && points.len() > 1
-        {
-            write!(f, " L{x},{y}")?;
+            if from.1 == until.1 && from.0 != until.0 {
+                let direction = (until.0 - from.0).signum();
+                let mut arches: Vec<i64> = self
+                    .hops
+                    .iter()
+                    .map(|hop| (i64::from(hop.x), i64::from(hop.y)))
+                    .filter(|&(x, y)| {
+                        y == from.1
+                            && from.0.min(until.0) + HOP < x
+                            && x < from.0.max(until.0) - HOP
+                    })
+                    .map(|(x, _)| x)
+                    .collect();
+                arches.sort_unstable_by_key(|&x| x * direction);
+                let sweep = u8::from(direction > 0);
+                let mut reach = from.0;
+                for x in arches {
+                    if (x - reach) * direction < HOP {
+                        continue;
+                    }
+                    write!(
+                        f,
+                        " L{},{y} A{HOP},{HOP} 0 0 {sweep} {},{y}",
+                        x - direction * HOP,
+                        x + direction * HOP,
+                        y = from.1
+                    )?;
+                    reach = x + direction * HOP;
+                }
+            }
+
+            write!(f, " L{},{}", until.0, until.1)?;
+            from = until;
+            if let Some((_, end)) = curve {
+                write!(f, " Q{},{} {},{}", corner.0, corner.1, end.0, end.1)?;
+                from = end;
+            }
         }
         Ok(())
     }
