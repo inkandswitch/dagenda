@@ -44,7 +44,7 @@
 .dagenda .edge.wanted { stroke-dasharray: 5 4; }
 .dagenda .card { fill: #fff; stroke: #c9c4bb; stroke-width: 1.5; }
 .dagenda .badge { fill: #fff; stroke: #8a857c; stroke-width: 1.5; }
-.dagenda .mark { font-family: ui-monospace, monospace; font-size: 11px; font-weight: 700; }
+.dagenda .mark { font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif; font-size: 11px; }
 .dagenda .caption { fill: #6b6760; }
 .dagenda .facts { fill: #6b6760; }
 .dagenda .facts .dri { fill: #4a4640; font-weight: 600; }
@@ -216,14 +216,14 @@
 <title>Dropped (dropped): dropped</title>
 <rect class="card" x="112" y="725" width="150" height="43" rx="10"/>
 <circle class="badge" cx="187" cy="768" r="10"/>
-<text class="mark" x="187" y="772" text-anchor="middle">~</text>
+<text class="mark" x="187" y="772" text-anchor="middle">🗑️</text>
 <text class="label" text-anchor="middle"><tspan x="187" y="747">Dropped</tspan></text>
 </g>
 <g class="node task deferred available" data-id="deferred" data-status="deferred" data-era="stuck">
 <title>Deferred (deferred): deferred</title>
 <rect class="card" x="276" y="725" width="150" height="43" rx="10"/>
 <circle class="badge" cx="351" cy="768" r="10"/>
-<text class="mark" x="351" y="772" text-anchor="middle">&gt;</text>
+<text class="mark" x="351" y="772" text-anchor="middle">⏸️</text>
 <text class="label" text-anchor="middle"><tspan x="351" y="747">Deferred</tspan></text>
 </g>
 <g class="node task not-started locked" data-id="waiting" data-status="not-started">
@@ -257,7 +257,7 @@
 <title>Dropped child (droppedChild): dropped</title>
 <rect class="card" x="276" y="293" width="150" height="43" rx="10"/>
 <circle class="badge" cx="351" cy="336" r="10"/>
-<text class="mark" x="351" y="340" text-anchor="middle">~</text>
+<text class="mark" x="351" y="340" text-anchor="middle">🗑️</text>
 <text class="label" text-anchor="middle"><tspan x="351" y="315">Dropped child</tspan></text>
 </g>
 <g class="node milestone" data-id="stuck">

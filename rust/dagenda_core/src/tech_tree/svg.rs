@@ -352,7 +352,7 @@ fn task(
             f,
             r#"<text class="mark" x="{middle}" y="{}" text-anchor="middle">{}</text>"#,
             bottom + 4,
-            Escaped(&status.mark().to_string())
+            emoji(status)
         )?,
     }
 
@@ -591,6 +591,21 @@ impl fmt::Display for Era<'_> {
     }
 }
 
+/// A status's badge in the picture: an emoji anyone can read at a glance,
+/// where the text has its box. Done is a drawn check, and not started an
+/// empty badge, so they have none.
+const fn emoji(status: Status) -> &'static str {
+    match status {
+        Status::InProgress => "🚧",
+        Status::Idea => "💡",
+        Status::NeedsAttention => "⚠\u{fe0f}",
+        Status::Research => "🔬",
+        Status::Deferred => "⏸\u{fe0f}",
+        Status::Dropped => "🗑\u{fe0f}",
+        Status::NotStarted | Status::Done => "",
+    }
+}
+
 /// ` hue-n` for a palette colour, ` colour-rrggbb` for any other, or
 /// nothing.
 struct ColourClass(Option<Colour>);
@@ -786,7 +801,7 @@ const STYLE: &str = r"<style>
 .dagenda .edge.wanted { stroke-dasharray: 5 4; }
 .dagenda .card { fill: #fff; stroke: #c9c4bb; stroke-width: 1.5; }
 .dagenda .badge { fill: #fff; stroke: #8a857c; stroke-width: 1.5; }
-.dagenda .mark { font-family: ui-monospace, monospace; font-size: 11px; font-weight: 700; }
+.dagenda .mark { font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif; font-size: 11px; }
 .dagenda .caption { fill: #6b6760; }
 .dagenda .facts { fill: #6b6760; }
 .dagenda .facts .dri { fill: #4a4640; font-weight: 600; }

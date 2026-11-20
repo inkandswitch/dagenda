@@ -30,16 +30,16 @@ The indentation says where each thing lives: a track holds tasks, and a task hol
 
 Every task starts with a status box, and only `[x]` counts as finished:
 
-| Box   | Status                       |
-|-------|------------------------------|
-| `[ ]` | Not started                  |
-| `[>]` | Deferred                     |
-| `[x]` | Done                         |
-| `[-]` | In progress                  |
-| `[?]` | Idea, or needs clarification |
-| `[!]` | Needs attention              |
-| `[*]` | Research                     |
-| `[~]` | Dropped                      |
+| Box   | Status                       | In the picture  |
+|-------|------------------------------|-----------------|
+| `[ ]` | Not started                  | ⚪              |
+| `[>]` | Deferred                     | ⏸️              |
+| `[x]` | Done                         | ✅              |
+| `[-]` | In progress                  | 🚧, and a glow  |
+| `[?]` | Idea, or needs clarification | 💡              |
+| `[!]` | Needs attention              | ⚠️              |
+| `[*]` | Research                     | 🔬              |
+| `[~]` | Dropped                      | 🗑️              |
 
 Which document a task is written in decides who can read it, so there's no `private` flag. A private plan adds to a public task with `extend`:
 

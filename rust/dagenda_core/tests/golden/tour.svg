@@ -44,7 +44,7 @@
 .dagenda .edge.wanted { stroke-dasharray: 5 4; }
 .dagenda .card { fill: #fff; stroke: #c9c4bb; stroke-width: 1.5; }
 .dagenda .badge { fill: #fff; stroke: #8a857c; stroke-width: 1.5; }
-.dagenda .mark { font-family: ui-monospace, monospace; font-size: 11px; font-weight: 700; }
+.dagenda .mark { font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif; font-size: 11px; }
 .dagenda .caption { fill: #6b6760; }
 .dagenda .facts { fill: #6b6760; }
 .dagenda .facts .dri { fill: #4a4640; font-weight: 600; }
@@ -228,7 +228,7 @@ Resolves ids across every document.
 <rect class="card" x="194" y="638" width="150" height="118" rx="10"/>
 <circle class="badge" cx="269" cy="756" r="10"/>
 <circle class="spinner" cx="269" cy="756" r="10" pathLength="100"/>
-<text class="mark" x="269" y="760" text-anchor="middle">-</text>
+<text class="mark" x="269" y="760" text-anchor="middle">🚧</text>
 <text class="label" text-anchor="middle"><tspan x="269" y="660">Resolver</tspan></text>
 <text class="caption" x="269" y="675" text-anchor="middle" font-size="11">2 of 3 done below</text>
 <text class="facts" x="269" y="695" text-anchor="middle" font-size="11"><tspan class="fact est">est 2026-12</tspan></text>
@@ -262,35 +262,35 @@ Resolves ids across every document.
 <title>Skill tree (skillTree): an idea</title>
 <rect class="card" x="648" y="416" width="150" height="43" rx="10"/>
 <circle class="badge" cx="723" cy="459" r="10"/>
-<text class="mark" x="723" y="463" text-anchor="middle">?</text>
+<text class="mark" x="723" y="463" text-anchor="middle">💡</text>
 <text class="label" text-anchor="middle"><tspan x="723" y="438">Skill tree</tspan></text>
 </g>
 <g class="node task research available" data-id="layout" data-status="research">
 <title>Layout research (layout): research</title>
 <rect class="card" x="566" y="138" width="150" height="43" rx="10"/>
 <circle class="badge" cx="641" cy="181" r="10"/>
-<text class="mark" x="641" y="185" text-anchor="middle">*</text>
+<text class="mark" x="641" y="185" text-anchor="middle">🔬</text>
 <text class="label" text-anchor="middle"><tspan x="641" y="160">Layout research</tspan></text>
 </g>
 <g class="node task needs-attention available" data-id="fonts" data-status="needs-attention">
 <title>Fonts (fonts): needs attention</title>
 <rect class="card" x="730" y="138" width="150" height="43" rx="10"/>
 <circle class="badge" cx="805" cy="181" r="10"/>
-<text class="mark" x="805" y="185" text-anchor="middle">!</text>
+<text class="mark" x="805" y="185" text-anchor="middle">⚠️</text>
 <text class="label" text-anchor="middle"><tspan x="805" y="160">Fonts</tspan></text>
 </g>
 <g class="node task deferred available" data-id="gantt" data-status="deferred">
 <title>Gantt (gantt): deferred</title>
 <rect class="card" x="894" y="138" width="150" height="43" rx="10"/>
 <circle class="badge" cx="969" cy="181" r="10"/>
-<text class="mark" x="969" y="185" text-anchor="middle">&gt;</text>
+<text class="mark" x="969" y="185" text-anchor="middle">⏸️</text>
 <text class="label" text-anchor="middle"><tspan x="969" y="160">Gantt</tspan></text>
 </g>
 <g class="node task dropped" data-id="mermaid" data-status="dropped">
 <title>Mermaid export (mermaid): dropped</title>
 <rect class="card" x="648" y="209" width="150" height="43" rx="10"/>
 <circle class="badge" cx="723" cy="252" r="10"/>
-<text class="mark" x="723" y="256" text-anchor="middle">~</text>
+<text class="mark" x="723" y="256" text-anchor="middle">🗑️</text>
 <text class="label" text-anchor="middle"><tspan x="723" y="231">Mermaid export</tspan></text>
 </g>
 <g class="node task not-started available" data-id="untracked" data-status="not-started">

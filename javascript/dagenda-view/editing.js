@@ -14,16 +14,19 @@
 
 import { addNeed, reorder, rescope, setStatus } from "./pkg/dagenda_wasm.js"
 
-/** The status boxes, in the menu's order. */
+/**
+ * The status boxes, in the menu's order: each one's mark, name, class on a
+ * card (`data-status`), and badge in the picture.
+ */
 const STATUSES = [
-  [" ", "Not started"],
-  ["-", "In progress"],
-  ["x", "Done"],
-  ["!", "Needs attention"],
-  ["*", "Research"],
-  ["?", "Idea"],
-  [">", "Deferred"],
-  ["~", "Dropped"],
+  [" ", "Not started", "not-started", ""],
+  ["-", "In progress", "in-progress", "🚧"],
+  ["x", "Done", "done", "✓"],
+  ["!", "Needs attention", "needs-attention", "⚠\u{fe0f}"],
+  ["*", "Research", "research", "🔬"],
+  ["?", "Idea", "idea", "💡"],
+  [">", "Deferred", "deferred", "⏸\u{fe0f}"],
+  ["~", "Dropped", "dropped", "🗑\u{fe0f}"],
 ]
 
 /** How far a press moves before it's a drag, in CSS pixels. */
@@ -50,6 +53,7 @@ export const STYLE = `
   .menu button:hover, .menu button:focus-visible { background: rgb(47 111 214 / 0.12); outline: none; }
   .menu button[aria-pressed="true"] { font-weight: 650; }
   .menu code { font: 12px ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .menu .badge { width: 1.3em; text-align: center; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
   .toast {
     position: absolute; z-index: 3; width: max-content; max-width: 360px;
     padding: 6px 10px; border-radius: 6px; box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
@@ -186,7 +190,7 @@ export const attachEditing = ({ host, root, canvas, svg, documents }) => {
   const openMenu = (node, badge) => {
     closeMenu()
     const id = node.dataset.id
-    const current = node.querySelector(".mark")?.textContent ?? (node.classList.contains("done") ? "x" : " ")
+    const current = STATUSES.find(([, , status]) => status === node.dataset.status)?.[0] ?? " "
     const place = badge.getBoundingClientRect()
     const frame = host.getBoundingClientRect()
     menu = document.createElement("div")
@@ -194,12 +198,12 @@ export const attachEditing = ({ host, root, canvas, svg, documents }) => {
     menu.setAttribute("role", "menu")
     menu.style.left = `${place.left - frame.left + host.scrollLeft}px`
     menu.style.top = `${place.bottom - frame.top + host.scrollTop + 4}px`
-    for (const [mark, label] of STATUSES) {
+    for (const [mark, label, , badge] of STATUSES) {
       const button = document.createElement("button")
       button.type = "button"
       button.setAttribute("role", "menuitem")
       button.setAttribute("aria-pressed", String(mark === current))
-      button.innerHTML = `<code>[${mark === " " ? "&nbsp;" : mark}]</code>`
+      button.innerHTML = `<code>[${mark === " " ? "&nbsp;" : mark}]</code><span class="badge">${badge}</span>`
       button.append(label)
       button.addEventListener("click", () => {
         closeMenu()
