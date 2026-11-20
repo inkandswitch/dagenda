@@ -110,6 +110,7 @@
 extern crate alloc;
 
 pub mod ast;
+pub mod check;
 pub mod date;
 pub mod handle;
 pub mod id;

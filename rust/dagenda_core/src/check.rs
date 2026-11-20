@@ -1,17 +1,23 @@
-//! Check documents as one plan, reporting every problem as
-//! `path:line:column: severity: message`, the shape editors and CI annotate.
+//! Check documents as one plan, reporting every problem by document, line,
+//! and column: `name:line:column: severity: message`, the shape editors and
+//! CI annotate. The CLI and the Wasm bindings both report through this.
 
-use dagenda_core::{
+use crate::{
     parser,
     plan::{Location, Plan, ResolveErrorKind},
     span::Span,
 };
-use std::fmt;
+use alloc::{
+    format,
+    string::{String, ToString},
+    vec::Vec,
+};
+use core::fmt;
 
 /// A document to check: what to call it, and its text.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Source {
-    /// Its path, or `<stdin>`.
+    /// What to call it in a problem: a path, `<stdin>`, a tab's name.
     pub name: String,
 
     /// Its text.
@@ -25,7 +31,7 @@ pub struct Source {
 /// warning, along with the plan.
 ///
 /// ```
-/// use dagenda_cli::check::{Source, check};
+/// use dagenda_core::check::{Source, check};
 ///
 /// let source = Source {
 ///     name: "plan.dagenda".into(),
@@ -39,10 +45,11 @@ pub struct Source {
 pub fn check(sources: &[Source]) -> (Option<Plan>, Vec<Problem>) {
     let mut documents = Vec::with_capacity(sources.len());
     let mut problems = Vec::new();
-    for source in sources {
+    for (index, source) in sources.iter().enumerate() {
         match parser::document(&source.text) {
             Ok(document) => documents.push(document),
             Err(error) => problems.push(Problem::new(
+                index,
                 source,
                 error.span(),
                 Severity::Error,
@@ -66,8 +73,13 @@ pub fn check(sources: &[Source]) -> (Option<Plan>, Vec<Problem>) {
             if let Some(first) = first_location(error.kind())
                 && let Some(source) = sources.get(first.document.index())
             {
+                // Name the document only when it's another one
                 let (line, column) = first.span.line_col(&source.text);
-                message = format!("{message} (first at {}:{line}:{column})", source.name);
+                message = if first.document == error.location().document {
+                    format!("{message} (first at {line}:{column})")
+                } else {
+                    format!("{message} (first at {}:{line}:{column})", source.name)
+                };
             }
             problems.extend(Problem::at(
                 sources,
@@ -83,8 +95,11 @@ pub fn check(sources: &[Source]) -> (Option<Plan>, Vec<Problem>) {
 /// A problem at a place in a named source.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Problem {
-    /// The file it's in.
-    pub path: String,
+    /// Which of the sources it's in, from 0.
+    pub document: usize,
+
+    /// That source's name.
+    pub name: String,
 
     /// 1-based line.
     pub line: usize,
@@ -100,12 +115,19 @@ pub struct Problem {
 }
 
 impl Problem {
-    /// A problem at `span` in `source`.
+    /// A problem at `span` in `source`, the `document`th.
     #[must_use]
-    pub fn new(source: &Source, span: Span, severity: Severity, message: String) -> Self {
+    pub fn new(
+        document: usize,
+        source: &Source,
+        span: Span,
+        severity: Severity,
+        message: String,
+    ) -> Self {
         let (line, column) = span.line_col(&source.text);
         Self {
-            path: source.name.clone(),
+            document,
+            name: source.name.clone(),
             line,
             column,
             severity,
@@ -115,9 +137,10 @@ impl Problem {
 
     /// A problem at `at`, in whichever of `sources` it points into.
     fn at(sources: &[Source], at: Location, severity: Severity, message: String) -> Option<Self> {
+        let document = at.document.index();
         sources
-            .get(at.document.index())
-            .map(|source| Self::new(source, at.span, severity, message))
+            .get(document)
+            .map(|source| Self::new(document, source, at.span, severity, message))
     }
 }
 
@@ -126,7 +149,7 @@ impl fmt::Display for Problem {
         write!(
             f,
             "{}:{}:{}: {}: {}",
-            self.path, self.line, self.column, self.severity, self.message
+            self.name, self.line, self.column, self.severity, self.message
         )
     }
 }

@@ -14,10 +14,8 @@
 //! read or written, 2 for bad arguments.
 
 use clap::{Parser, Subcommand};
-use dagenda_cli::{
-    check::{Problem, Severity, Source, check},
-    render::Format,
-};
+use dagenda_cli::render::Format;
+use dagenda_core::check::{Problem, Severity, Source, check};
 use std::{
     io::{self, Read, Write},
     path::{Path, PathBuf},

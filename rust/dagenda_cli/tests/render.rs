@@ -1,9 +1,7 @@
 //! `dagenda render`: which format a path asks for, and what each produces.
 
-use dagenda_cli::{
-    check::{Source, check},
-    render::Format,
-};
+use dagenda_cli::render::Format;
+use dagenda_core::check::{Source, check};
 use std::path::Path;
 use testresult::TestResult;
 

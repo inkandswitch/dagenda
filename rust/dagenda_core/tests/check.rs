@@ -1,6 +1,6 @@
 //! `dagenda check`'s report: what it says, and where.
 
-use dagenda_cli::check::{Severity, Source, check};
+use dagenda_core::check::{Severity, Source, check};
 
 fn source(name: &str, text: &str) -> Source {
     Source {
