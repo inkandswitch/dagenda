@@ -25,6 +25,38 @@ pub struct Document {
     pub items: Vec<Item>,
 }
 
+impl Document {
+    /// Every track, task, and milestone the document defines, in source
+    /// order, with the span of its first line. Subtasks an `extend` adds are
+    /// definitions too; the `extend` itself isn't.
+    ///
+    /// ```
+    /// let document = dagenda_core::parser::document(
+    ///     "roadmap\ntrack core\n  [ ] task parser\n    [ ] task lexer\n",
+    /// )?;
+    /// let ids: Vec<&str> = document.definitions().iter().map(|(id, _)| id.as_str()).collect();
+    /// assert_eq!(ids, ["core", "parser", "lexer"]);
+    /// # Ok::<(), dagenda_core::parser::ParseError>(())
+    /// ```
+    #[must_use]
+    pub fn definitions(&self) -> Vec<(&Id, Span)> {
+        let mut found = Vec::new();
+        for item in &self.items {
+            match item {
+                Item::Track(track) => track_definitions(track, &mut found),
+                Item::Task(task) => task_definitions(task, &mut found),
+                Item::Milestone(milestone) => found.push((&milestone.node.id.node, milestone.span)),
+                Item::Extend(extend) => {
+                    for subtask in &extend.node.subtasks {
+                        task_definitions(subtask, &mut found);
+                    }
+                }
+            }
+        }
+        found
+    }
+}
+
 /// A block at the top level of a document.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Item {
@@ -149,4 +181,21 @@ pub struct Extend {
 
     /// Subtasks it adds, which live here rather than in the task's document.
     pub subtasks: Vec<Spanned<Task>>,
+}
+
+fn track_definitions<'a>(track: &'a Spanned<Track>, found: &mut Vec<(&'a Id, Span)>) {
+    found.push((&track.node.id.node, track.span));
+    for child in &track.node.children {
+        match child {
+            TrackChild::Track(nested) => track_definitions(nested, found),
+            TrackChild::Task(task) => task_definitions(task, found),
+        }
+    }
+}
+
+fn task_definitions<'a>(task: &'a Spanned<Task>, found: &mut Vec<(&'a Id, Span)>) {
+    found.push((&task.node.id.node, task.span));
+    for subtask in &task.node.subtasks {
+        task_definitions(subtask, found);
+    }
 }
