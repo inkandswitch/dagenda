@@ -4,7 +4,9 @@ mod common;
 
 use bolero::check;
 use dagenda_core::{
+    check::Source,
     date::Date,
+    edit::{self, Edit, EditError},
     plan::{Plan, Readiness},
     span::Span,
     status::Status,
@@ -36,6 +38,95 @@ fn plans_are_consistent() {
             match dagenda_core::parse(&source) {
                 Ok(plan) => assert_consistent(&plan, &source),
                 Err(error) => assert_in_bounds(error.span(), &source),
+            }
+        });
+}
+
+/// Edits made on the picture leave a plan that resolves, changed only as
+/// asked: a status box on any task; a need between any two tasks, unless
+/// it's already there or would make a loop; any task onto any milestone,
+/// unless that would make a loop.
+#[test]
+fn picture_edits_change_only_what_they_say() {
+    check!()
+        .with_type::<(Vec<(u8, u8, u8, u8)>, u8, u8)>()
+        .for_each(|(lines, first, second)| {
+            let text = build(lines);
+            let Ok(plan) = dagenda_core::parse(&text) else {
+                return;
+            };
+            let tasks: Vec<_> = plan.tasks().iter().map(|task| task.id.clone()).collect();
+            let pick = |n: u8| tasks.get(usize::from(n) % tasks.len().max(1));
+            let (Some(a), Some(b)) = (pick(*first), pick(*second)) else {
+                return;
+            };
+            let sources = [Source {
+                name: String::new(),
+                text: text.clone(),
+            }];
+            let after = |edits: Vec<Edit>| {
+                let text = edits
+                    .into_iter()
+                    .next()
+                    .map_or_else(|| text.clone(), |edit| edit.text);
+                dagenda_core::parse(&text).map_err(|error| format!("{error}\n{text}"))
+            };
+
+            let status = Status::ALL
+                .get(usize::from(*second) % Status::ALL.len())
+                .copied()
+                .unwrap_or(Status::Done);
+            let edited = edit::set_status(&sources, a, status)
+                .map_err(|error| error.to_string())
+                .and_then(after);
+            assert!(
+                edited
+                    .as_ref()
+                    .is_ok_and(
+                        |edited| edited.task(a).map(|task| task.status) == Some(status)
+                            && edited.tasks().len() == plan.tasks().len()
+                    ),
+                "{edited:?}"
+            );
+
+            match edit::add_need(&sources, b, a) {
+                Ok(edits) => {
+                    let edited = after(edits);
+                    assert!(
+                        edited.as_ref().is_ok_and(|edited| edited
+                            .task(b)
+                            .is_some_and(|task| task.needs.iter().any(|need| need.node == *a))
+                            && edited.tasks().len() == plan.tasks().len()),
+                        "{edited:?}"
+                    );
+                }
+                Err(error) => assert!(
+                    matches!(
+                        error,
+                        EditError::Itself(_)
+                            | EditError::AlreadyNeeds { .. }
+                            | EditError::Loop { .. }
+                    ),
+                    "{error}"
+                ),
+            }
+
+            if let Some(milestone) = plan
+                .milestones()
+                .get(usize::from(*first) % plan.milestones().len().max(1))
+            {
+                match edit::rescope(&sources, a, None, Some(&milestone.id)) {
+                    Ok(edits) => {
+                        let edited = after(edits);
+                        assert!(
+                            edited.as_ref().is_ok_and(|edited| edited
+                                .milestone(&milestone.id)
+                                .is_some_and(|m| m.needs.iter().any(|member| member.node == *a))),
+                            "{edited:?}"
+                        );
+                    }
+                    Err(error) => assert!(matches!(error, EditError::Loop { .. }), "{error}"),
+                }
             }
         });
 }
@@ -278,6 +369,15 @@ fn assert_routed(tree: &TechTree, edge: &Edge, from: &Node, to: &Node) {
 
 /// What's derived agrees with itself: readiness with statuses and needs,
 /// progress with what's finished, critical paths with what isn't.
+/// How many distinct tasks are among `ids`.
+fn tasks_among(plan: &Plan, ids: &[dagenda_core::plan::Located<dagenda_core::id::Id>]) -> usize {
+    ids.iter()
+        .filter(|id| plan.task(&id.node).is_some())
+        .map(|id| &id.node)
+        .collect::<std::collections::BTreeSet<_>>()
+        .len()
+}
+
 fn assert_consistent(plan: &Plan, source: &str) {
     assert_laid_out(plan);
 
@@ -291,6 +391,18 @@ fn assert_consistent(plan: &Plan, source: &str) {
         assert_eq!(
             status_box.map(ToString::to_string),
             Some(task.status.to_string())
+        );
+
+        // All the work behind a task counts at least the tasks it needs
+        // directly, and never itself
+        let work = plan.work(&task.id);
+        let direct = tasks_among(plan, &task.needs);
+        assert!(
+            work.is_some_and(|work| work.done <= work.total
+                && work.total >= direct
+                && work.total < plan.tasks().len()),
+            "{}: {work:?}, {direct} direct",
+            task.id
         );
 
         let readiness = plan.readiness(&task.id);
@@ -331,6 +443,8 @@ fn assert_consistent(plan: &Plan, source: &str) {
         assert!(progress.is_some_and(|progress| {
             progress.needs.done <= progress.needs.total
                 && progress.wants.done <= progress.wants.total
+                && progress.work.done <= progress.work.total
+                && progress.work.total >= tasks_among(plan, &milestone.needs)
                 && progress.is_reached() == plan.is_finished(&milestone.id)
         }));
 

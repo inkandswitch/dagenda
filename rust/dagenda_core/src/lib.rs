@@ -102,6 +102,7 @@
 //!
 //! let progress = plan.progress(&Id::new("itParses")?).ok_or("no milestone")?;
 //! assert_eq!((progress.needs.done, progress.needs.total), (1, 2));
+//! assert_eq!((progress.work.done, progress.work.total), (1, 2), "the work behind it");
 //! # Ok::<(), Box<dyn core::error::Error>>(())
 //! ```
 
@@ -112,6 +113,7 @@ extern crate alloc;
 pub mod ast;
 pub mod check;
 pub mod date;
+pub mod edit;
 pub mod handle;
 pub mod id;
 pub mod outline;

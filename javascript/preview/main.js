@@ -97,6 +97,28 @@ for (const [id, text] of [
   })
 }
 
+/** The smallest change from `from` to `to`: where, how much goes, and what comes in. */
+const diff = (from, to) => {
+  let start = 0
+  while (start < from.length && start < to.length && from[start] === to[start]) start++
+  let end = 0
+  while (end < from.length - start && end < to.length - start && from[from.length - 1 - end] === to[to.length - 1 - end]) {
+    end++
+  }
+  return { at: start, removed: from.length - start - end, inserted: to.slice(start, to.length - end) }
+}
+
+// Edits made on the picture arrive as new text: applied as the smallest
+// change, through the textarea's own undo. One made from older text (the
+// picture hadn't caught up) is left out
+picture.addEventListener("dagenda-edit", ({ detail: { edits } }) => {
+  for (const { document, source: next, base } of edits) {
+    if (document !== 0 || base !== source.value) continue
+    const { at, removed, inserted } = diff(base, next)
+    insert(inserted, at, at + removed)
+  }
+})
+
 // Clicking a box puts the caret on its line
 picture.addEventListener("dagenda-select", ({ detail: { id } }) => {
   if (id === null) return

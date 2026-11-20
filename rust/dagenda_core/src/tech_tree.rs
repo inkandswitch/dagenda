@@ -116,8 +116,15 @@ impl TechTree {
         let (mut nodes, index) = nodes(plan);
         let edges = edges(plan, &index);
         let tiers = tiers(&nodes, &edges);
-        for (node, &row) in nodes.iter_mut().zip(&tiers.rows) {
+        for (index, (node, &row)) in nodes.iter_mut().zip(&tiers.rows).enumerate() {
             node.row = row;
+            if matches!(node.shape, Shape::Task { .. }) {
+                node.era = tiers
+                    .bands
+                    .get(index)
+                    .and_then(|&band| tiers.milestones.get(band))
+                    .copied();
+            }
         }
         // The band says what's in it, so those lines aren't drawn, and a
         // path through one doesn't stand in for a must-have line that is.
@@ -278,6 +285,11 @@ pub struct Node {
     /// Its row, counted from the bottom: tiers within each band, and a row
     /// of its own for each milestone's gate.
     pub row: usize,
+
+    /// For a task, the milestone whose band it sits in, an index into
+    /// [`TechTree::nodes`]: `None` in the layer of work on no milestone, or
+    /// with no milestones.
+    pub era: Option<usize>,
 
     /// Its left edge.
     pub x: u32,
@@ -588,6 +600,7 @@ fn node(id: &Id, label: Option<&Text>, shape: Shape, facts: Vec<Fact>) -> Node {
         notes: Vec::new(),
         branch: 0,
         row: 0,
+        era: None,
         x: 0,
         y: 0,
         width,

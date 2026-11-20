@@ -10,9 +10,16 @@
 //
 // or <dagenda-view src="./plan.dagenda"></dagenda-view>, or set `.source`
 // from script. A plan of several documents (public and private, say) is
-// `.documents = [{ name, source }, …]`: one picture from all of them. The notation's indentation is relative, so inline source can
-// be indented to match the page. Add theme="light" or theme="dark" to
-// override the system's colour scheme, and zoom="1.5" to scale.
+// `.documents = [{ name, source }, …]`: one picture from all of them. The
+// notation's indentation is relative, so inline source can be indented to
+// match the page. Add theme="light" or theme="dark" to override the system's
+// colour scheme, and zoom="1.5" to scale.
+//
+// With `editable`, the picture can be edited (editing.js): click a badge to
+// set a status, drag from a badge to a card to add a need, drag a card into
+// a milestone's band to re-scope it, and drag a gate to reorder eras. The
+// picture never changes the text itself: it fires `dagenda-edit` with the
+// new text, and the page applies it.
 //
 // Hover a node to light up everything it needs and everything waiting on it
 // (all the way up and down, not just the lines drawn). Click a node to
@@ -25,10 +32,14 @@
 //
 //   dagenda-render  { problems, ok }  after every change of source
 //   dagenda-select  { id }            a node was selected (id is null when cleared)
+//   dagenda-edit    { kind, edits }   an edit made on the picture: each changed
+//                                     document's index, new `source`, and the
+//                                     `base` text it was made from
 //
 // All logic lives in the Wasm (`dagenda_wasm`); this file only wires the
 // SVG's data-* hooks to the page.
 
+import { STYLE as EDITING, attachEditing } from "./editing.js"
 import init, { checkPlan, renderPlanSvg } from "./pkg/dagenda_wasm.js"
 
 const ready = init()
@@ -90,7 +101,7 @@ class DagendaView extends HTMLElement {
   constructor() {
     super()
     const shadow = this.attachShadow({ mode: "open" })
-    shadow.innerHTML = `<style>${STYLE}</style><div part="canvas"></div>`
+    shadow.innerHTML = `<style>${STYLE}${EDITING}</style><div part="canvas"></div>`
     this.#canvas = shadow.querySelector("div")
 
     this.#canvas.addEventListener("pointerover", (e) => {
@@ -106,6 +117,13 @@ class DagendaView extends HTMLElement {
     })
     this.addEventListener("keydown", (e) => {
       if (e.key === "Escape") this.select(null)
+    })
+    attachEditing({
+      host: this,
+      root: shadow,
+      canvas: this.#canvas,
+      svg: () => this.#svg,
+      documents: () => this.#documents,
     })
   }
 

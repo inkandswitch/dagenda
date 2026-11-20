@@ -183,7 +183,7 @@
             wasm-pack build --release --target web --no-pack \
               --out-dir "$out/dagenda-view/pkg" "$root/rust/dagenda_wasm"
             rm -f "$out/dagenda-view/pkg/.gitignore"
-            cp "$root/javascript/dagenda-view/dagenda-view.js" "$out/dagenda-view/"
+            cp "$root/javascript/dagenda-view/dagenda-view.js" "$root/javascript/dagenda-view/editing.js" "$out/dagenda-view/"
             for file in index.html examples.js highlight.js main.js shell.js style.css; do
               cp "$root/javascript/preview/$file" "$out/preview/"
             done

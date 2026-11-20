@@ -194,7 +194,7 @@
 <path class="check" d="M100,250 l3,4 l6,-8"/>
 <text class="label" text-anchor="middle"><tspan x="105" y="229">Shipped</tspan></text>
 </g>
-<g class="node task not-started available" data-id="unfinished" data-status="not-started">
+<g class="node task not-started available" data-id="unfinished" data-status="not-started" data-era="empty">
 <title>Unfinished (unfinished): not started
 @bob</title>
 <rect class="card" x="194" y="500" width="150" height="61" rx="10"/>
@@ -202,14 +202,14 @@
 <text class="label" text-anchor="middle"><tspan x="269" y="522">Unfinished</tspan></text>
 <text class="facts" x="269" y="542" text-anchor="middle" font-size="11"><tspan class="fact dri">@bob</tspan></text>
 </g>
-<g class="node task dropped" data-id="dropped" data-status="dropped">
+<g class="node task dropped" data-id="dropped" data-status="dropped" data-era="stuck">
 <title>Dropped (dropped): dropped</title>
 <rect class="card" x="112" y="725" width="150" height="43" rx="10"/>
 <circle class="badge" cx="187" cy="768" r="10"/>
 <text class="mark" x="187" y="772" text-anchor="middle">~</text>
 <text class="label" text-anchor="middle"><tspan x="187" y="747">Dropped</tspan></text>
 </g>
-<g class="node task deferred available" data-id="deferred" data-status="deferred">
+<g class="node task deferred available" data-id="deferred" data-status="deferred" data-era="stuck">
 <title>Deferred (deferred): deferred</title>
 <rect class="card" x="276" y="725" width="150" height="43" rx="10"/>
 <circle class="badge" cx="351" cy="768" r="10"/>
@@ -251,13 +251,15 @@
 <text class="label" text-anchor="middle"><tspan x="351" y="315">Dropped child</tspan></text>
 </g>
 <g class="node milestone" data-id="stuck">
-<title>Stuck (stuck)</title>
+<title>Stuck (stuck)
+0 of 2 must-haves done; 0 of 2 tasks behind it</title>
 <polygon class="gate" points="578,617 728,617 740,643 728,669 578,669 566,643"/>
 <text class="label" text-anchor="middle"><tspan x="653" y="639">Stuck</tspan></text>
 <text class="caption" x="653" y="654" text-anchor="middle" font-size="11">0 of 2</text>
 </g>
 <g class="node milestone reached" data-id="empty">
-<title>Empty (empty)</title>
+<title>Empty (empty)
+0 of 0 must-haves done; 0 of 0 tasks behind it</title>
 <polygon class="gate" points="578,392 728,392 740,418 728,444 578,444 566,418"/>
 <text class="label" text-anchor="middle"><tspan x="653" y="414">Empty</tspan></text>
 <text class="caption" x="653" y="429" text-anchor="middle" font-size="11">reached</text>

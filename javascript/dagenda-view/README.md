@@ -33,6 +33,7 @@ The notation's indentation is relative, so inline source can be indented to matc
 | `src`     | Load the source from a URL                                  |
 | `theme`   | `light` or `dark`, overriding the system colour scheme      |
 | `zoom`    | Scale factor, such as `1.5`                                 |
+| `editable` | Let the picture edit the plan (below)                      |
 
 | Property   | Meaning                                                                 |
 |------------|-------------------------------------------------------------------------|
@@ -47,5 +48,21 @@ The notation's indentation is relative, so inline source can be indented to matc
 |------------------|-------------------------------------|---------------------|
 | `dagenda-render` | After every change of source        | `{ problems, ok }`  |
 | `dagenda-select` | A node was selected, or cleared     | `{ id }`            |
+| `dagenda-edit`   | An edit was made on the picture     | `{ kind, edits }`: each changed document's index, new `source`, and the `base` text it was made from |
+
+## Editing the picture
+
+With `editable`:
+
+| Gesture | Edit |
+|---|---|
+| Click a card's badge | A menu of the eight status boxes; picking one rewrites the task's box |
+| Drag from a badge onto a card | "This needs that": a `needs` in the task's block |
+| Drag a card into a milestone's band | Re-scope it: off the milestone whose band it was in, onto that one's must-haves (the top layer: none) |
+| Drag a gate past another | Reorder the eras: its `milestone` block moves |
+
+The picture never changes the text itself. It asks the Wasm for the edit and fires `dagenda-edit` with each changed document's new text; the page applies the difference as the smallest splice, so it joins that person's undo and merges with typing (the preview and the editor both do). An edit that makes no sense (a loop, a milestone below one it builds on, two milestones in different documents) shows its reason on the picture instead. There's no keyboard path for the drags yet; the text is.
+
+## Looking around
 
 Hover a node to light up everything it needs and everything waiting on it, all the way up and down. Click to select; click again or press Escape to clear. A card's pull requests, issues, and links open in a new tab, without selecting the card. Text that doesn't parse keeps the last good picture up, so the tree doesn't flicker while someone types.

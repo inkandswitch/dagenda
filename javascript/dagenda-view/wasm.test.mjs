@@ -4,7 +4,20 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { test } from "node:test"
-import { check, checkPlan, initSync, locate, locatePlan, renderPlanSvg, renderSvg, renderText } from "./pkg/dagenda_wasm.js"
+import {
+  addNeed,
+  check,
+  checkPlan,
+  initSync,
+  locate,
+  locatePlan,
+  renderPlanSvg,
+  renderSvg,
+  renderText,
+  reorder,
+  rescope,
+  setStatus,
+} from "./pkg/dagenda_wasm.js"
 
 initSync({ module: readFileSync(new URL("./pkg/dagenda_wasm_bg.wasm", import.meta.url)) })
 
@@ -93,4 +106,34 @@ test("locates definitions across documents", () => {
   assert.deepEqual({ document: place.document, line: place.line }, { document: 1, line: 4 })
   place.free()
   assert.equal(locatePlan([PUBLIC, PRIVATE], "nowhere"), undefined)
+})
+
+/** Edits as plain objects (the Wasm's own are freed). */
+const edits = (made) =>
+  made.map((edit) => {
+    const copy = { document: edit.document, text: edit.text }
+    edit.free()
+    return copy
+  })
+
+test("a status click rewrites the box, in the document that defines the task", () => {
+  assert.deepEqual(edits(setStatus(["public", "private"], [PUBLIC, PRIVATE], "signatures", "x")), [
+    { document: 0, text: "roadmap\n[x] task signatures [Signatures]\n" },
+  ])
+  assert.throws(() => setStatus([], [PUBLIC], "signatures", "q"), { message: "`[q]` isn't a status box" })
+})
+
+test("connecting two cards writes a need, and refuses a loop", () => {
+  const [{ text }] = edits(addNeed([], ["roadmap\n[ ] task a\n[ ] task b\n"], "b", "a"))
+  assert.equal(text, "roadmap\n[ ] task a\n[ ] task b\n  needs a\n")
+  assert.throws(() => addNeed([], [text], "a", "b"), { message: "`b` already waits on `a`, so `a` can't need it" })
+})
+
+test("re-scoping and reordering milestones", () => {
+  const plan = "roadmap\n[ ] task a\n\nmilestone one\n  a\n\nmilestone two\n"
+  const [{ text }] = edits(rescope([], [plan], "a", "one", "two"))
+  assert.equal(text, "roadmap\n[ ] task a\n\nmilestone one\n\nmilestone two\n  a\n")
+  assert.deepEqual(edits(rescope([], [plan], "a", undefined, "one")), [], "already there")
+  const [{ text: reordered }] = edits(reorder([], [plan], "one", "two", true))
+  assert.equal(reordered, "roadmap\n[ ] task a\n\nmilestone two\n\nmilestone one\n  a\n")
 })

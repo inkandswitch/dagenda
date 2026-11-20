@@ -191,7 +191,7 @@
 <path class="edge waiting" data-from="itParses" data-to="firstPicture" d="M1397,530 L1397,360"/>
 <g class="edge member" data-from="resolver" data-to="itParses"/>
 <g class="edge member" data-from="techTree" data-to="firstPicture"/>
-<g class="node task done" data-id="parser" data-status="done">
+<g class="node task done" data-id="parser" data-status="done" data-era="itParses">
 <title>Parser (parser): done
 est 2026-11-19
 PR #1</title>
@@ -202,7 +202,7 @@ PR #1</title>
 <text class="facts" x="105" y="854" text-anchor="middle" font-size="11"><tspan class="fact est">est 2026-11-19</tspan></text>
 <text class="facts" x="105" y="868" text-anchor="middle" font-size="11"><a href="https://github.com/owner/repo/pull/1" target="_blank"><tspan class="fact ref">PR #1</tspan></a></text>
 </g>
-<g class="node task in-progress waiting" data-id="resolver" data-status="in-progress">
+<g class="node task in-progress waiting" data-id="resolver" data-status="in-progress" data-era="itParses">
 <title>Resolver (resolver): in progress, waiting on something
 est 2026-12
 target 2026-Q4 · #2
@@ -224,7 +224,7 @@ Resolves ids across every document.
 <text class="facts" x="269" y="723" text-anchor="middle" font-size="11"><a href="https://github.com/owner/repo/issues/2#issuecomment-3" target="_blank"><tspan class="fact link">#2 comment</tspan></a></text>
 <text class="facts" x="269" y="737" text-anchor="middle" font-size="11"><a href="https://example.com/resolver-design" target="_blank"><tspan class="fact link">Design doc</tspan></a></text>
 </g>
-<g class="node task done" data-id="duplicates" data-status="done">
+<g class="node task done" data-id="duplicates" data-status="done" data-era="itParses">
 <title>Duplicate ids (duplicates): done
 @bob</title>
 <rect class="card" x="194" y="812" width="150" height="61" rx="10"/>
@@ -233,20 +233,20 @@ Resolves ids across every document.
 <text class="label" text-anchor="middle"><tspan x="269" y="834">Duplicate ids</tspan></text>
 <text class="facts" x="269" y="854" text-anchor="middle" font-size="11"><tspan class="fact dri">@bob</tspan></text>
 </g>
-<g class="node task not-started available" data-id="cycles" data-status="not-started">
+<g class="node task not-started available" data-id="cycles" data-status="not-started" data-era="itParses">
 <title>Cycles (cycles): not started</title>
 <rect class="card" x="358" y="812" width="150" height="43" rx="10"/>
 <circle class="badge" cx="433" cy="855" r="10"/>
 <text class="label" text-anchor="middle"><tspan x="433" y="834">Cycles</tspan></text>
 </g>
-<g class="node task not-started locked" data-id="techTree" data-status="not-started">
+<g class="node task not-started locked" data-id="techTree" data-status="not-started" data-era="firstPicture">
 <title>Tech tree (techTree): not started, waiting on something</title>
 <rect class="card" x="812" y="416" width="150" height="58" rx="10"/>
 <circle class="badge" cx="887" cy="474" r="10"/>
 <text class="label" text-anchor="middle"><tspan x="887" y="438">Tech tree</tspan></text>
 <text class="caption" x="887" y="453" text-anchor="middle" font-size="11">2 of 4 done below</text>
 </g>
-<g class="node task idea available" data-id="skillTree" data-status="idea">
+<g class="node task idea available" data-id="skillTree" data-status="idea" data-era="firstPicture">
 <title>Skill tree (skillTree): an idea</title>
 <rect class="card" x="648" y="416" width="150" height="43" rx="10"/>
 <circle class="badge" cx="723" cy="459" r="10"/>
@@ -288,13 +288,15 @@ Resolves ids across every document.
 <text class="label" text-anchor="middle"><tspan x="1177" y="160">A task outside any</tspan><tspan x="1177" y="177">track</tspan></text>
 </g>
 <g class="node milestone" data-id="itParses">
-<title>It parses (itParses)</title>
+<title>It parses (itParses)
+1 of 2 must-haves done; 2 of 4 tasks behind it</title>
 <polygon class="gate" points="1322,530 1472,530 1484,556 1472,582 1322,582 1310,556"/>
 <text class="label" text-anchor="middle"><tspan x="1397" y="552">It parses</tspan></text>
 <text class="caption" x="1397" y="567" text-anchor="middle" font-size="11">2 of 4 · EOY26</text>
 </g>
 <g class="node milestone" data-id="firstPicture">
 <title>First picture (firstPicture)
+0 of 2 must-haves done; 2 of 5 tasks behind it
 
 Waits on a milestone, through a task that needs it.</title>
 <polygon class="gate" points="1322,308 1472,308 1484,334 1472,360 1322,360 1310,334"/>

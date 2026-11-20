@@ -5,12 +5,18 @@
 //! each other's ids: the `…Plan` functions take the documents' names and
 //! texts as two arrays, in the same order. The others are shorthands for a
 //! plan of one unnamed document.
+//!
+//! Edits made on the picture (`setStatus`, `addNeed`, `rescope`,
+//! `reorder`) return each changed document's whole new text; the page
+//! applies the difference as a splice. A refused edit throws its reason.
 
 use dagenda_core::{
     check::{self, Source},
+    edit::{self, EditError},
     id::Id,
     parser,
     plan::Plan,
+    status::Status,
 };
 use wasm_bindgen::prelude::{JsError, wasm_bindgen};
 
@@ -42,6 +48,26 @@ impl From<check::Problem> for Problem {
             column: number(problem.column),
             severity: problem.severity.to_string(),
             message: problem.message,
+        }
+    }
+}
+
+/// A document's new text, after an edit made on the picture.
+#[wasm_bindgen(getter_with_clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Edit {
+    /// Which document, from 0.
+    pub document: u32,
+
+    /// Its whole new text.
+    pub text: String,
+}
+
+impl From<edit::Edit> for Edit {
+    fn from(edit: edit::Edit) -> Self {
+        Self {
+            document: number(edit.document),
+            text: edit.text,
         }
     }
 }
@@ -148,6 +174,106 @@ pub fn locate_plan(texts: Vec<String>, id: &str) -> Option<Place> {
             line: number(span.line_col(&text).0),
         })
     })
+}
+
+/// Set a task's status box; `mark` is what goes inside it (`" "`, `"x"`,
+/// `"-"`, …). No edits if it already has that status.
+///
+/// # Errors
+///
+/// Throws if a document doesn't parse, `task` isn't a task, or `mark`
+/// isn't a status.
+#[wasm_bindgen(js_name = setStatus)]
+pub fn set_status(
+    names: Vec<String>,
+    texts: Vec<String>,
+    task: &str,
+    mark: &str,
+) -> Result<Vec<Edit>, JsError> {
+    let status = mark
+        .chars()
+        .next()
+        .filter(|_| mark.chars().count() == 1)
+        .and_then(Status::from_mark)
+        .ok_or_else(|| JsError::new(&format!("`[{mark}]` isn't a status box")))?;
+    made(edit::set_status(&sources(names, texts), &id(task)?, status))
+}
+
+/// Make `dependent` need `prerequisite`.
+///
+/// # Errors
+///
+/// Throws if the plan doesn't parse and resolve, the need is already there,
+/// or it would make a loop.
+#[wasm_bindgen(js_name = addNeed)]
+pub fn add_need(
+    names: Vec<String>,
+    texts: Vec<String>,
+    dependent: &str,
+    prerequisite: &str,
+) -> Result<Vec<Edit>, JsError> {
+    made(edit::add_need(
+        &sources(names, texts),
+        &id(dependent)?,
+        &id(prerequisite)?,
+    ))
+}
+
+/// Re-scope a task from milestone `from` to milestone `to`; either can be
+/// missing, for the work on no milestone.
+///
+/// # Errors
+///
+/// Throws if a document doesn't parse, it would make a loop, or `from`
+/// needs the task through other work.
+#[wasm_bindgen]
+pub fn rescope(
+    names: Vec<String>,
+    texts: Vec<String>,
+    task: &str,
+    from: Option<String>,
+    to: Option<String>,
+) -> Result<Vec<Edit>, JsError> {
+    let from = from.map(|from| id(&from)).transpose()?;
+    let to = to.map(|to| id(&to)).transpose()?;
+    made(edit::rescope(
+        &sources(names, texts),
+        &id(task)?,
+        from.as_ref(),
+        to.as_ref(),
+    ))
+}
+
+/// Move milestone `milestone`'s era just above `other`'s (or just below).
+///
+/// # Errors
+///
+/// Throws if a document doesn't parse, the two are in different documents,
+/// or one builds on the other.
+#[wasm_bindgen]
+pub fn reorder(
+    names: Vec<String>,
+    texts: Vec<String>,
+    milestone: &str,
+    other: &str,
+    above: bool,
+) -> Result<Vec<Edit>, JsError> {
+    made(edit::reorder(
+        &sources(names, texts),
+        &id(milestone)?,
+        &id(other)?,
+        above,
+    ))
+}
+
+fn id(text: &str) -> Result<Id, JsError> {
+    Id::new(text).map_err(|error| JsError::new(&error.to_string()))
+}
+
+fn made(edits: Result<Vec<edit::Edit>, EditError>) -> Result<Vec<Edit>, JsError> {
+    edits
+        .map(|edits| edits.into_iter().map(Edit::from).collect())
+        .map_err(|error| JsError::new(&error.to_string()))
 }
 
 /// Each text with its name, or no name if there are fewer names.

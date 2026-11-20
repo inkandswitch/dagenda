@@ -160,6 +160,21 @@ export const mountWorkspace = async ({ repo, workspace, find, onHandles = () => 
     })
   }
 
+  // Edits made on the picture arrive as each document's new text, made from
+  // the text the picture had. Applied to that tab as the smallest splice, as
+  // if typed: they join this person's undo, and anything typed since (by
+  // anyone) stays, with the edit moved over it
+  picture.addEventListener("dagenda-edit", ({ detail: { edits } }) => {
+    for (const { document, source: next, base } of edits) {
+      const view = tabs[document]?.view
+      if (!view) continue
+      const current = view.state.doc.toString()
+      let changes = splice(base, next)
+      if (current !== base) changes = changes.map(splice(base, current))
+      view.dispatch({ changes, userEvent: "input.picture" })
+    }
+  })
+
   // Clicking a box shows its line, in whichever document defines it
   picture.addEventListener("dagenda-select", ({ detail: { id } }) => {
     if (id === null) return

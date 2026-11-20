@@ -6,6 +6,7 @@
 //! |-----------------------|-------------------|---------------------------------------------------------|
 //! | `data-id`             | nodes             | the task's or milestone's id                            |
 //! | `data-status`         | task nodes        | `not-started`, `done`, `in-progress`, and so on         |
+//! | `data-era`            | task nodes        | the milestone whose band it's in (absent on no milestone) |
 //! | `data-branch`         | branches          | the branch's index, left to right                       |
 //! | `data-track`          | branches, banners | the track's id                                          |
 //! | `data-milestone`      | bands, eras       | the milestone's id                                      |
@@ -25,7 +26,10 @@ use super::{
     BADGE_RADIUS, BranchKind, CAPTION, FACT_GAP, FACT_LINE, FONT, Fact, Hue, LINE, MARGIN, NOTCH,
     Node, PAD_Y, Point, SEPARATOR, SMALL_FONT, Shape, TITLE_FONT, TechTree,
 };
-use crate::{plan::Plan, status::Status};
+use crate::{
+    plan::{Plan, Progress},
+    status::Status,
+};
 use alloc::{
     string::{String, ToString},
     vec::Vec,
@@ -211,17 +215,27 @@ impl fmt::Display for Svg<'_> {
         self.edges(f)?;
         for node in &tree.nodes {
             match &node.shape {
-                Shape::Task { status, locked, .. } => task(f, node, *status, *locked)?,
-                Shape::Milestone { progress, .. } => {
-                    milestone(f, node, progress.is_reached())?;
+                Shape::Task { status, locked, .. } => {
+                    let era = node
+                        .era
+                        .and_then(|era| tree.nodes.get(era))
+                        .map(|gate| &gate.id);
+                    task(f, node, *status, *locked, era)?;
                 }
+                Shape::Milestone { progress, .. } => milestone(f, node, *progress)?,
             }
         }
         f.write_str("</svg>")
     }
 }
 
-fn task(f: &mut fmt::Formatter<'_>, node: &Node, status: Status, locked: bool) -> fmt::Result {
+fn task(
+    f: &mut fmt::Formatter<'_>,
+    node: &Node,
+    status: Status,
+    locked: bool,
+    era: Option<&crate::id::Id>,
+) -> fmt::Result {
     let class = status_class(status);
     // Work under way that waits on something (a task waiting on its own
     // parts, say) isn't dimmed: only work that hasn't started is locked
@@ -238,8 +252,9 @@ fn task(f: &mut fmt::Formatter<'_>, node: &Node, status: Status, locked: bool) -
     };
     writeln!(
         f,
-        r#"<g class="node task {class}{access}" data-id="{}" data-status="{class}">"#,
-        node.id
+        r#"<g class="node task {class}{access}" data-id="{}" data-status="{class}"{}>"#,
+        node.id,
+        Era(era)
     )?;
     writeln!(
         f,
@@ -286,9 +301,13 @@ fn task(f: &mut fmt::Formatter<'_>, node: &Node, status: Status, locked: bool) -
     f.write_str("</g>\n")
 }
 
-fn milestone(f: &mut fmt::Formatter<'_>, node: &Node, reached: bool) -> fmt::Result {
+fn milestone(f: &mut fmt::Formatter<'_>, node: &Node, progress: Progress) -> fmt::Result {
     let (x, y, width, height) = (node.x, node.y, node.width, node.height);
-    let reached = if reached { " reached" } else { "" };
+    let reached = if progress.is_reached() {
+        " reached"
+    } else {
+        ""
+    };
     writeln!(
         f,
         r#"<g class="node milestone{reached}" data-id="{}">"#,
@@ -296,9 +315,13 @@ fn milestone(f: &mut fmt::Formatter<'_>, node: &Node, reached: bool) -> fmt::Res
     )?;
     writeln!(
         f,
-        "<title>{} ({}){}</title>",
+        "<title>{} ({})\n{} of {} must-haves done; {} of {} tasks behind it{}</title>",
         Escaped(&node.lines.join(" ")),
         node.id,
+        progress.needs.done,
+        progress.needs.total,
+        progress.work.done,
+        progress.work.total,
         More(node)
     )?;
     let middle = y + height / 2;
@@ -460,6 +483,18 @@ impl fmt::Display for Route<'_> {
             write!(f, " L{x},{y}")?;
         }
         Ok(())
+    }
+}
+
+/// ` data-era="id"` for a task in a milestone's band, else nothing.
+struct Era<'a>(Option<&'a crate::id::Id>);
+
+impl fmt::Display for Era<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            Some(id) => write!(f, r#" data-era="{id}""#),
+            None => Ok(()),
+        }
     }
 }
 

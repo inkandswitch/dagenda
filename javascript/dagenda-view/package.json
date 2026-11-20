@@ -15,6 +15,7 @@
   },
   "files": [
     "dagenda-view.js",
+    "editing.js",
     "pkg/"
   ],
   "scripts": {
