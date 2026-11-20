@@ -76,12 +76,17 @@ impl Outline<'_> {
             }
             writeln!(f)?;
 
-            let (done, total) = (progress.needs.done, progress.needs.total);
+            // The bar is all the work behind it; then its own must-haves
+            let (done, total) = (progress.work.done, progress.work.total);
             let filled = (done * BAR).checked_div(total).unwrap_or(BAR);
             let bar: String = core::iter::repeat_n('▰', filled)
                 .chain(core::iter::repeat_n('▱', BAR - filled.min(BAR)))
                 .collect();
-            write!(f, "    {bar} {done} of {total}")?;
+            write!(
+                f,
+                "    {bar} {done} of {total} · {} of {} direct",
+                progress.needs.done, progress.needs.total
+            )?;
             if progress.is_reached() {
                 write!(f, " · reached")?;
             } else {

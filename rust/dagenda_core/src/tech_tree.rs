@@ -261,7 +261,8 @@ pub struct Node {
     /// Its label (or its id), wrapped to fit.
     pub lines: Vec<String>,
 
-    /// A smaller line under a milestone's label: its progress and target.
+    /// A smaller line under the label: a milestone's progress (all the work
+    /// behind it) and target, or how much of what a task waits on is done.
     pub caption: Option<String>,
 
     /// What it says under that, a row at a time: who's on it, when it's
@@ -319,6 +320,10 @@ pub enum Shape {
 
         /// Whether it waits on something unfinished: locked, in game terms.
         locked: bool,
+
+        /// Everything it needs, directly or through other work, and how
+        /// much of that is done. See [`Plan::work`].
+        below: Count,
     },
 
     /// A milestone's gate.
@@ -488,6 +493,7 @@ fn nodes(plan: &Plan) -> (Vec<Node>, BTreeMap<Id, usize>) {
         let shape = Shape::Task {
             status: task.status,
             locked: matches!(plan.readiness(&task.id), Some(Readiness::Blocked(_))),
+            below: plan.work(&task.id).unwrap_or(Count { done: 0, total: 0 }),
         };
         let mut card = node(&task.id, task.label.as_ref(), shape, facts(task));
         card.notes = task.notes.iter().map(|note| note.node.clone()).collect();
@@ -497,6 +503,7 @@ fn nodes(plan: &Plan) -> (Vec<Node>, BTreeMap<Id, usize>) {
     for milestone in plan.milestones() {
         index.insert(milestone.id.clone(), nodes.len());
         let progress = plan.progress(&milestone.id).unwrap_or(Progress {
+            work: Count { done: 0, total: 0 },
             needs: Count { done: 0, total: 0 },
             wants: Count { done: 0, total: 0 },
         });
@@ -520,12 +527,20 @@ fn nodes(plan: &Plan) -> (Vec<Node>, BTreeMap<Id, usize>) {
 fn node(id: &Id, label: Option<&Text>, shape: Shape, facts: Vec<Fact>) -> Node {
     let lines = wrap(label.map_or(id.as_str(), Text::as_str), CARD - PAD_X * 2);
     let caption = match &shape {
+        // How close it is to unlocking, while there's something to wait on
+        Shape::Task { status, below, .. }
+            if below.total > 0
+                && !below.is_complete()
+                && !matches!(status, Status::Done | Status::Dropped) =>
+        {
+            Some(format!("{} of {} done below", below.done, below.total))
+        }
         Shape::Task { .. } => None,
         Shape::Milestone { progress, target } => {
             let state = if progress.is_reached() {
                 String::from("reached")
             } else {
-                format!("{} of {}", progress.needs.done, progress.needs.total)
+                format!("{} of {}", progress.work.done, progress.work.total)
             };
             Some(match target {
                 Some(target) => format!("{state} · {target}"),

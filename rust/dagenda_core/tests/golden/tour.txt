@@ -2,9 +2,9 @@ A tour of the notation
 
 Milestones
   ◇ itParses · It parses · EOY26
-    ▰▰▰▰▰▱▱▱▱▱ 1 of 2 · next: cycles → resolver
+    ▰▰▰▰▰▱▱▱▱▱ 2 of 4 · 1 of 2 direct · next: cycles → resolver
   ◇ firstPicture · First picture
-    ▱▱▱▱▱▱▱▱▱▱ 0 of 2 · next: cycles → resolver → techTree
+    ▰▰▰▰▱▱▱▱▱▱ 2 of 5 · 0 of 2 direct · next: cycles → resolver → techTree
 
 Core
   [x] parser · Parser

@@ -28,9 +28,9 @@ tasks
   [ ] untracked [A task outside any track]: ready
 
 milestones
-  itParses [It parses]: not reached; 1/2 needed, 0/1 wanted, target EOY26
+  itParses [It parses]: not reached; 1/2 needed, 0/1 wanted, 2/4 of the work behind it, target EOY26
     critical path: cycles → resolver
-  firstPicture [First picture]: not reached; 0/2 needed, 0/1 wanted
+  firstPicture [First picture]: not reached; 0/2 needed, 0/1 wanted, 2/5 of the work behind it
     critical path: cycles → resolver → techTree
     | Waits on a milestone, through a task that needs it.
 

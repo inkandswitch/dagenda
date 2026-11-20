@@ -19,9 +19,9 @@ tasks
   [~] droppedChild [Dropped child], in work: dropped
 
 milestones
-  stuck [Stuck]: not reached; 0/2 needed, 0/0 wanted
+  stuck [Stuck]: not reached; 0/2 needed, 0/0 wanted, 0/2 of the work behind it
     critical path: dropped
-  empty [Empty]: reached; 0/0 needed, 0/1 wanted
+  empty [Empty]: reached; 0/0 needed, 0/1 wanted, 0/0 of the work behind it
 
 warnings
   6:11: `shipped` is done, but it needs `unfinished`, which isn't

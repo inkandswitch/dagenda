@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" class="dagenda tech-tree" viewBox="0 0 792 797" width="792" height="797" font-family="system-ui, sans-serif" font-size="13">
+<svg xmlns="http://www.w3.org/2000/svg" class="dagenda tech-tree" viewBox="0 0 792 812" width="792" height="812" font-family="system-ui, sans-serif" font-size="13">
 <style>
 .dagenda .canvas { fill: #fff; }
 .dagenda text { fill: #1d1c1a; }
@@ -171,20 +171,20 @@
 .dagenda.dark .edge { stroke: #6f6b63; }
 .dagenda.dark .edge.met { stroke: #5aa362; }
 </style>
-<rect class="canvas" width="792" height="797"/>
+<rect class="canvas" width="792" height="812"/>
 <text class="title" x="16" y="34">Every warning</text>
-<rect class="branch track hue-0" data-branch="0" data-track="work" x="16" y="80" width="506" height="701" rx="12"/>
-<g class="band side"><rect x="0" y="80" width="792" height="323"/><text x="22" y="96">Not on a milestone</text></g>
-<rect class="band reached" data-milestone="empty" x="0" y="403" width="792" height="225"/>
+<rect class="branch track hue-0" data-branch="0" data-track="work" x="16" y="80" width="506" height="716" rx="12"/>
+<g class="band side"><rect x="0" y="80" width="792" height="338"/><text x="22" y="96">Not on a milestone</text></g>
+<rect class="band reached" data-milestone="empty" x="0" y="418" width="792" height="225"/>
 <g class="banner track hue-0 depth-0" data-track="work"><rect x="16" y="50" width="506" height="24" rx="8"/><text x="269" y="66" text-anchor="middle">Work</text></g>
-<g class="era" data-milestone="stuck"><line x1="16" y1="628" x2="566" y2="628"/><text x="22" y="621">Stuck</text></g>
-<g class="era reached" data-milestone="empty"><line x1="16" y1="403" x2="566" y2="403"/><text x="22" y="396">Empty</text></g>
-<path class="edge waiting" data-from="unfinished" data-to="shipped" d="M269,485 L269,471 Q269,463 261,463 L113,463 Q105,463 105,455 L105,260"/>
-<path class="edge waiting wanted" data-from="unfinished" data-to="empty" d="M269,485 L269,471 Q269,463 277,463 L645,463 Q653,463 653,455 L653,429"/>
-<path class="edge waiting" data-from="dropped" data-to="waiting" d="M187,710 L187,696 Q187,688 195,688 L529,688 Q537,688 537,680 L537,363 Q537,355 529,355 L277,355 Q269,355 269,347 L269,260"/>
+<g class="era" data-milestone="stuck"><line x1="16" y1="643" x2="566" y2="643"/><text x="22" y="636">Stuck</text></g>
+<g class="era reached" data-milestone="empty"><line x1="16" y1="418" x2="566" y2="418"/><text x="22" y="411">Empty</text></g>
+<path class="edge waiting" data-from="unfinished" data-to="shipped" d="M269,500 L269,486 Q269,478 261,478 L113,478 Q105,478 105,470 L105,260"/>
+<path class="edge waiting wanted" data-from="unfinished" data-to="empty" d="M269,500 L269,486 Q269,478 277,478 L645,478 Q653,478 653,470 L653,444"/>
+<path class="edge waiting" data-from="dropped" data-to="waiting" d="M187,725 L187,711 Q187,703 195,703 L529,703 Q537,703 537,695 L537,378 Q537,370 529,370 L277,370 Q269,370 269,362 L269,275"/>
 <path class="edge waiting" data-from="child" data-to="parent" d="M433,207 L433,201 Q433,196 428,196 L277,196 Q269,196 269,188 L269,161"/>
-<path class="edge met" data-from="doneChild" data-to="parent" d="M187,278 L187,182 Q187,174 195,174 L263,174 Q269,174 269,168 L269,161"/>
-<path class="edge waiting" data-from="droppedChild" data-to="parent" d="M351,278 L351,193 Q351,185 343,185 L277,185 Q269,185 269,177 L269,161"/>
+<path class="edge met" data-from="doneChild" data-to="parent" d="M187,293 L187,182 Q187,174 195,174 L263,174 Q269,174 269,168 L269,161"/>
+<path class="edge waiting" data-from="droppedChild" data-to="parent" d="M351,293 L351,193 Q351,185 343,185 L277,185 Q269,185 269,177 L269,161"/>
 <g class="edge member" data-from="dropped" data-to="stuck"/>
 <g class="edge member" data-from="deferred" data-to="stuck"/>
 <g class="node task done" data-id="shipped" data-status="done">
@@ -197,30 +197,31 @@
 <g class="node task not-started available" data-id="unfinished" data-status="not-started">
 <title>Unfinished (unfinished): not started
 @bob</title>
-<rect class="card" x="194" y="485" width="150" height="61" rx="10"/>
-<circle class="badge" cx="269" cy="546" r="10"/>
-<text class="label" text-anchor="middle"><tspan x="269" y="507">Unfinished</tspan></text>
-<text class="facts" x="269" y="527" text-anchor="middle" font-size="11"><tspan class="fact dri">@bob</tspan></text>
+<rect class="card" x="194" y="500" width="150" height="61" rx="10"/>
+<circle class="badge" cx="269" cy="561" r="10"/>
+<text class="label" text-anchor="middle"><tspan x="269" y="522">Unfinished</tspan></text>
+<text class="facts" x="269" y="542" text-anchor="middle" font-size="11"><tspan class="fact dri">@bob</tspan></text>
 </g>
 <g class="node task dropped" data-id="dropped" data-status="dropped">
 <title>Dropped (dropped): dropped</title>
-<rect class="card" x="112" y="710" width="150" height="43" rx="10"/>
-<circle class="badge" cx="187" cy="753" r="10"/>
-<text class="mark" x="187" y="757" text-anchor="middle">~</text>
-<text class="label" text-anchor="middle"><tspan x="187" y="732">Dropped</tspan></text>
+<rect class="card" x="112" y="725" width="150" height="43" rx="10"/>
+<circle class="badge" cx="187" cy="768" r="10"/>
+<text class="mark" x="187" y="772" text-anchor="middle">~</text>
+<text class="label" text-anchor="middle"><tspan x="187" y="747">Dropped</tspan></text>
 </g>
 <g class="node task deferred available" data-id="deferred" data-status="deferred">
 <title>Deferred (deferred): deferred</title>
-<rect class="card" x="276" y="710" width="150" height="43" rx="10"/>
-<circle class="badge" cx="351" cy="753" r="10"/>
-<text class="mark" x="351" y="757" text-anchor="middle">&gt;</text>
-<text class="label" text-anchor="middle"><tspan x="351" y="732">Deferred</tspan></text>
+<rect class="card" x="276" y="725" width="150" height="43" rx="10"/>
+<circle class="badge" cx="351" cy="768" r="10"/>
+<text class="mark" x="351" y="772" text-anchor="middle">&gt;</text>
+<text class="label" text-anchor="middle"><tspan x="351" y="747">Deferred</tspan></text>
 </g>
 <g class="node task not-started locked" data-id="waiting" data-status="not-started">
 <title>Waiting (waiting): not started, waiting on something</title>
-<rect class="card" x="194" y="207" width="150" height="43" rx="10"/>
-<circle class="badge" cx="269" cy="250" r="10"/>
+<rect class="card" x="194" y="207" width="150" height="58" rx="10"/>
+<circle class="badge" cx="269" cy="265" r="10"/>
 <text class="label" text-anchor="middle"><tspan x="269" y="229">Waiting</tspan></text>
+<text class="caption" x="269" y="244" text-anchor="middle" font-size="11">0 of 1 done below</text>
 </g>
 <g class="node task done" data-id="parent" data-status="done">
 <title>Parent (parent): done</title>
@@ -237,28 +238,28 @@
 </g>
 <g class="node task done" data-id="doneChild" data-status="done">
 <title>Done child (doneChild): done</title>
-<rect class="card" x="112" y="278" width="150" height="43" rx="10"/>
-<circle class="badge" cx="187" cy="321" r="10"/>
-<path class="check" d="M182,321 l3,4 l6,-8"/>
-<text class="label" text-anchor="middle"><tspan x="187" y="300">Done child</tspan></text>
+<rect class="card" x="112" y="293" width="150" height="43" rx="10"/>
+<circle class="badge" cx="187" cy="336" r="10"/>
+<path class="check" d="M182,336 l3,4 l6,-8"/>
+<text class="label" text-anchor="middle"><tspan x="187" y="315">Done child</tspan></text>
 </g>
 <g class="node task dropped" data-id="droppedChild" data-status="dropped">
 <title>Dropped child (droppedChild): dropped</title>
-<rect class="card" x="276" y="278" width="150" height="43" rx="10"/>
-<circle class="badge" cx="351" cy="321" r="10"/>
-<text class="mark" x="351" y="325" text-anchor="middle">~</text>
-<text class="label" text-anchor="middle"><tspan x="351" y="300">Dropped child</tspan></text>
+<rect class="card" x="276" y="293" width="150" height="43" rx="10"/>
+<circle class="badge" cx="351" cy="336" r="10"/>
+<text class="mark" x="351" y="340" text-anchor="middle">~</text>
+<text class="label" text-anchor="middle"><tspan x="351" y="315">Dropped child</tspan></text>
 </g>
 <g class="node milestone" data-id="stuck">
 <title>Stuck (stuck)</title>
-<polygon class="gate" points="578,602 728,602 740,628 728,654 578,654 566,628"/>
-<text class="label" text-anchor="middle"><tspan x="653" y="624">Stuck</tspan></text>
-<text class="caption" x="653" y="639" text-anchor="middle" font-size="11">0 of 2</text>
+<polygon class="gate" points="578,617 728,617 740,643 728,669 578,669 566,643"/>
+<text class="label" text-anchor="middle"><tspan x="653" y="639">Stuck</tspan></text>
+<text class="caption" x="653" y="654" text-anchor="middle" font-size="11">0 of 2</text>
 </g>
 <g class="node milestone reached" data-id="empty">
 <title>Empty (empty)</title>
-<polygon class="gate" points="578,377 728,377 740,403 728,429 578,429 566,403"/>
-<text class="label" text-anchor="middle"><tspan x="653" y="399">Empty</tspan></text>
-<text class="caption" x="653" y="414" text-anchor="middle" font-size="11">reached</text>
+<polygon class="gate" points="578,392 728,392 740,418 728,444 578,444 566,418"/>
+<text class="label" text-anchor="middle"><tspan x="653" y="414">Empty</tspan></text>
+<text class="caption" x="653" y="429" text-anchor="middle" font-size="11">reached</text>
 </g>
 </svg>

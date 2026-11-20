@@ -23,7 +23,10 @@ use crate::{
     status::Status,
     text::{Note, Text},
 };
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::{
+    collections::{BTreeMap, BTreeSet},
+    vec::Vec,
+};
 use build::Builder;
 use core::fmt;
 use thiserror::Error;
@@ -171,7 +174,54 @@ impl Plan {
         Some(Progress {
             needs: self.count(&milestone.needs),
             wants: self.count(&milestone.wants),
+            work: self
+                .work(&milestone.id)
+                .unwrap_or(Count { done: 0, total: 0 }),
         })
+    }
+
+    /// Every task a task or milestone needs, directly or through other work
+    /// (and through the milestones it needs), and how many are finished:
+    /// what it takes to unlock it. Nice-to-haves don't count.
+    ///
+    /// ```
+    /// use dagenda_core::id::Id;
+    ///
+    /// let plan = dagenda_core::parse(
+    ///     "roadmap
+    ///      [x] task parser
+    ///      [ ] task resolver
+    ///        needs parser
+    ///      [ ] task views
+    ///        needs resolver",
+    /// )?;
+    /// let work = plan.work(&Id::new("views")?).ok_or("no views")?;
+    /// assert_eq!((work.done, work.total), (1, 2), "parser, through resolver");
+    /// # Ok::<(), Box<dyn core::error::Error>>(())
+    /// ```
+    #[must_use]
+    pub fn work(&self, id: &Id) -> Option<Count> {
+        let needs = |id: &Id| -> Option<&Vec<Located<Id>>> {
+            self.task(id)
+                .map(|task| &task.needs)
+                .or_else(|| self.milestone(id).map(|milestone| &milestone.needs))
+        };
+        let mut stack: Vec<&Id> = needs(id)?.iter().map(|need| &need.node).collect();
+        let mut seen = BTreeSet::new();
+        let mut count = Count { done: 0, total: 0 };
+        while let Some(next) = stack.pop() {
+            if !seen.insert(next) {
+                continue;
+            }
+            if let Some(task) = self.task(next) {
+                count.total += 1;
+                if task.status.is_finished() {
+                    count.done += 1;
+                }
+            }
+            stack.extend(needs(next).into_iter().flatten().map(|need| &need.node));
+        }
+        Some(count)
     }
 
     /// Whether a task can be worked on now.
@@ -416,6 +466,10 @@ pub struct Progress {
 
     /// The nice-to-haves.
     pub wants: Count,
+
+    /// Every task it needs, directly or through other work: what reaching
+    /// it takes. See [`Plan::work`].
+    pub work: Count,
 }
 
 impl Progress {

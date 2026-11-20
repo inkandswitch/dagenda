@@ -92,13 +92,15 @@ impl Report<'_> {
             };
             write!(
                 f,
-                "  {}{}: {reached}; {}/{} needed, {}/{} wanted",
+                "  {}{}: {reached}; {}/{} needed, {}/{} wanted, {}/{} of the work behind it",
                 milestone.id,
                 Label(milestone.label.as_ref()),
                 progress.needs.done,
                 progress.needs.total,
                 progress.wants.done,
                 progress.wants.total,
+                progress.work.done,
+                progress.work.total,
             )?;
             if let Some(target) = &milestone.target {
                 write!(f, ", target {}", target.node)?;

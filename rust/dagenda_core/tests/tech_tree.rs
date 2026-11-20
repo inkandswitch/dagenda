@@ -285,7 +285,11 @@ track core
         matches!(parent.shape, Shape::Task { locked: true, .. }),
         "it waits on its open parts"
     );
-    assert!(parent.caption.is_none());
+    assert_eq!(
+        parent.caption.as_deref(),
+        Some("1 of 3 done below"),
+        "how close it is to unlocking: first, second, and setup through second"
+    );
     let svg = dagenda_core::parse("roadmap\n[-] task a\n  [ ] task b\n")?.to_svg();
     assert!(
         svg.contains(r#"class="node task in-progress waiting""#),
