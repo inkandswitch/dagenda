@@ -7,11 +7,13 @@
 //! passes through is known.
 
 use super::{
-    DocumentId, Entry, Link, Located, Location, Milestone, Node, NodeKind, Plan, ResolveError,
-    ResolveErrorKind, Site, Task, Track, flat,
+    DocumentId, Entry, Link, Located, Location, Milestone, Node, NodeKind, Person, Plan,
+    ResolveError, ResolveErrorKind, Site, Task, Track, flat,
     warning::{Warning, WarningKind},
 };
-use crate::{ast, errors::Errors, id::Id, span::Spanned, status::Status, text::Text};
+use crate::{
+    ast, errors::Errors, handle::Handle, id::Id, span::Spanned, status::Status, text::Text,
+};
 use alloc::{
     collections::{BTreeMap, VecDeque},
     vec,
@@ -25,6 +27,7 @@ pub(super) struct Builder<'d> {
     tracks: Vec<Track>,
     tasks: Vec<Task>,
     milestones: Vec<Milestone>,
+    people: BTreeMap<Handle, Person>,
     index: BTreeMap<Id, Entry>,
 
     /// `extend` blocks, merged once every document's ids are known.
@@ -57,6 +60,7 @@ impl<'d> Builder<'d> {
                     }
                     self.extends.push((document, extend));
                 }
+                ast::Item::Person(person) => self.person(document, person),
             }
         }
     }
@@ -178,6 +182,36 @@ impl<'d> Builder<'d> {
         for under in &ast.under {
             self.task(document, under, track, Some(&ast.id.node));
         }
+    }
+
+    /// Add someone's picture. A second definition is an error, and the
+    /// first one stands.
+    fn person(&mut self, document: DocumentId, person: &Spanned<ast::Person>) {
+        let ast = &person.node;
+        let defined = Location {
+            document,
+            span: person.span,
+        };
+        if let Some(first) = self.people.get(&ast.handle.node) {
+            self.errors.push(ResolveError::new(
+                Location {
+                    document,
+                    span: ast.handle.span,
+                },
+                ResolveErrorKind::DuplicatePerson {
+                    handle: ast.handle.node.clone(),
+                    first: first.defined,
+                },
+            ));
+            return;
+        }
+        self.people.insert(
+            ast.handle.node.clone(),
+            Person {
+                avatar: locate(document, &ast.avatar),
+                defined,
+            },
+        );
     }
 
     fn milestone(&mut self, document: DocumentId, milestone: &'d Spanned<ast::Milestone>) {
@@ -510,6 +544,7 @@ impl<'d> Builder<'d> {
             tracks: self.tracks,
             tasks: self.tasks,
             milestones: self.milestones,
+            people: self.people,
             index: self.index,
             finished,
             chain,

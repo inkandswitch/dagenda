@@ -3,7 +3,7 @@
 // collaborative editor into CodeMirror decorations. Line for line.
 
 const BLOCKS = new Set(["extend", "milestone", "nice-to-have", "roadmap", "title", "track"])
-const DETAILS = new Set(["color", "colour", "dri", "est", "issue", "link", "needs", "note", "pr", "target"])
+const DETAILS = new Set(["avatar", "color", "colour", "dri", "est", "issue", "link", "needs", "note", "pr", "target"])
 
 /** The status class for each box's mark, as the SVG uses. */
 export const STATUS = {
@@ -69,6 +69,8 @@ const colour = (text) => {
   }
 
   const [, word = "", gap = "", after = ""] = /^(\S*)(\s*)(.*)$/su.exec(rest) ?? []
+  // A person, whose avatar is under them
+  if (word.startsWith("@")) return [token("person", word), token("", gap + after)]
   if (BLOCKS.has(word)) {
     parts.push(token("keyword", word), token("", gap))
     if (word === "title") return [...parts, token("label", after)]
@@ -84,7 +86,9 @@ const colour = (text) => {
       case "note":
         return [...parts, token("markdown", after)]
       case "dri":
-        return [...parts, token("person", after)]
+        return [...parts, ...after.split(/(,\s*)/).map((part, i) => token(i % 2 ? "" : "person", part))]
+      case "avatar":
+        return [...parts, token("ref", after)]
       case "pr":
       case "issue":
         return [...parts, token("ref", after)]

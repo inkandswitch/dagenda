@@ -461,7 +461,7 @@ fn find_task<'a>(
                     .under
                     .iter()
                     .for_each(|task| task_tree(task, &mut found)),
-                Item::Milestone(_) => {}
+                Item::Milestone(_) | Item::Person(_) => {}
             }
         }
         if let Some(task) = found.into_iter().find(|task| task.node.id.node == *id) {
@@ -488,7 +488,11 @@ fn find_milestone<'a>(
                 Item::Milestone(milestone) if milestone.node.id.node == *id => {
                     Some((index, milestone))
                 }
-                Item::Milestone(_) | Item::Track(_) | Item::Task(_) | Item::Extend(_) => None,
+                Item::Milestone(_)
+                | Item::Track(_)
+                | Item::Task(_)
+                | Item::Extend(_)
+                | Item::Person(_) => None,
             })
         })
         .ok_or_else(|| EditError::NotAMilestone(id.clone()))

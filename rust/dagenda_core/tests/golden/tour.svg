@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" class="dagenda tech-tree" viewBox="0 0 1536 931" width="1536" height="931" font-family="system-ui, sans-serif" font-size="13">
+<svg xmlns="http://www.w3.org/2000/svg" class="dagenda tech-tree" viewBox="0 0 1536 945" width="1536" height="945" font-family="system-ui, sans-serif" font-size="13">
 <style>
 .dagenda .canvas { fill: #fff; }
 .dagenda text { fill: #1d1c1a; }
@@ -52,6 +52,9 @@
 .dagenda .facts a .fact { fill: #2f6fd6; }
 .dagenda .facts a:hover .fact { text-decoration: underline; }
 .dagenda .banner .dri { text-transform: none; letter-spacing: 0; font-weight: 500; }
+.dagenda .sticker .ring { fill: #fff; }
+.dagenda .sticker .face { fill: #e4dfd6; }
+.dagenda .sticker .initial { font-size: 11px; font-weight: 650; fill: #4a4640; }
 .dagenda .available .card { stroke: #b08a1e; stroke-width: 2; }
 .dagenda .available .badge { stroke: #b08a1e; stroke-width: 2; }
 .dagenda .locked { opacity: 0.55; }
@@ -120,6 +123,8 @@
   .dagenda:not(.light) .facts .dri { fill: #ecebe8; }
   .dagenda:not(.light) .facts .sep { fill: #6f6b63; }
   .dagenda:not(.light) .facts a .fact { fill: #7aa7f0; }
+  .dagenda:not(.light) .sticker .face { fill: #3a3834; }
+  .dagenda:not(.light) .sticker .initial { fill: #ecebe8; }
   .dagenda:not(.light) :is(.card, .badge) { fill: #1f1e1c; }
   .dagenda:not(.light) :is(.not-started, .idea, .deferred, .dropped):not(.available) :is(.card, .badge) { stroke: #5b574f; }
   .dagenda:not(.light) .done .card { fill: #1f2e20; }
@@ -168,6 +173,8 @@
 .dagenda.dark .facts .dri { fill: #ecebe8; }
 .dagenda.dark .facts .sep { fill: #6f6b63; }
 .dagenda.dark .facts a .fact { fill: #7aa7f0; }
+.dagenda.dark .sticker .face { fill: #3a3834; }
+.dagenda.dark .sticker .initial { fill: #ecebe8; }
 .dagenda.dark :is(.card, .badge) { fill: #1f1e1c; }
 .dagenda.dark :is(.not-started, .idea, .deferred, .dropped):not(.available) :is(.card, .badge) { stroke: #5b574f; }
 .dagenda.dark .done .card { fill: #1f2e20; }
@@ -181,21 +188,22 @@
 .dagenda.dark .edge.met { stroke: #5aa362; }
 </style>
 <defs><filter id="dagenda-glow" x="-25%" y="-50%" width="150%" height="200%"><feGaussianBlur stdDeviation="5"/></filter></defs>
-<rect class="canvas" width="1536" height="931"/>
+<defs><filter id="dagenda-lift" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="1" stdDeviation="1" flood-opacity="0.35"/></filter><clipPath id="dagenda-face" clipPathUnits="objectBoundingBox"><circle cx="0.5" cy="0.5" r="0.5"/></clipPath></defs>
+<rect class="canvas" width="1536" height="945"/>
 <text class="title" x="16" y="34">A tour of the notation</text>
-<rect class="branch track hue-0" data-branch="0" data-track="core" x="16" y="110" width="506" height="805" rx="12"/>
-<rect class="branch track hue-5" data-branch="1" data-track="views" x="552" y="110" width="506" height="805" rx="12"/>
-<rect class="branch untracked" data-branch="2" x="1088" y="110" width="178" height="805" rx="12"/>
+<rect class="branch track hue-0" data-branch="0" data-track="core" x="16" y="110" width="506" height="819" rx="12"/>
+<rect class="branch track hue-5" data-branch="1" data-track="views" x="552" y="110" width="506" height="819" rx="12"/>
+<rect class="branch untracked" data-branch="2" x="1088" y="110" width="178" height="819" rx="12"/>
 <g class="band side"><rect x="0" y="110" width="1536" height="224"/><text x="22" y="126">Not on a milestone</text></g>
 <g class="banner track hue-0 depth-0" data-track="core"><rect x="16" y="50" width="1042" height="24" rx="8"/><text x="537" y="66" text-anchor="middle">Core<tspan class="dri"> · @alice</tspan></text></g>
 <g class="banner track hue-5 depth-1" data-track="views"><rect x="552" y="80" width="506" height="24" rx="8"/><text x="805" y="96" text-anchor="middle">Views [nested]</text></g>
 <g class="banner untracked depth-0"><rect x="1088" y="50" width="178" height="54" rx="8"/><text x="1177" y="66" text-anchor="middle">Other tasks</text></g>
 <g class="era" data-milestone="itParses"><line class="hit" x1="16" y1="556" x2="1310" y2="556" style="stroke-opacity:0;stroke-width:14;stroke-dasharray:none"/><line x1="16" y1="556" x2="1310" y2="556"/><text x="22" y="549">It parses</text></g>
 <g class="era" data-milestone="firstPicture"><line class="hit" x1="16" y1="334" x2="1310" y2="334" style="stroke-opacity:0;stroke-width:14;stroke-dasharray:none"/><line x1="16" y1="334" x2="1310" y2="334"/><text x="22" y="327">First picture</text></g>
-<path class="edge met" data-from="parser" data-to="resolver" d="M105,812 L105,798 Q105,790 113,790 L253,790 Q261,790 261,782 L261,762"/>
+<path class="edge met" data-from="parser" data-to="resolver" d="M105,826 L105,812 Q105,804 113,804 L253,804 Q261,804 261,796 L261,776"/>
 <path class="edge waiting" data-from="resolver" data-to="techTree" d="M269,638 L269,624 Q269,616 277,616 L875,616 Q883,616 883,608 L883,483"/>
-<path class="edge met" data-from="duplicates" data-to="resolver" d="M269,812 L269,766"/>
-<path class="edge waiting" data-from="cycles" data-to="resolver" d="M433,812 L433,798 Q433,790 425,790 L285,790 Q277,790 277,782 L277,762"/>
+<path class="edge met" data-from="duplicates" data-to="resolver" d="M269,826 L269,780"/>
+<path class="edge waiting" data-from="cycles" data-to="resolver" d="M433,826 L433,812 Q433,804 425,804 L285,804 Q277,804 277,796 L277,776"/>
 <path class="edge waiting wanted" data-from="skillTree" data-to="firstPicture" d="M723,416 L723,402 Q723,394 731,394 L1385,394 Q1393,394 1393,386 L1393,360"/>
 <path class="edge waiting" data-from="itParses" data-to="techTree" d="M1393,530 L1393,516 Q1393,508 1385,508 L899,508 Q891,508 891,500 L891,483"/>
 <path class="edge waiting" data-from="itParses" data-to="firstPicture" d="M1401,530 L1401,360"/>
@@ -205,15 +213,16 @@
 <title>Parser (parser): done
 est 2026-11-19
 PR #1</title>
-<rect class="card" x="30" y="812" width="150" height="75" rx="10"/>
-<circle class="badge" cx="105" cy="887" r="10"/>
-<path class="check" d="M100,887 l3,4 l6,-8"/>
-<text class="label" text-anchor="middle"><tspan x="105" y="834">Parser</tspan></text>
-<text class="facts" x="105" y="854" text-anchor="middle" font-size="11"><tspan class="fact est">est 2026-11-19</tspan></text>
-<text class="facts" x="105" y="868" text-anchor="middle" font-size="11"><a href="https://github.com/owner/repo/pull/1" target="_blank"><tspan class="fact ref">PR #1</tspan></a></text>
+<rect class="card" x="30" y="826" width="150" height="75" rx="10"/>
+<circle class="badge" cx="105" cy="901" r="10"/>
+<path class="check" d="M100,901 l3,4 l6,-8"/>
+<text class="label" text-anchor="middle"><tspan x="105" y="848">Parser</tspan></text>
+<text class="facts" x="105" y="868" text-anchor="middle" font-size="11"><tspan class="fact est">est 2026-11-19</tspan></text>
+<text class="facts" x="105" y="882" text-anchor="middle" font-size="11"><a href="https://github.com/owner/repo/pull/1" target="_blank"><tspan class="fact ref">PR #1</tspan></a></text>
 </g>
 <g class="node task in-progress waiting" data-id="resolver" data-status="in-progress" data-era="itParses">
 <title>Resolver (resolver): in progress, waiting on something
+@alice · @bob
 est 2026-12
 target 2026-Q4 · #2
 #2 comment
@@ -224,32 +233,34 @@ Resolves ids across every document.
 ```
 // Not a comment: this is inside the note.
 ```</title>
-<rect class="glow" x="194" y="638" width="150" height="118" rx="10" filter="url(#dagenda-glow)"/>
-<rect class="card" x="194" y="638" width="150" height="118" rx="10"/>
-<circle class="badge" cx="269" cy="756" r="10"/>
-<circle class="spinner" cx="269" cy="756" r="10" pathLength="100"/>
-<text class="mark" x="269" y="760" text-anchor="middle">🚧</text>
+<rect class="glow" x="186" y="638" width="166" height="132" rx="10" filter="url(#dagenda-glow)"/>
+<rect class="card" x="186" y="638" width="166" height="132" rx="10"/>
+<circle class="badge" cx="269" cy="770" r="10"/>
+<circle class="spinner" cx="269" cy="770" r="10" pathLength="100"/>
+<text class="mark" x="269" y="774" text-anchor="middle">🚧</text>
 <text class="label" text-anchor="middle"><tspan x="269" y="660">Resolver</tspan></text>
 <text class="caption" x="269" y="675" text-anchor="middle" font-size="11">2 of 3 done below</text>
-<text class="facts" x="269" y="695" text-anchor="middle" font-size="11"><tspan class="fact est">est 2026-12</tspan></text>
-<text class="facts" x="269" y="709" text-anchor="middle" font-size="11"><tspan class="fact target">target 2026-Q4</tspan><tspan class="sep"> · </tspan><a href="https://github.com/owner/repo/issues/2" target="_blank"><tspan class="fact ref">#2</tspan></a></text>
-<text class="facts" x="269" y="723" text-anchor="middle" font-size="11"><a href="https://github.com/owner/repo/issues/2#issuecomment-3" target="_blank"><tspan class="fact link">#2 comment</tspan></a></text>
-<text class="facts" x="269" y="737" text-anchor="middle" font-size="11"><a href="https://example.com/resolver-design" target="_blank"><tspan class="fact link">Design doc</tspan></a></text>
+<text class="facts" x="269" y="695" text-anchor="middle" font-size="11"><tspan class="fact dri">@alice</tspan><tspan class="sep"> · </tspan><tspan class="fact dri">@bob</tspan></text>
+<text class="facts" x="269" y="709" text-anchor="middle" font-size="11"><tspan class="fact est">est 2026-12</tspan></text>
+<text class="facts" x="269" y="723" text-anchor="middle" font-size="11"><tspan class="fact target">target 2026-Q4</tspan><tspan class="sep"> · </tspan><a href="https://github.com/owner/repo/issues/2" target="_blank"><tspan class="fact ref">#2</tspan></a></text>
+<text class="facts" x="269" y="737" text-anchor="middle" font-size="11"><a href="https://github.com/owner/repo/issues/2#issuecomment-3" target="_blank"><tspan class="fact link">#2 comment</tspan></a></text>
+<text class="facts" x="269" y="751" text-anchor="middle" font-size="11"><a href="https://example.com/resolver-design" target="_blank"><tspan class="fact link">Design doc</tspan></a></text>
+<g class="sticker" data-person="@alice" transform="translate(348 652) rotate(-8)"><title>@alice</title><circle class="ring" r="13" filter="url(#dagenda-lift)"/><circle class="face" r="11"/><text class="initial" y="4" text-anchor="middle">A</text><image href="https://github.com/octocat.png?size=96" x="-11" y="-11" width="22" height="22" preserveAspectRatio="xMidYMid slice" clip-path="url(#dagenda-face)"/></g>
 </g>
 <g class="node task done" data-id="duplicates" data-status="done" data-era="itParses">
 <title>Duplicate ids (duplicates): done
 @bob</title>
-<rect class="card" x="194" y="812" width="150" height="61" rx="10"/>
-<circle class="badge" cx="269" cy="873" r="10"/>
-<path class="check" d="M264,873 l3,4 l6,-8"/>
-<text class="label" text-anchor="middle"><tspan x="269" y="834">Duplicate ids</tspan></text>
-<text class="facts" x="269" y="854" text-anchor="middle" font-size="11"><tspan class="fact dri">@bob</tspan></text>
+<rect class="card" x="194" y="826" width="150" height="61" rx="10"/>
+<circle class="badge" cx="269" cy="887" r="10"/>
+<path class="check" d="M264,887 l3,4 l6,-8"/>
+<text class="label" text-anchor="middle"><tspan x="269" y="848">Duplicate ids</tspan></text>
+<text class="facts" x="269" y="868" text-anchor="middle" font-size="11"><tspan class="fact dri">@bob</tspan></text>
 </g>
 <g class="node task not-started available" data-id="cycles" data-status="not-started" data-era="itParses">
 <title>Cycles (cycles): not started</title>
-<rect class="card" x="358" y="812" width="150" height="43" rx="10"/>
-<circle class="badge" cx="433" cy="855" r="10"/>
-<text class="label" text-anchor="middle"><tspan x="433" y="834">Cycles</tspan></text>
+<rect class="card" x="358" y="826" width="150" height="43" rx="10"/>
+<circle class="badge" cx="433" cy="869" r="10"/>
+<text class="label" text-anchor="middle"><tspan x="433" y="848">Cycles</tspan></text>
 </g>
 <g class="node task not-started locked" data-id="techTree" data-status="not-started" data-era="firstPicture">
 <title>Tech tree (techTree): not started, waiting on something</title>

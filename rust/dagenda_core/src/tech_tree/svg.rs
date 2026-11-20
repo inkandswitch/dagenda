@@ -11,9 +11,11 @@
 //! | `data-track`          | branches, banners | the track's id                                          |
 //! | `data-milestone`      | bands, eras       | the milestone's id                                      |
 //! | `data-from`/`data-to` | edges             | the prerequisite's and the dependent's ids              |
+//! | `data-person`         | stickers          | the person's handle, as in `@alice`                     |
 //! | `class`               | nodes             | `node task` or `node milestone`; a status; `locked`, `waiting` (under way, but waiting on something), or `available`; `reached` |
 //! | `class`               | a node's parts    | `card` or `gate`, `badge`, and `mark` or `check`; a task in progress adds a `glow` behind its card and a turning `spinner` on its badge |
 //! | `class`               | branches, banners | `track`, `untracked`, or `milestones`; `hue-0` to `hue-7` for a palette colour (teal, indigo, rose, ochre, sage, plum, sky, terracotta), or `colour-rrggbb` for any other |
+//! | `class`               | stickers          | a `sticker` for each person on a task with an `avatar`, down its card's right edge: a `ring`, then a `face` with their `initial`, under their picture; past as many as fit (up to four), `sticker more` counts the rest |
 //! | `class`               | eras              | `era`, and `reached`                                    |
 //! | `class`               | bands             | `band reached` for a reached era; `band side` for the layer of work on no milestone |
 //! | `class`               | facts             | a `facts` row of `fact` spans: `dri`, `est`, `target`, `ref`, or `link`; the last two inside an `a` to their page |
@@ -25,14 +27,16 @@
 
 use super::{
     BADGE_RADIUS, BranchKind, CAPTION, FACT_GAP, FACT_LINE, FONT, Fact, LINE, MARGIN, NOTCH, Node,
-    PAD_Y, Point, SEPARATOR, SMALL_FONT, Shape, TITLE_FONT, TechTree,
+    PAD_Y, Point, SEPARATOR, SMALL_FONT, STICKER, STICKER_INSET, Shape, TITLE_FONT, TechTree,
 };
 use crate::{
     colour::{Colour, Rgb},
+    handle::Handles,
     plan::{Plan, Progress},
     status::Status,
 };
 use alloc::{
+    format,
     string::{String, ToString},
     vec::Vec,
 };
@@ -240,6 +244,14 @@ impl fmt::Display for Svg<'_> {
             f,
             r#"<defs><filter id="dagenda-glow" x="-25%" y="-50%" width="150%" height="200%"><feGaussianBlur stdDeviation="5"/></filter></defs>"#
         )?;
+        if tree.nodes.iter().any(|node| !node.stickers.is_empty()) {
+            // A sticker's lift off the card, and the circle its picture is
+            // cut to
+            writeln!(
+                f,
+                r#"<defs><filter id="dagenda-lift" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="1" stdDeviation="1" flood-opacity="0.35"/></filter><clipPath id="dagenda-face" clipPathUnits="objectBoundingBox"><circle cx="0.5" cy="0.5" r="0.5"/></clipPath></defs>"#
+            )?;
+        }
         writeln!(
             f,
             r#"<rect class="canvas" width="{width}" height="{height}"/>"#
@@ -357,7 +369,71 @@ fn task(
     }
 
     label(f, node)?;
+    stickers(f, node)?;
     f.write_str("</g>\n")
+}
+
+/// The people on a task with pictures, as stickers down its card's right
+/// edge from the top, each hanging a little off the side: where no line
+/// runs, since lines cross the gaps above and below a row and climb the
+/// gutters beside a branch, never between two cards. They stay within the
+/// card's height, so as many fit as it's tall, up to [`STICKERS`]; past
+/// that, the last counts the rest. The first lies on top, each tilted as if
+/// stuck on by hand. Under each picture, their initial on a plain face, in
+/// case it doesn't load, set low enough to show under the sticker above.
+fn stickers(f: &mut fmt::Formatter<'_>, node: &Node) -> fmt::Result {
+    let room = node.height.saturating_sub(2 * STICKER + 2);
+    let fit =
+        usize::try_from(room / STICKER_STEP).map_or(STICKERS, |more| (more + 1).min(STICKERS));
+    let (shown, rest) = if node.stickers.len() > fit {
+        node.stickers.split_at(fit.saturating_sub(1))
+    } else {
+        (node.stickers.as_slice(), &[][..])
+    };
+    let (right, top) = (
+        (node.x + node.width).saturating_sub(STICKER_INSET),
+        node.y + STICKER + 1,
+    );
+    let place = |index: usize| {
+        let down = u32::try_from(index).unwrap_or(0) * STICKER_STEP;
+        let tilt = TILTS.get(index % TILTS.len()).copied().unwrap_or(0);
+        format!("translate({right} {}) rotate({tilt})", top + down)
+    };
+    let baseline = |index: usize| if index == 0 { 4 } else { 7 };
+
+    // Last first, so the first lies on top
+    if !rest.is_empty() {
+        let names: Vec<String> = rest
+            .iter()
+            .map(|sticker| sticker.handle.to_string())
+            .collect();
+        writeln!(
+            f,
+            r#"<g class="sticker more" transform="{}"><title>{}</title><circle class="ring" r="{STICKER}" filter="url(#dagenda-lift)"/><circle class="face" r="{FACE}"/><text class="initial" y="{}" text-anchor="middle">+{}</text></g>"#,
+            place(shown.len()),
+            names.join(", "),
+            baseline(shown.len()),
+            rest.len()
+        )?;
+    }
+    for (index, sticker) in shown.iter().enumerate().rev() {
+        let initial = sticker
+            .handle
+            .name()
+            .chars()
+            .next()
+            .map_or('?', |c| c.to_ascii_uppercase());
+        writeln!(
+            f,
+            r#"<g class="sticker" data-person="{handle}" transform="{}"><title>{handle}</title><circle class="ring" r="{STICKER}" filter="url(#dagenda-lift)"/><circle class="face" r="{FACE}"/><text class="initial" y="{}" text-anchor="middle">{initial}</text><image href="{}" x="-{FACE}" y="-{FACE}" width="{size}" height="{size}" preserveAspectRatio="xMidYMid slice" clip-path="url(#dagenda-face)"/></g>"#,
+            place(index),
+            baseline(index),
+            Escaped(&sticker.avatar.src()),
+            handle = sticker.handle,
+            size = FACE * 2,
+        )?;
+    }
+    Ok(())
 }
 
 fn milestone(f: &mut fmt::Formatter<'_>, node: &Node, progress: Progress) -> fmt::Result {
@@ -451,6 +527,22 @@ fn label(f: &mut fmt::Formatter<'_>, node: &Node) -> fmt::Result {
     Ok(())
 }
 
+/// How many stickers fit on a card's corner.
+const STICKERS: usize = 4;
+
+/// The width of the white ring around a sticker's picture.
+const RING: u32 = 2;
+
+/// A sticker's picture's radius, inside its ring.
+const FACE: u32 = STICKER - RING;
+
+/// How far apart stickers sit down a card's edge: a little closer than
+/// they're wide, so they overlap and each face still shows.
+const STICKER_STEP: u32 = 20;
+
+/// Each sticker's tilt in turn, in degrees.
+const TILTS: [i32; 4] = [-8, 6, -4, 9];
+
 const fn fact_class(fact: &Fact) -> &'static str {
     match fact {
         Fact::Dri(_) => "dri",
@@ -482,8 +574,8 @@ impl fmt::Display for More<'_> {
     }
 }
 
-/// ` · @handle` after a banner's heading, for its track's DRI.
-struct Dri<'a>(Option<&'a crate::handle::Handle>);
+/// ` · @handle, …` after a banner's heading, for its track's DRIs.
+struct Dri<'a>(Option<&'a Handles>);
 
 impl fmt::Display for Dri<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -809,6 +901,9 @@ const STYLE: &str = r"<style>
 .dagenda .facts a .fact { fill: #2f6fd6; }
 .dagenda .facts a:hover .fact { text-decoration: underline; }
 .dagenda .banner .dri { text-transform: none; letter-spacing: 0; font-weight: 500; }
+.dagenda .sticker .ring { fill: #fff; }
+.dagenda .sticker .face { fill: #e4dfd6; }
+.dagenda .sticker .initial { font-size: 11px; font-weight: 650; fill: #4a4640; }
 .dagenda .available .card { stroke: #b08a1e; stroke-width: 2; }
 .dagenda .available .badge { stroke: #b08a1e; stroke-width: 2; }
 .dagenda .locked { opacity: 0.55; }
@@ -877,6 +972,8 @@ const STYLE: &str = r"<style>
   .dagenda:not(.light) .facts .dri { fill: #ecebe8; }
   .dagenda:not(.light) .facts .sep { fill: #6f6b63; }
   .dagenda:not(.light) .facts a .fact { fill: #7aa7f0; }
+  .dagenda:not(.light) .sticker .face { fill: #3a3834; }
+  .dagenda:not(.light) .sticker .initial { fill: #ecebe8; }
   .dagenda:not(.light) :is(.card, .badge) { fill: #1f1e1c; }
   .dagenda:not(.light) :is(.not-started, .idea, .deferred, .dropped):not(.available) :is(.card, .badge) { stroke: #5b574f; }
   .dagenda:not(.light) .done .card { fill: #1f2e20; }
@@ -925,6 +1022,8 @@ const STYLE: &str = r"<style>
 .dagenda.dark .facts .dri { fill: #ecebe8; }
 .dagenda.dark .facts .sep { fill: #6f6b63; }
 .dagenda.dark .facts a .fact { fill: #7aa7f0; }
+.dagenda.dark .sticker .face { fill: #3a3834; }
+.dagenda.dark .sticker .initial { fill: #ecebe8; }
 .dagenda.dark :is(.card, .badge) { fill: #1f1e1c; }
 .dagenda.dark :is(.not-started, .idea, .deferred, .dropped):not(.available) :is(.card, .badge) { stroke: #5b574f; }
 .dagenda.dark .done .card { fill: #1f2e20; }

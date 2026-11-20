@@ -33,6 +33,17 @@ struct Report<'a> {
 }
 
 impl Report<'_> {
+    fn people(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut people = self.plan.people().peekable();
+        if people.peek().is_some() {
+            writeln!(f, "\npeople")?;
+        }
+        for (handle, person) in people {
+            writeln!(f, "  {handle}: avatar {}", person.avatar.node)?;
+        }
+        Ok(())
+    }
+
     fn tracks(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "\ntracks")?;
         for track in self.plan.tracks() {
@@ -154,6 +165,7 @@ impl fmt::Display for Report<'_> {
         self.tracks(f)?;
         self.tasks(f)?;
         self.milestones(f)?;
+        self.people(f)?;
         self.warnings(f)
     }
 }

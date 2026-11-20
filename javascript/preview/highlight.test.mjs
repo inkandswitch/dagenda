@@ -26,6 +26,13 @@ test("colours details by kind", () => {
   assert.match(html, /<span class="ref">https:\/\/example.com<\/span> <span class="label">\[Spec\]<\/span>/)
 })
 
+test("colours a person, their avatar, and a list of DRIs", () => {
+  const html = highlight("@alice\n  avatar gh:octocat\n[ ] a\n  dri @alice, @bob")
+  assert.match(html, /^<span class="person">@alice<\/span>\n/)
+  assert.match(html, /<span class="detail">avatar<\/span> <span class="ref">gh:octocat<\/span>/)
+  assert.match(html, /<span class="person">@alice<\/span>, <span class="person">@bob<\/span>/)
+})
+
 test("escapes what HTML would swallow", () => {
   const html = highlight("[ ] a [Fish & chips <3>]")
   assert.match(html, /Fish &amp; chips &lt;3&gt;/)

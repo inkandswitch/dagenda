@@ -6,7 +6,8 @@ use thiserror::Error;
 
 /// The notation's keywords. None of them can be an id, so a line holding just
 /// one is never mistaken for a milestone member.
-pub const KEYWORDS: [&str; 17] = [
+pub const KEYWORDS: [&str; 18] = [
+    "avatar",
     "color",
     "colour",
     "dri",

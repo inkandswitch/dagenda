@@ -38,10 +38,12 @@
 //! | `est <date>`                  | When it's expected to land, as in `2026-11-19`                          |
 //! | `target <date>`               | When it should land, as in `2026-Q4` or `EOY26`                         |
 //! | `colour <name or #rrggbb>`    | A track's colour: teal, indigo, rose, ochre, sage, plum, sky, terracotta, or any `#rrggbb` (`color` works too); otherwise the next free one |
-//! | `dri @<handle>`               | The person responsible                                                  |
+//! | `dri @<handle>, …`            | The people responsible                                                  |
 //! | `pr gh:<owner>/<repo>#<n>`    | A pull request (`issue gh:…` for an issue)                              |
 //! | `link <url> [<label>]`        | Any other page about it: a GitHub comment, a doc, a demo                |
 //! | `note <text>`                 | A note in markdown; leave the text off and indent it below for a long one |
+//! | `@<handle>`                   | A person, at the top level, with `avatar` indented under it             |
+//! | `avatar gh:<login>` or `<url>`| A person's picture: their GitHub one, or any address. It goes on their cards |
 //! | `// …`                        | A comment line                                                          |
 //!
 //! Labels are the display text in brackets; write `\]` for a `]` inside one.
@@ -112,6 +114,7 @@
 extern crate alloc;
 
 pub mod ast;
+pub mod avatar;
 pub mod check;
 pub mod colour;
 pub mod date;

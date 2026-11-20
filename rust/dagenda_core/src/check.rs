@@ -176,9 +176,9 @@ impl fmt::Display for Severity {
 /// Where the other half of a two-place error is.
 const fn first_location(kind: &ResolveErrorKind) -> Option<Location> {
     match kind {
-        ResolveErrorKind::Duplicate { first, .. } | ResolveErrorKind::Conflict { first, .. } => {
-            Some(*first)
-        }
+        ResolveErrorKind::Duplicate { first, .. }
+        | ResolveErrorKind::DuplicatePerson { first, .. }
+        | ResolveErrorKind::Conflict { first, .. } => Some(*first),
         ResolveErrorKind::Unknown(_)
         | ResolveErrorKind::WrongKind { .. }
         | ResolveErrorKind::Cycle(_) => None,

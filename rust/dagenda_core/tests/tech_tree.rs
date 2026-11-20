@@ -653,3 +653,83 @@ track t [\"Quotes\" & <tags>]
     assert!(!svg.contains("<3"));
     Ok(())
 }
+
+/// Everyone on a task is named on its card; those with an `avatar` also
+/// get a sticker down its side, in the order they're listed, the first on
+/// top. Past as many as fit, the last sticker counts the rest.
+#[test]
+fn people_with_pictures_are_stickers_on_their_cards() -> TestResult {
+    let picture = tree(
+        "roadmap
+@alice
+  avatar gh:octocat
+@carol
+  avatar https://example.com/carol.png?size=64&v=2
+[ ] pair
+  dri @alice, @bob, @carol
+[ ] crowd
+  dri @a, @b, @c, @d, @e
+@a
+  avatar gh:a
+@b
+  avatar gh:b
+@c
+  avatar gh:c
+@d
+  avatar gh:d
+@e
+  avatar gh:e",
+    )?;
+    let node = |id: &str| picture.nodes.iter().find(|node| node.id.as_str() == id);
+    let pair = node("pair").ok_or("no pair")?;
+    let stuck: Vec<String> = pair
+        .stickers
+        .iter()
+        .map(|sticker| sticker.handle.to_string())
+        .collect();
+    assert_eq!(stuck, ["@alice", "@carol"], "@bob has no picture");
+    let named: Vec<String> = pair.facts.iter().flatten().map(Fact::text).collect();
+    assert_eq!(named, ["@alice", "@bob", "@carol"], "but everyone is named");
+
+    let svg = picture.to_svg();
+    assert!(svg.contains(r#"<clipPath id="dagenda-face""#), "{svg}");
+    assert!(svg.contains(r#"href="https://github.com/octocat.png?size=96""#));
+    assert!(
+        svg.contains(r#"href="https://example.com/carol.png?size=64&amp;v=2""#),
+        "escaped"
+    );
+    let carol = svg.find(r#"data-person="@carol""#).ok_or("no @carol")?;
+    let alice = svg.find(r#"data-person="@alice""#).ok_or("no @alice")?;
+    assert!(carol < alice, "the first is drawn last, so it lies on top");
+
+    let crowd = svg
+        .split(r#"data-id="crowd""#)
+        .nth(1)
+        .and_then(|rest| rest.split("</g>\n<g class=\"node").next())
+        .ok_or("no crowd")?;
+    let shown = crowd.matches(r#"class="sticker""#).count();
+    assert!(
+        (1..4).contains(&shown),
+        "some fit, and one counts the rest: {crowd}"
+    );
+    let rest = ["@a", "@b", "@c", "@d", "@e"]
+        .get(shown..)
+        .ok_or("too many")?;
+    assert!(
+        crowd.contains(&format!("<title>{}</title>", rest.join(", ")))
+            && crowd.contains(&format!(">+{}</text>", rest.len())),
+        "{crowd}"
+    );
+    let card = node("crowd").ok_or("no crowd card")?;
+    for at in crowd.split("translate(").skip(1) {
+        let y: u32 = at.split([' ', ')']).nth(1).ok_or("no y")?.parse()?;
+        assert!(
+            y >= card.y + 13 && y + 13 <= card.y + card.height,
+            "a sticker stays beside its card, clear of the lines above and below it"
+        );
+    }
+
+    let plain = tree("roadmap\n[ ] a\n  dri @alice")?.to_svg();
+    assert!(!plain.contains("dagenda-face"), "no stickers, no clip path");
+    Ok(())
+}

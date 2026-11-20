@@ -49,9 +49,10 @@ mod route;
 pub mod svg;
 
 use crate::{
+    avatar::Avatar,
     colour::{Colour, Named},
     date::Date,
-    handle::Handle,
+    handle::{Handle, Handles},
     id::Id,
     plan::{Count, DocumentId, Plan, Progress, Readiness, Task, Track},
     reference::{Link, Ref},
@@ -222,8 +223,8 @@ pub struct Banner {
     /// Its text: the track's label, or its id.
     pub heading: String,
 
-    /// The track's DRI.
-    pub dri: Option<Handle>,
+    /// The track's DRIs.
+    pub dri: Option<Handles>,
 
     /// Its track's colour: the one it sets, or the next free one in the
     /// palette, in the order tracks are written.
@@ -281,6 +282,10 @@ pub struct Node {
     /// What it says under that, a row at a time: who's on it, when it's
     /// expected, and its links.
     pub facts: Vec<Vec<Fact>>,
+
+    /// The people on it that a document gives a picture, in the order
+    /// they're listed, for stickers down its right edge.
+    pub stickers: Vec<Sticker>,
 
     /// Its notes, for a tooltip.
     pub notes: Vec<Note>,
@@ -353,6 +358,16 @@ pub enum Shape {
         /// When it should be reached.
         target: Option<Date>,
     },
+}
+
+/// Someone on a task, with their picture: a sticker on its card.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Sticker {
+    /// Who.
+    pub handle: Handle,
+
+    /// Their picture.
+    pub avatar: Avatar,
 }
 
 /// Something a card says about its task, under the label.
@@ -452,6 +467,16 @@ const FACT_GAP: u32 = 4;
 const SEPARATOR: &str = "\u{a0}·\u{a0}";
 const BADGE_RADIUS: u32 = 10;
 
+/// A person's sticker's radius, its ring included.
+const STICKER: u32 = 13;
+
+/// How far in from a card's right edge a sticker's middle sits: the rest
+/// of it hangs off the side.
+const STICKER_INSET: u32 = 4;
+
+/// The least space between a sticker and the label beside it.
+const STICKER_GAP: u32 = 3;
+
 /// How far a milestone's pointed ends stick out.
 const NOTCH: u32 = 12;
 
@@ -501,6 +526,12 @@ fn nodes(plan: &Plan) -> (Vec<Node>, BTreeMap<Id, usize>) {
         };
         let mut card = node(&task.id, task.label.as_ref(), shape, facts(task));
         card.notes = task.notes.iter().map(|note| note.node.clone()).collect();
+        card.stickers = stickers(plan, task);
+        if !card.stickers.is_empty() {
+            // Room for the stickers over its right edge, clear of the
+            // label, and the same on the left so the label stays centred
+            card.width += 2 * (STICKER + STICKER_INSET + STICKER_GAP).saturating_sub(PAD_X);
+        }
         nodes.push(card);
     }
 
@@ -589,6 +620,7 @@ fn node(id: &Id, label: Option<&Text>, shape: Shape, facts: Vec<Fact>) -> Node {
         lines,
         caption,
         facts,
+        stickers: Vec::new(),
         notes: Vec::new(),
         branch: 0,
         row: 0,
@@ -605,7 +637,7 @@ fn node(id: &Id, label: Option<&Text>, shape: Shape, facts: Vec<Fact>) -> Node {
 fn facts(task: &Task) -> Vec<Fact> {
     task.dri
         .iter()
-        .map(|dri| Fact::Dri(dri.node.clone()))
+        .flat_map(|dri| dri.node.iter().cloned().map(Fact::Dri))
         .chain(task.est.as_ref().map(|est| Fact::Est(est.node)))
         .chain(task.target.as_ref().map(|target| Fact::Target(target.node)))
         .chain(
@@ -614,6 +646,21 @@ fn facts(task: &Task) -> Vec<Fact> {
                 .map(|reference| Fact::Ref(reference.node.clone())),
         )
         .chain(task.links.iter().map(|link| Fact::Link(link.node.clone())))
+        .collect()
+}
+
+/// A sticker for each of a task's people that a document gives a picture,
+/// in the order they're listed.
+fn stickers(plan: &Plan, task: &Task) -> Vec<Sticker> {
+    task.dri
+        .iter()
+        .flat_map(|dri| dri.node.iter())
+        .filter_map(|handle| {
+            plan.person(handle).map(|person| Sticker {
+                handle: handle.clone(),
+                avatar: person.avatar.node.clone(),
+            })
+        })
         .collect()
 }
 
@@ -1029,7 +1076,7 @@ fn local_tiers(
 struct BannerSpec {
     kind: BranchKind,
     heading: String,
-    dri: Option<Handle>,
+    dri: Option<Handles>,
     colour: Option<Colour>,
     depth: usize,
     first: usize,
@@ -1479,8 +1526,8 @@ fn fit_banners(inner: &mut [u32], banners: &[BannerSpec], gutters: &[u32]) {
 }
 
 /// Roughly how wide a banner's heading sets: in capitals, with 0.06em
-/// between letters, then the DRI as written.
-fn heading_width(heading: &str, dri: Option<&Handle>) -> u32 {
+/// between letters, then the DRIs as written.
+fn heading_width(heading: &str, dri: Option<&Handles>) -> u32 {
     let capitals = heading.to_uppercase();
     let letters = u32::try_from(capitals.chars().count()).unwrap_or(u32::MAX);
     let dri = dri.map_or(0, |dri| {

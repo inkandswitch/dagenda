@@ -162,6 +162,73 @@ fn nice_to_haves_say_what_to_do() {
     }
 }
 
+/// A person is their handle and their picture; a task's or track's people
+/// go on one `dri` line, each once.
+#[test]
+fn people_say_what_to_do() {
+    for (source, expected) in [
+        (
+            "roadmap\n@alice",
+            "2:1: give `@alice` a picture on the line below, indented, as in `avatar gh:octocat`",
+        ),
+        (
+            "roadmap\n@alice [Alice]",
+            "2:8: a person's line is just their handle; indent their `avatar` on the line below",
+        ),
+        ("roadmap\n@", "2:1: expected a name after `@`"),
+        (
+            "roadmap\n@alice\n  avatar octocat",
+            "3:10: expected `gh:` and a GitHub login, as in `avatar gh:octocat`, or a picture's address",
+        ),
+        (
+            "roadmap\n@alice\n  avatar gh:",
+            "3:10: expected a GitHub login (letters, digits, `-`) after `gh:`, as in `gh:octocat`",
+        ),
+        (
+            "roadmap\n@alice\n  avatar https://",
+            "3:10: expected a host after `https://`, as in `https://example.com`",
+        ),
+        (
+            "roadmap\n@alice\n  avatar gh:a\n  avatar gh:b",
+            "4:10: a person can only have one `avatar`",
+        ),
+        (
+            "roadmap\n@alice\n  dri @bob",
+            "3:3: `dri` can't go in a person",
+        ),
+        (
+            "roadmap\n[ ] a\n  avatar gh:a",
+            "3:3: `avatar` can't go in a task",
+        ),
+        (
+            "roadmap\ntrack t\n  @alice\n    avatar gh:a",
+            "3:3: a person can't go in a track",
+        ),
+        (
+            "roadmap\n[ ] a\n  dri @a @b",
+            "3:7: separate the people with commas, as in `dri @alice, @bob`",
+        ),
+        (
+            "roadmap\n[ ] a\n  dri @a,, @b",
+            "3:10: expected a person between the commas",
+        ),
+        (
+            "roadmap\n[ ] a\n  dri @a, @a",
+            "3:11: `@a` is already listed",
+        ),
+        (
+            "roadmap\n@a\n  avatar gh:a\n@a\n  avatar gh:b",
+            "4:1: `@a` is defined more than once",
+        ),
+        (
+            "roadmap\n[ ] avatar",
+            "2:5: `avatar` is a keyword, so it can't be an id",
+        ),
+    ] {
+        assert_eq!(error(source), expected, "{source:?}");
+    }
+}
+
 /// A task is its status box and its id: say so when either is missing, or
 /// when `task` is still written between them.
 #[test]
@@ -276,7 +343,7 @@ fn parse_errors_say_what_to_do() {
         ),
         (
             "roadmap\nfoo bar",
-            "2:1: unknown line starting `foo`; expected `track`, a task (`[ ] id`), `milestone`, `extend`, or a detail like `needs`",
+            "2:1: unknown line starting `foo`; expected `track`, a task (`[ ] id`), `milestone`, `extend`, a person (`@alice`), or a detail like `needs`",
         ),
     ] {
         assert_eq!(error(source), expected, "{source:?}");

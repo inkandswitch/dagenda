@@ -72,6 +72,62 @@ fn colours_round_trip() {
     }
 }
 
+/// A `dri` line lists anyone, in any order, however it's spaced after the
+/// commas, and they come back in that order; with an `avatar` each, they
+/// come back as stickers too.
+#[test]
+fn dri_lists_keep_their_order() {
+    check!()
+        .with_type::<(Vec<u8>, Vec<bool>)>()
+        .for_each(|(people, spaced)| {
+            let mut handles: Vec<String> = Vec::new();
+            for person in people.iter().take(8) {
+                let handle = format!("@p{person}");
+                if !handles.contains(&handle) {
+                    handles.push(handle);
+                }
+            }
+            if handles.is_empty() {
+                return;
+            }
+            let mut line = String::from("dri ");
+            for (index, handle) in handles.iter().enumerate() {
+                if index > 0 {
+                    line.push(',');
+                    if spaced.get(index).copied().unwrap_or(true) {
+                        line.push(' ');
+                    }
+                }
+                line.push_str(handle);
+            }
+            let mut avatars = String::new();
+            for handle in &handles {
+                let login = handle.trim_start_matches('@');
+                writeln!(avatars, "{handle}\n  avatar gh:{login}").expect("writes to a string");
+            }
+            let source = format!("roadmap\n{avatars}[ ] a\n  {line}\n");
+            let plan = dagenda_core::parse(&source).expect("a dri list parses");
+            let dri = plan.tasks().first().and_then(|task| task.dri.as_ref());
+            assert_eq!(
+                dri.map(|dri| dri.node.to_string()),
+                Some(handles.join(", ")),
+                "{source}"
+            );
+            let tree = TechTree::new(&plan);
+            let stuck: Vec<String> = tree
+                .nodes
+                .first()
+                .map(|node| {
+                    node.stickers
+                        .iter()
+                        .map(|sticker| sticker.handle.to_string())
+                        .collect()
+                })
+                .unwrap_or_default();
+            assert_eq!(stuck, handles);
+        });
+}
+
 /// Well-formed plans (a DAG of up to 14 tasks over nested tracks, under up
 /// to three milestones) lay out, with every line routed apart from the rest.
 #[test]

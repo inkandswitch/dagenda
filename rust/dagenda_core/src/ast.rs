@@ -6,9 +6,10 @@
 //! track inside a task, has no representation here.
 
 use crate::{
+    avatar::Avatar,
     colour::Colour,
     date::Date,
-    handle::Handle,
+    handle::{Handle, Handles},
     id::Id,
     reference::{Link, Ref},
     span::{Span, Spanned},
@@ -53,6 +54,7 @@ impl Document {
                         task_definitions(under, &mut found);
                     }
                 }
+                Item::Person(_) => {}
             }
         }
         found
@@ -65,7 +67,7 @@ pub enum Item {
     /// `track <id> [<label>]`
     Track(Spanned<Track>),
 
-    /// `<box> task <id> [<label>]`, outside any track.
+    /// `<box> <id> [<label>]`, outside any track.
     Task(Spanned<Task>),
 
     /// `milestone <id> [<label>]`
@@ -73,6 +75,20 @@ pub enum Item {
 
     /// `extend <id>`
     Extend(Spanned<Extend>),
+
+    /// `@<handle>`, with their `avatar` under it.
+    Person(Spanned<Person>),
+}
+
+/// Someone named in `dri` lines, and their picture. Its span covers its
+/// first line.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Person {
+    /// Who.
+    pub handle: Spanned<Handle>,
+
+    /// Their picture, from the `avatar` line.
+    pub avatar: Spanned<Avatar>,
 }
 
 /// A bucket of work. Its span covers its first line.
@@ -84,8 +100,8 @@ pub struct Track {
     /// The display text in brackets, if any.
     pub label: Option<Spanned<Text>>,
 
-    /// The person responsible for it.
-    pub dri: Option<Spanned<Handle>>,
+    /// The people responsible for it.
+    pub dri: Option<Spanned<Handles>>,
 
     /// Its colour in the picture, if it sets one.
     pub colour: Option<Spanned<Colour>>,
@@ -140,8 +156,8 @@ pub struct Details {
     /// When it should land (`2026-Q4`, `EOY26`).
     pub target: Option<Spanned<Date>>,
 
-    /// The person responsible for it.
-    pub dri: Option<Spanned<Handle>>,
+    /// The people responsible for it.
+    pub dri: Option<Spanned<Handles>>,
 
     /// Its issues and pull requests.
     pub refs: Vec<Spanned<Ref>>,

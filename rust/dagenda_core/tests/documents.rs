@@ -53,8 +53,8 @@ fn extend_adds_details_and_tasks_from_another_document() -> TestResult {
         signatures
             .dri
             .as_ref()
-            .map(|dri| (dri.node.name(), dri.at.document)),
-        Some(("alice", DocumentId::new(1)))
+            .map(|dri| (dri.node.to_string(), dri.at.document)),
+        Some((String::from("@alice"), DocumentId::new(1)))
     );
     let needs: Vec<_> = signatures.needs.iter().map(|need| &need.node).collect();
     assert_eq!(

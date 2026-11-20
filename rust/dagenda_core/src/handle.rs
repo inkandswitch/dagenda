@@ -1,6 +1,6 @@
 //! People, written `@handle`.
 
-use alloc::string::String;
+use alloc::{string::String, vec::Vec};
 use core::fmt;
 use thiserror::Error;
 
@@ -51,6 +51,54 @@ impl Handle {
 impl fmt::Display for Handle {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "@{}", self.0)
+    }
+}
+
+/// One or more people, in the order they're listed: who's responsible for a
+/// task or a track, written `@alice, @bob`.
+///
+/// ```
+/// use dagenda_core::handle::{Handle, Handles};
+///
+/// let handles = Handles::new(vec![Handle::new("@alice")?, Handle::new("@bob")?]).expect("two");
+/// assert_eq!(handles.to_string(), "@alice, @bob");
+/// assert!(Handles::new(Vec::new()).is_none());
+/// # Ok::<(), dagenda_core::handle::InvalidHandle>(())
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Handles(Vec<Handle>);
+
+impl Handles {
+    /// `handles`, if there are any.
+    #[must_use]
+    pub fn new(handles: Vec<Handle>) -> Option<Self> {
+        (!handles.is_empty()).then_some(Self(handles))
+    }
+
+    /// Each one, in the order listed.
+    pub fn iter(&self) -> core::slice::Iter<'_, Handle> {
+        self.0.iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a Handles {
+    type Item = &'a Handle;
+    type IntoIter = core::slice::Iter<'a, Handle>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl fmt::Display for Handles {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (index, handle) in self.0.iter().enumerate() {
+            if index > 0 {
+                f.write_str(", ")?;
+            }
+            write!(f, "{handle}")?;
+        }
+        Ok(())
     }
 }
 

@@ -15,10 +15,11 @@ pub mod warning;
 
 use crate::{
     ast::Document,
+    avatar::Avatar,
     colour::Colour,
     date::Date,
     errors::Errors,
-    handle::Handle,
+    handle::{Handle, Handles},
     id::Id,
     reference::{self, Ref},
     span::Span,
@@ -45,7 +46,7 @@ use warning::Warning;
 ///
 /// let signatures = Id::new("signatures")?;
 /// let task = plan.task(&signatures).ok_or("no task")?;
-/// assert_eq!(task.dri.as_ref().map(|dri| dri.node.name()), Some("alice"));
+/// assert_eq!(task.dri.as_ref().map(|dri| dri.node.to_string()).as_deref(), Some("@alice"));
 /// assert_eq!(plan.readiness(&signatures), Some(Readiness::Ready));
 /// # Ok::<(), Box<dyn core::error::Error>>(())
 /// ```
@@ -57,6 +58,9 @@ pub struct Plan {
     tracks: Vec<Track>,
     tasks: Vec<Task>,
     milestones: Vec<Milestone>,
+
+    /// Everyone given an `avatar`, by handle.
+    people: BTreeMap<Handle, Person>,
 
     /// Every id, and what it names.
     index: BTreeMap<Id, Entry>,
@@ -123,6 +127,26 @@ impl Plan {
     #[must_use]
     pub fn milestones(&self) -> &[Milestone] {
         &self.milestones
+    }
+
+    /// The person with `handle`, if a document gives them an `avatar`.
+    ///
+    /// ```
+    /// let plan = dagenda_core::parse("roadmap\n@alice\n  avatar gh:octocat\n[ ] a\n  dri @alice, @bob\n")?;
+    /// let handle = |name| dagenda_core::handle::Handle::new(name).expect("valid");
+    /// let alice = plan.person(&handle("@alice")).expect("she has an avatar");
+    /// assert_eq!(alice.avatar.node.src(), "https://github.com/octocat.png?size=96");
+    /// assert!(plan.person(&handle("@bob")).is_none());
+    /// # Ok::<(), dagenda_core::Error>(())
+    /// ```
+    #[must_use]
+    pub fn person(&self, handle: &Handle) -> Option<&Person> {
+        self.people.get(handle)
+    }
+
+    /// Everyone given an `avatar`, by handle.
+    pub fn people(&self) -> impl Iterator<Item = (&Handle, &Person)> {
+        self.people.iter()
     }
 
     /// What `id` names, if anything.
@@ -366,8 +390,8 @@ pub struct Track {
     /// The track it's nested in.
     pub parent: Option<Id>,
 
-    /// The person responsible for it.
-    pub dri: Option<Located<Handle>>,
+    /// The people responsible for it.
+    pub dri: Option<Located<Handles>>,
 
     /// Its colour in the picture, if it sets one.
     pub colour: Option<Located<Colour>>,
@@ -405,8 +429,8 @@ pub struct Task {
     /// When it should land.
     pub target: Option<Located<Date>>,
 
-    /// The person responsible for it.
-    pub dri: Option<Located<Handle>>,
+    /// The people responsible for it.
+    pub dri: Option<Located<Handles>>,
 
     /// Its issues and pull requests.
     pub refs: Vec<Located<Ref>>,
@@ -422,6 +446,16 @@ pub struct Task {
 
     /// Its status box.
     pub status_at: Location,
+}
+
+/// Someone a document gives a picture.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Person {
+    /// Their picture.
+    pub avatar: Located<Avatar>,
+
+    /// Where they're defined: their `@<handle>` line.
+    pub defined: Location,
 }
 
 /// A gate, reached when every must-have is finished.
@@ -669,6 +703,16 @@ pub enum ResolveErrorKind {
         id: Id,
 
         /// Where it was defined first.
+        first: Location,
+    },
+
+    /// A person defined twice, in one document or across two.
+    #[error("`{handle}` is defined more than once")]
+    DuplicatePerson {
+        /// Who.
+        handle: Handle,
+
+        /// Where they were defined first.
         first: Location,
     },
 

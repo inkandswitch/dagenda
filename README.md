@@ -56,6 +56,21 @@ extend engine
 
 `est` and `target` take a date at whatever precision you know: `2026-11-19`, `2026-11`, `2026-Q4`, `2026`, or `EOY26`. A duration like `2w` is an error, since it doesn't say when anything lands.
 
+A `dri` line can name several people: `dri @alice, @bob`. To put someone's face on their cards, give them a block of their own at the top level, with an `avatar`: `gh:` and a GitHub login for that account's picture, or the address of any picture.
+
+```
+@alice
+  avatar gh:octocat
+
+@bob
+  avatar https://example.com/bob.png
+```
+
+Everyone on a task who has an avatar gets a round sticker down the right side of its card, hanging a little off the edge, where no lines run; when more people are on it than fit (up to four), the last sticker says how many more there are. Nobody gets a picture by default: only a person block with an `avatar` makes a sticker. People can be defined in a private plan, so their pictures stay with the team.
+
+> [!NOTE]
+> Browsers load the pictures when the SVG is part of the page (as in the preview and the editor) or opened on its own, but not when it's shown through an `<img>` tag, the way GitHub shows a README's images. There, each sticker shows the person's initial instead.
+
 The full set of forms, the grammar, and the indentation rules are in the [`dagenda_core`](rust/dagenda_core/) crate docs.
 
 ## Checking and Rendering
@@ -69,9 +84,9 @@ $ dagenda render ROADMAP.dagenda -o roadmap.svg  # the tech tree
 
 Files given together are one plan, so they can refer to each other's ids. Problems come out as `path:line:column: severity: message`, all of them in one run: the first mistake in each malformed block, and every id that doesn't resolve. `render -o` takes the format from the extension (`.svg` or `.txt`) or from `--format`, refuses to guess at any other, and never writes over one of the plan's own files. Errors are things that don't resolve (an unknown id, a task that needs itself); warnings are things that resolve but don't mean what they look like (a dropped must-have, a done task that needs unfinished work).
 
-The tech tree grows upward, like a game's: everything a task needs sits below it, and each track is a branch in its own colour, with its name at the top. A track takes the next colour in the palette, or the one it sets with `colour`: `teal`, `indigo`, `rose`, `ochre`, `sage`, `plum`, `sky`, `terracotta`, or any `#rrggbb`. Milestones are eras. Each one is a dashed line across the tree with its gate at the end, and the work it needs sits in the band under it. Nice-to-haves sit in the era that wants them. Work no milestone needs or wants, done or not, sits in a shaded layer of its own at the top, "Not on a milestone", so no era claims it. A card says who's on it, when it's expected, and links to its pull requests, issues, and anything else (a comment, a doc); a track's DRI is on its banner. A task in progress glows, and its badge turns, so it stands apart from one not started. A milestone's gate counts all the work behind it, not just its own members, and a waiting task says how much of what it needs is done ("2 of 4 done below"). Lines a longer path already implies are left out. Here's [`tour.dagenda`](rust/dagenda_core/tests/golden/tour.dagenda), which uses every form:
+The tech tree grows upward, like a game's: everything a task needs sits below it, and each track is a branch in its own colour, with its name at the top. A track takes the next colour in the palette, or the one it sets with `colour`: `teal`, `indigo`, `rose`, `ochre`, `sage`, `plum`, `sky`, `terracotta`, or any `#rrggbb`. Milestones are eras. Each one is a dashed line across the tree with its gate at the end, and the work it needs sits in the band under it. Nice-to-haves sit in the era that wants them. Work no milestone needs or wants, done or not, sits in a shaded layer of its own at the top, "Not on a milestone", so no era claims it. A card says who's on it, when it's expected, and links to its pull requests, issues, and anything else (a comment, a doc), with a sticker for each person on it who has an avatar; a track's DRIs are on its banner. A task in progress glows, and its badge turns, so it stands apart from one not started. A milestone's gate counts all the work behind it, not just its own members, and a waiting task says how much of what it needs is done ("2 of 4 done below"). Lines a longer path already implies are left out. Here's [`tour.dagenda`](rust/dagenda_core/tests/golden/tour.dagenda), which uses every form:
 
-![A tech tree that grows upward. At the bottom, in the Core branch, a done Parser (with a check) and the two tasks written under Resolver lead up to the in-progress Resolver, under the dashed line of "It parses" (1 of 2, EOY26). Above that line, in the nested Views branch, Tech tree waits on Resolver and on It parses, and Skill tree, a nice-to-have, has a dashed line to "First picture" (0 of 2). In the shaded layer on top, not on a milestone, sit a research task, one that needs attention, a deferred one, a dropped one, and a task outside any track](rust/dagenda_core/tests/golden/tour.svg)
+![A tech tree that grows upward. At the bottom, in the Core branch, a done Parser (with a check) and the two tasks written under Resolver lead up to the in-progress Resolver, with Alice's sticker on its side, under the dashed line of "It parses" (1 of 2, EOY26). Above that line, in the nested Views branch, Tech tree waits on Resolver and on It parses, and Skill tree, a nice-to-have, has a dashed line to "First picture" (0 of 2). In the shaded layer on top, not on a milestone, sit a research task, one that needs attention, a deferred one, a dropped one, and a task outside any track](rust/dagenda_core/tests/golden/tour.svg)
 
 ## In the Browser
 

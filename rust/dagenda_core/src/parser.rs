@@ -6,14 +6,17 @@
 //!
 //! ```text
 //! document  = "roadmap" NL { item }
-//! item      = "title" text NL | track | task | milestone | extend
+//! item      = "title" text NL | track | task | milestone | extend | person
 //! track     = "track" id [ label ] NL [ INDENT { track | task | dri | note } DEDENT ]
 //! task      = box id [ label ] NL [ INDENT { task | detail } DEDENT ]
 //! milestone = "milestone" id [ label ] NL [ INDENT { id NL | nice | target | note } DEDENT ]
 //! nice      = "nice-to-have" NL [ INDENT { id NL } DEDENT ]   (at most one per milestone)
 //! extend    = "extend" id NL [ INDENT { task | detail } DEDENT ]
+//! person    = handle NL INDENT avatar DEDENT
+//! avatar    = "avatar" ( "gh:" login | url ) NL
 //! detail    = needs | est | target | dri | pr | issue | link | note
 //! needs     = "needs" id { "," id } NL
+//! dri       = "dri" handle { "," handle } NL
 //! est       = "est" date NL                      (target is the same)
 //! date      = YYYY-MM-DD | YYYY-MM | YYYY-Qn | YYYY | EOYyy
 //! link      = "link" url [ label ] NL
@@ -32,11 +35,12 @@
 //! its `note`, so it can hold anything, comments and code fences included.
 
 use crate::{
-    ast::{Details, Document, Extend, Item, Milestone, Task, Track, TrackChild},
+    ast::{Details, Document, Extend, Item, Milestone, Person, Task, Track, TrackChild},
+    avatar::{Avatar, InvalidAvatar},
     colour::{Colour, InvalidColour},
     date::{Date, InvalidDate},
     errors::Errors,
-    handle::{Handle, InvalidHandle},
+    handle::{Handle, Handles, InvalidHandle},
     id::{Id, InvalidId},
     reference::{GithubRef, InvalidGithubRef, InvalidUrl, Link, Ref, RefKind, Url},
     span::{Span, Spanned},
@@ -253,6 +257,11 @@ impl<'a> Parser<'a> {
                     .push(Item::Milestone(self.milestone(line, rest)?));
             }
             Head::Extend(rest) => document.items.push(Item::Extend(self.extend(line, rest)?)),
+            Head::Person(handle, rest) => {
+                document
+                    .items
+                    .push(Item::Person(self.person(line, handle, rest)?));
+            }
             Head::Member(id) => {
                 return Err(ParseError::new(id.span, ParseErrorKind::BareId(id.node)));
             }
@@ -295,7 +304,8 @@ impl<'a> Parser<'a> {
                         | Detail::Est(_)
                         | Detail::Target(_)
                         | Detail::Ref(_)
-                        | Detail::Link(_) => {
+                        | Detail::Link(_)
+                        | Detail::Avatar(_) => {
                             return Err(misplaced(key.quoted(), word.span(), Place::Track));
                         }
                     }
@@ -304,7 +314,8 @@ impl<'a> Parser<'a> {
                 | Head::Milestone(_)
                 | Head::Extend(_)
                 | Head::NiceToHave(_)
-                | Head::Member(_)) => return Err(head.misplaced(child, Place::Track)),
+                | Head::Member(_)
+                | Head::Person(..)) => return Err(head.misplaced(child, Place::Track)),
             }
             Ok(())
         })?;
@@ -367,7 +378,8 @@ impl<'a> Parser<'a> {
                 | Head::Milestone(_)
                 | Head::Extend(_)
                 | Head::NiceToHave(_)
-                | Head::Member(_)) => return Err(head.misplaced(child, place)),
+                | Head::Member(_)
+                | Head::Person(..)) => return Err(head.misplaced(child, place)),
             }
             Ok(())
         })
@@ -421,7 +433,8 @@ impl<'a> Parser<'a> {
                         | Head::Milestone(_)
                         | Head::Extend(_)
                         | Head::Detail(..)
-                        | Head::NiceToHave(_)) => Err(head.misplaced(member, Place::NiceToHave)),
+                        | Head::NiceToHave(_)
+                        | Head::Person(..)) => Err(head.misplaced(member, Place::NiceToHave)),
                     })?;
                 }
                 Head::Detail(key, word, value) => {
@@ -435,7 +448,8 @@ impl<'a> Parser<'a> {
                         | Detail::Dri(_)
                         | Detail::Ref(_)
                         | Detail::Link(_)
-                        | Detail::Colour(_) => {
+                        | Detail::Colour(_)
+                        | Detail::Avatar(_) => {
                             return Err(misplaced(key.quoted(), word.span(), Place::Milestone));
                         }
                     }
@@ -444,12 +458,67 @@ impl<'a> Parser<'a> {
                 | Head::Track(_)
                 | Head::Task(..)
                 | Head::Milestone(_)
-                | Head::Extend(_)) => return Err(head.misplaced(child, Place::Milestone)),
+                | Head::Extend(_)
+                | Head::Person(..)) => return Err(head.misplaced(child, Place::Milestone)),
             }
             Ok(())
         })?;
 
         Ok(Spanned::new(milestone, line.span()))
+    }
+
+    /// `@<handle>`, and the `avatar` under it.
+    fn person(
+        &mut self,
+        line: Line<'a>,
+        handle: Spanned<Handle>,
+        rest: Piece<'a>,
+    ) -> Result<Spanned<Person>, ParseError> {
+        if !rest.is_empty() {
+            return Err(ParseError::new(
+                rest.span(),
+                ParseErrorKind::TextAfterPerson,
+            ));
+        }
+
+        let mut avatar = None;
+        self.children(Some(line.indent), |parser, child| {
+            match Head::read(child)? {
+                Head::Detail(key, word, value) => {
+                    match parser.detail(Place::Person, child, key, word, value)? {
+                        Detail::Avatar(picture) => {
+                            set_once(&mut avatar, picture, key, Place::Person)
+                        }
+                        Detail::Needs(_)
+                        | Detail::Est(_)
+                        | Detail::Target(_)
+                        | Detail::Dri(_)
+                        | Detail::Ref(_)
+                        | Detail::Link(_)
+                        | Detail::Note(_)
+                        | Detail::Colour(_) => {
+                            Err(misplaced(key.quoted(), word.span(), Place::Person))
+                        }
+                    }
+                }
+                head @ (Head::Title(_)
+                | Head::Track(_)
+                | Head::Task(..)
+                | Head::Milestone(_)
+                | Head::Extend(_)
+                | Head::NiceToHave(_)
+                | Head::Member(_)
+                | Head::Person(..)) => Err(head.misplaced(child, Place::Person)),
+            }
+        })?;
+
+        let avatar = avatar.ok_or_else(|| {
+            ParseError::new(
+                handle.span,
+                ParseErrorKind::MissingAvatar(handle.node.clone()),
+            )
+        })?;
+        Ok(Spanned::new(Person { handle, avatar }, line.span()))
     }
 
     /// A `key value` line, or a `note` with its block, if `place` allows it.
@@ -475,7 +544,8 @@ impl<'a> Parser<'a> {
                 | Key::Pr
                 | Key::Issue
                 | Key::Link
-                | Key::Colour => Err(ParseError::new(
+                | Key::Colour
+                | Key::Avatar => Err(ParseError::new(
                     word.span(),
                     ParseErrorKind::MissingValue(key.keyword()),
                 )),
@@ -486,12 +556,13 @@ impl<'a> Parser<'a> {
             Key::Needs => Detail::Needs(ids(value)?),
             Key::Est => Detail::Est(parse_value(value, Date::new)?),
             Key::Target => Detail::Target(parse_value(value, Date::new)?),
-            Key::Dri => Detail::Dri(parse_value(value, Handle::new)?),
+            Key::Dri => Detail::Dri(handles(value)?),
             Key::Pr => Detail::Ref(reference(RefKind::PullRequest, value)?),
             Key::Issue => Detail::Ref(reference(RefKind::Issue, value)?),
             Key::Link => Detail::Link(link(value)?),
             Key::Note => Detail::Note(parse_value(value, Note::new)?),
             Key::Colour => Detail::Colour(parse_value(value, Colour::new)?),
+            Key::Avatar => Detail::Avatar(parse_value(value, Avatar::new)?),
         })
     }
 
@@ -646,6 +717,9 @@ enum Head<'a> {
 
     /// A lone id: a milestone member.
     Member(Spanned<Id>),
+
+    /// `@<handle>`, and anything after it on the line.
+    Person(Spanned<Handle>, Piece<'a>),
 }
 
 impl<'a> Head<'a> {
@@ -664,6 +738,7 @@ impl<'a> Head<'a> {
             "task" => return Err(ParseError::new(word.span(), ParseErrorKind::MissingBox)),
             "nice-to-have" => Self::NiceToHave(rest),
             "---" => return Err(ParseError::new(word.span(), ParseErrorKind::OldCut)),
+            other if other.starts_with('@') => Self::Person(parse_value(word, Handle::new)?, rest),
             other => {
                 if let Some(key) = Key::from_keyword(other) {
                     Self::Detail(key, word, rest)
@@ -691,6 +766,7 @@ impl<'a> Head<'a> {
             Self::Detail(key, ..) => key.quoted(),
             Self::NiceToHave(_) => "`nice-to-have`",
             Self::Member(_) => "a bare id",
+            Self::Person(..) => "a person",
         }
     }
 
@@ -820,7 +896,47 @@ fn unlisted(milestone: &Milestone, member: &Spanned<Id>) -> Result<(), ParseErro
 
 /// `<id>, <id>, …` after `needs`.
 fn ids(piece: Piece<'_>) -> Result<Vec<Spanned<Id>>, ParseError> {
-    let mut ids = Vec::new();
+    list(
+        piece,
+        || ParseErrorKind::EmptyNeed,
+        || ParseErrorKind::NeedsSeparator,
+        |part| parse_value(part, Id::new),
+    )
+}
+
+/// `@<handle>, @<handle>, …` after `dri`, each listed once.
+fn handles(piece: Piece<'_>) -> Result<Spanned<Handles>, ParseError> {
+    let listed = list(
+        piece,
+        || ParseErrorKind::EmptyDri,
+        || ParseErrorKind::DriSeparator,
+        |part| parse_value(part, Handle::new),
+    )?;
+    let mut handles = Vec::with_capacity(listed.len());
+    for handle in listed {
+        if handles.contains(&handle.node) {
+            return Err(ParseError::new(
+                handle.span,
+                ParseErrorKind::DuplicateDri(handle.node),
+            ));
+        }
+        handles.push(handle.node);
+    }
+    let handles = Handles::new(handles)
+        .ok_or_else(|| ParseError::new(Span::at(piece.start), ParseErrorKind::EmptyDri))?;
+    Ok(Spanned::new(handles, piece.span()))
+}
+
+/// Items separated by commas, each read by `item`. `empty` is the error
+/// for nothing between two commas, and `unseparated` for two items with
+/// only a space between them.
+fn list<'p, T, E: Fn() -> ParseErrorKind, U: Fn() -> ParseErrorKind>(
+    piece: Piece<'p>,
+    empty: E,
+    unseparated: U,
+    item: fn(Piece<'p>) -> Result<Spanned<T>, ParseError>,
+) -> Result<Vec<Spanned<T>>, ParseError> {
+    let mut items = Vec::new();
     let mut rest = piece;
     loop {
         let end = rest.text.find(',').unwrap_or(rest.text.len());
@@ -831,15 +947,12 @@ fn ids(piece: Piece<'_>) -> Result<Vec<Spanned<Id>>, ParseError> {
         };
 
         if part.is_empty() {
-            return Err(ParseError::new(
-                Span::at(part.start),
-                ParseErrorKind::EmptyNeed,
-            ));
+            return Err(ParseError::new(Span::at(part.start), empty()));
         }
         if part.text.contains(char::is_whitespace) {
-            return Err(ParseError::new(part.span(), ParseErrorKind::NeedsSeparator));
+            return Err(ParseError::new(part.span(), unseparated()));
         }
-        ids.push(parse_value(part, Id::new)?);
+        items.push(item(part)?);
 
         let Some(next) = after.text.strip_prefix(',') else {
             break;
@@ -850,7 +963,7 @@ fn ids(piece: Piece<'_>) -> Result<Vec<Spanned<Id>>, ParseError> {
             start: after.start + 1 + (next.len() - trimmed.len()),
         };
     }
-    Ok(ids)
+    Ok(items)
 }
 
 /// `<url> [<label>]` after `link`.
@@ -892,11 +1005,12 @@ enum Detail {
     Needs(Vec<Spanned<Id>>),
     Est(Spanned<Date>),
     Target(Spanned<Date>),
-    Dri(Spanned<Handle>),
+    Dri(Spanned<Handles>),
     Ref(Spanned<Ref>),
     Link(Spanned<Link>),
     Note(Spanned<Note>),
     Colour(Spanned<Colour>),
+    Avatar(Spanned<Avatar>),
 }
 
 /// The keyword that starts a detail line.
@@ -911,6 +1025,7 @@ enum Key {
     Link,
     Note,
     Colour,
+    Avatar,
 }
 
 impl Key {
@@ -926,6 +1041,7 @@ impl Key {
             "note" => Some(Self::Note),
             // Either spelling: people will type both
             "colour" | "color" => Some(Self::Colour),
+            "avatar" => Some(Self::Avatar),
             _ => None,
         }
     }
@@ -941,6 +1057,7 @@ impl Key {
             Self::Link => "link",
             Self::Note => "note",
             Self::Colour => "colour",
+            Self::Avatar => "avatar",
         }
     }
 
@@ -955,6 +1072,7 @@ impl Key {
             Self::Link => "`link`",
             Self::Note => "`note`",
             Self::Colour => "`colour`",
+            Self::Avatar => "`avatar`",
         }
     }
 }
@@ -971,6 +1089,9 @@ fn add(details: &mut Details, detail: Detail, place: Place) -> Result<(), ParseE
         Detail::Note(note) => details.notes.push(note),
         Detail::Colour(colour) => {
             return Err(misplaced(Key::Colour.quoted(), colour.span, place));
+        }
+        Detail::Avatar(avatar) => {
+            return Err(misplaced(Key::Avatar.quoted(), avatar.span, place));
         }
     }
     Ok(())
@@ -1020,6 +1141,9 @@ pub enum Place {
 
     /// Under a milestone's `nice-to-have` line.
     NiceToHave,
+
+    /// Under a person's `@<handle>` line.
+    Person,
 }
 
 impl Place {
@@ -1033,15 +1157,17 @@ impl Place {
             Self::Milestone => "a milestone",
             Self::NiceToHave => "a milestone's nice-to-haves",
             Self::Extend => "an `extend`",
+            Self::Person => "a person",
         }
     }
 
     /// Whether a detail line with `key` can go here.
     const fn allows(self, key: Key) -> bool {
         match self {
-            Self::Task | Self::Extend => !matches!(key, Key::Colour),
+            Self::Task | Self::Extend => !matches!(key, Key::Colour | Key::Avatar),
             Self::Track => matches!(key, Key::Dri | Key::Note | Key::Colour),
             Self::Milestone => matches!(key, Key::Target | Key::Note),
+            Self::Person => matches!(key, Key::Avatar),
             Self::TopLevel | Self::NiceToHave => false,
         }
     }
@@ -1051,7 +1177,12 @@ impl fmt::Display for Place {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::TopLevel => f.write_str("at the top level"),
-            Self::Track | Self::Task | Self::Milestone | Self::Extend | Self::NiceToHave => {
+            Self::Track
+            | Self::Task
+            | Self::Milestone
+            | Self::Extend
+            | Self::NiceToHave
+            | Self::Person => {
                 write!(f, "in {}", self.noun())
             }
         }
@@ -1186,6 +1317,10 @@ pub enum ParseErrorKind {
     #[error(transparent)]
     Colour(#[from] InvalidColour),
 
+    /// An `avatar` that isn't `gh:<login>` or a web address.
+    #[error(transparent)]
+    Avatar(#[from] InvalidAvatar),
+
     /// A one-line note that's empty.
     #[error(transparent)]
     Note(#[from] EmptyNote),
@@ -1205,6 +1340,26 @@ pub enum ParseErrorKind {
     /// `needs a b`
     #[error("separate the ids with commas, as in `needs a, b`")]
     NeedsSeparator,
+
+    /// Two commas with no one between them in a `dri` line.
+    #[error("expected a person between the commas")]
+    EmptyDri,
+
+    /// People in a `dri` line with no comma between them.
+    #[error("separate the people with commas, as in `dri @alice, @bob`")]
+    DriSeparator,
+
+    /// Someone listed twice in one `dri` line.
+    #[error("`{0}` is already listed")]
+    DuplicateDri(Handle),
+
+    /// Something after a person's handle on their line.
+    #[error("a person's line is just their handle; indent their `avatar` on the line below")]
+    TextAfterPerson,
+
+    /// A person with no `avatar` under them.
+    #[error("give `{0}` a picture on the line below, indented, as in `avatar gh:octocat`")]
+    MissingAvatar(Handle),
 
     /// A second `title` line.
     #[error("a document can only have one title")]
@@ -1252,7 +1407,7 @@ pub enum ParseErrorKind {
 
     /// A line that starts with an unknown word.
     #[error(
-        "unknown line starting `{0}`; expected `track`, a task (`[ ] id`), `milestone`, `extend`, or a detail like `needs`"
+        "unknown line starting `{0}`; expected `track`, a task (`[ ] id`), `milestone`, `extend`, a person (`@alice`), or a detail like `needs`"
     )]
     UnknownLine(String),
 }

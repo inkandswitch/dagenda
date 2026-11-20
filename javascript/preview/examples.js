@@ -36,6 +36,10 @@ title A tour of the notation
 
 // Comments are whole lines that start with \`//\`.
 
+// A person, and the picture for the stickers on their cards.
+@alice
+  avatar gh:octocat
+
 track core [Core]
   dri @alice
   note The track's own note.
@@ -46,6 +50,7 @@ track core [Core]
 
   [-] resolver [Resolver]
     needs parser
+    dri @alice, @bob
     issue gh:owner/repo#2
     link https://github.com/owner/repo/issues/2#issuecomment-3
     link https://example.com/resolver-design [Design doc]
