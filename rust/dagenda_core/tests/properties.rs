@@ -7,7 +7,8 @@ use dagenda_core::{
     check::Source,
     colour::{Colour, Named, Rgb},
     date::Date,
-    edit::{self, Edit, EditError},
+    edit::{self, Edit, EditError, Setting},
+    handle::{Handle, Handles},
     plan::{Plan, Readiness},
     span::Span,
     status::Status,
@@ -288,6 +289,62 @@ fn picture_edits_change_only_what_they_say() {
                     }
                     Err(error) => assert!(matches!(error, EditError::Loop { .. }), "{error}"),
                 }
+            }
+        });
+}
+
+/// Setting a detail leaves a plan that resolves, with that detail set and
+/// every task still there: any people, or an estimate, on any task.
+#[test]
+fn setting_details_changes_only_what_it_says() {
+    check!()
+        .with_type::<(Vec<(u8, u8, u8, u8)>, u8, u8)>()
+        .for_each(|(lines, first, second)| {
+            let text = build(lines);
+            let Ok(plan) = dagenda_core::parse(&text) else {
+                return;
+            };
+            let tasks: Vec<_> = plan.tasks().iter().map(|task| task.id.clone()).collect();
+            let Some(a) = tasks.get(usize::from(*first) % tasks.len().max(1)) else {
+                return;
+            };
+            let sources = [Source {
+                name: String::new(),
+                text: text.clone(),
+            }];
+            let after = |edits: Vec<Edit>| {
+                let text = edits
+                    .into_iter()
+                    .next()
+                    .map_or_else(|| text.clone(), |edit| edit.text);
+                dagenda_core::parse(&text).map_err(|error| format!("{error}\n{text}"))
+            };
+
+            let people = Handles::new(vec![
+                Handle::new(&format!("@p{first}")).expect("a valid handle"),
+                Handle::new(&format!("@q{second}")).expect("a valid handle"),
+            ])
+            .expect("two people");
+            let est = Date::new("2026-Q4").expect("a valid date");
+            for setting in [Setting::Dri(people.clone()), Setting::Est(est)] {
+                let edited = edit::set(&sources, a, &setting)
+                    .map_err(|error| error.to_string())
+                    .and_then(after);
+                assert!(
+                    edited.as_ref().is_ok_and(|edited| {
+                        let task = edited.task(a);
+                        let set = match &setting {
+                            Setting::Dri(_) => task
+                                .and_then(|task| task.dri.as_ref())
+                                .is_some_and(|dri| dri.node == people),
+                            Setting::Est(_) | Setting::Target(_) => task
+                                .and_then(|task| task.est.as_ref())
+                                .is_some_and(|at| at.node == est),
+                        };
+                        set && edited.tasks().len() == plan.tasks().len()
+                    }),
+                    "{edited:?}"
+                );
             }
         });
 }

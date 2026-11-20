@@ -2,12 +2,14 @@
 // editor. A workspace is an Automerge document listing a plan's documents,
 // `{ documents: [{ name, url }] }`, each its own Automerge document with a
 // `source` string: what the editor's tabs show. This keeps them as files in
-// a directory, so any tool (or agent) can read and edit them:
+// a directory, so any tool (or agent) can read and edit them (`nix run
+// .#collab` with no command starts the editor itself):
 //
 //   nix run .#collab -- pull [dir] [automerge:…]  each document's source into <name>.dagenda
 //   nix run .#collab -- push [dir]                local edits back, merged with everyone else's
 //   nix run .#collab -- undo [dir]                take back the last push, keeping what others typed since
 //   nix run .#collab -- status [dir]              each document, whether it has edits to push, and the last push
+//   nix run .#collab -- diff [dir]                what's changed since the pull, and who changed it, and your edits
 //   nix run .#collab -- new [dir]                 a new workspace from the .dagenda files there
 //
 // `dir` (the current directory if left out) holds one workspace: its URL in
@@ -38,7 +40,7 @@
 // https://inkandswitch.github.io/dagenda/.
 
 import * as A from "@automerge/automerge"
-import { Repo } from "@automerge/automerge-repo"
+import { Repo, decodeHeads } from "@automerge/automerge-repo"
 import { SubductionBackend } from "@automerge/automerge-repo-subduction"
 import { DummySubductionStorageAdapter } from "@automerge/automerge-repo-subduction/helpers/DummySubductionStorageAdapter.js"
 import { WebSocketSubductionNetworkAdapter } from "@automerge/automerge-repo-subduction-network-websocket"
@@ -313,6 +315,104 @@ const undo = async () => {
   await pull(true)
 }
 
+/**
+ * `before` to `after`, line by line: each change with two lines around it,
+ * under `@@ line N @@` (N in `after`), lines taken out marked `-`, put in `+`.
+ */
+const lineDiff = (before, after, context = 2) => {
+  const a = before.split("\n")
+  const b = after.split("\n")
+  // Only what's between the common start and end needs the table
+  let start = 0
+  while (start < a.length && start < b.length && a[start] === b[start]) start++
+  let end = 0
+  while (end < a.length - start && end < b.length - start && a[a.length - 1 - end] === b[b.length - 1 - end]) end++
+  const x = a.slice(start, a.length - end)
+  const y = b.slice(start, b.length - end)
+  const longest = Array.from({ length: x.length + 1 }, () => new Uint32Array(y.length + 1))
+  for (let i = x.length - 1; i >= 0; i--) {
+    for (let j = y.length - 1; j >= 0; j--) {
+      longest[i][j] = x[i] === y[j] ? longest[i + 1][j + 1] + 1 : Math.max(longest[i + 1][j], longest[i][j + 1])
+    }
+  }
+  const ops = a.slice(0, start).map((line, k) => [" ", line, k])
+  let [i, j] = [0, 0]
+  while (i < x.length || j < y.length) {
+    if (i < x.length && j < y.length && x[i] === y[j]) ops.push([" ", x[i++], start + j++])
+    else if (j >= y.length || (i < x.length && longest[i + 1][j] >= longest[i][j + 1])) ops.push(["-", x[i++], start + j])
+    else ops.push(["+", y[j], start + j++])
+  }
+  ops.push(...b.slice(b.length - end).map((line, k) => [" ", line, b.length - end + k]))
+
+  const near = ops.map((_, k) => ops.slice(Math.max(0, k - context), k + context + 1).some(([kind]) => kind !== " "))
+  const out = []
+  ops.forEach(([kind, line, at], k) => {
+    if (!near[k]) return
+    if (k === 0 || !near[k - 1]) out.push(`@@ line ${at + 1} @@`)
+    out.push(`${kind} ${line}`)
+  })
+  return out.join("\n")
+}
+
+/** Who made `changes`: each named push (or undo), then the editor's. */
+const authors = (changes) => {
+  const named = new Map()
+  const sessions = new Set()
+  let typed = 0
+  for (const change of changes) {
+    const by = /^dagenda collab (?:push|undo) by (.+)$/.exec(change.message ?? "")?.[1]
+    if (by) named.set(by, (named.get(by) ?? 0) + 1)
+    else {
+      sessions.add(change.actor)
+      typed += 1
+    }
+  }
+  const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`
+  const parts = [...named].map(([who, n]) => `${who} (${plural(n, "push")})`.replace("pushs", "pushes"))
+  if (typed > 0) parts.push(`the editor (${plural(typed, "change")}${sessions.size > 1 ? `, from ${sessions.size} sessions` : ""})`)
+  const latest = Math.max(...changes.map((change) => change.time ?? 0))
+  const when = latest > 0 ? `, latest at ${new Date(latest * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC` : ""
+  return `${parts.join(", ")}${when}`
+}
+
+/**
+ * What's changed since the pull: on the server, and who changed it; and here,
+ * the edits not pushed yet. Read it before pushing over what people did, or
+ * to answer for it.
+ */
+const diff = async () => {
+  const workspace = await find(workspaceUrl())
+  const entries = workspace.doc().documents ?? []
+  let changed = false
+  for (const { name, url } of entries) {
+    const was = pulled(name)
+    if (!was) {
+      console.log(`${name}: not pulled here yet`)
+      continue
+    }
+    const handle = await find(url)
+    const server = handle.doc().source ?? ""
+    if (server !== was.source) {
+      changed = true
+      const changes = A.getChangesMetaSince(handle.doc(), decodeHeads(was.heads))
+      console.log(`${name}: changed on the server since your pull, by ${authors(changes)}`)
+      console.log(lineDiff(was.source, server))
+    }
+    const mine = read(file(name))
+    if (mine !== null && mine !== was.source) {
+      changed = true
+      console.log(`${name}: your edits, not pushed`)
+      console.log(lineDiff(was.source, mine))
+    }
+  }
+  const listed = new Set(entries.map((entry) => entry.name))
+  for (const name of local().filter((name) => !listed.has(name))) {
+    changed = true
+    console.log(`${name}: new here; push adds it`)
+  }
+  if (!changed) console.log("nothing has changed since your pull")
+}
+
 /** Each document: its name, URL, lines on the server, and whether the file here has edits to push; then the last push. */
 const status = async () => {
   const workspace = await find(workspaceUrl())
@@ -355,11 +455,12 @@ try {
   else if (command === "push") await push()
   else if (command === "undo") await undo()
   else if (command === "status") await status()
+  else if (command === "diff") await diff()
   else if (command === "new") {
     await create()
     await pull(true)
   } else {
-    throw new Error("usage: collab pull|push|undo|status|new [dir] [automerge:URL for a first pull] [--as=NAME] [--discard] [--no-check] [--ahead-of-site]")
+    throw new Error("usage: collab pull|push|undo|status|diff|new [dir] [automerge:URL for a first pull] [--as=NAME] [--discard] [--no-check] [--ahead-of-site]")
   }
   process.exit(0)
 } catch (e) {

@@ -8,7 +8,7 @@ A collaborative editor for dagenda plans. A plan is several documents (public, p
 To run it locally:
 
 ```console
-$ nix run .#editor        # from the repo root: http://localhost:5173 (PORT=… to change)
+$ nix run .#collab        # from the repo root: http://localhost:5173 (PORT=… to change)
 ```
 
 It installs the JS dependencies if needed, builds the component's Wasm, and starts Vite. Open the page, then open its URL (with the `#automerge:…` it adds) in another browser. `?sync=wss://…` picks a different Subduction server. `#source=…` (URL-encoded text) starts a new workspace with that text, which is how the preview's _Collaborate_ button hands its plan over; `nix run .#preview` sends `/collab/` here (`EDITOR_PORT`).

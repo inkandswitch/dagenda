@@ -128,3 +128,18 @@ test("two people's pushes merge, and undo takes back only the last one's", async
   await ok(["pull", dir("bo")])
   assert.match(text("bo"), /\[A\][\s\S]*\[Banana\]/)
 })
+
+test("diff says what changed since your pull, and who changed it", async () => {
+  await ok(["pull", dir("ann")])
+  await ok(["pull", dir("bo")])
+  edit("bo", (plan) => plan.replace("[ ] b [Banana]", "[x] b [Banana]"))
+  await ok(["push", dir("bo")], { as: "bo" })
+  edit("ann", (plan) => `${plan}[ ] c [Cherry]\n`)
+
+  const said = await ok(["diff", dir("ann")])
+  assert.match(said, /plan: changed on the server since your pull, by bo \(1 push\)/)
+  assert.match(said, /- \[ \] b \[Banana\]\n\+ \[x\] b \[Banana\]/)
+  assert.match(said, /plan: your edits, not pushed\n@@ line \d+ @@[\s\S]*\+ \[ \] c \[Cherry\]/)
+  await ok(["pull", dir("ann"), "--discard"])
+  assert.match(await ok(["diff", dir("ann")]), /nothing has changed since your pull/)
+})

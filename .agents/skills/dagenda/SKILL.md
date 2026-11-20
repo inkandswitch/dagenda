@@ -17,9 +17,11 @@ Run these from the repo root (or anywhere inside `nix develop`):
 | `nix run .#dagenda -- check a.dagenda b.dagenda`   | Check documents as one plan; prints every problem as `path:line:column: severity: message` |
 | `nix run .#dagenda -- render a.dagenda`            | The plan as text (milestones and tracks)                              |
 | `nix run .#dagenda -- render a.dagenda -o x.svg`   | Its tech tree as SVG (`-o x.txt` for text); never overwrites a plan file |
+| `nix run .#dagenda -- edit status <task> done a.dagenda b.dagenda` | Change a plan in place: `status`, `need`, `scope`, `order`, `dri`, `est`, `target` (see `edit --help`) |
 | `nix run .#collab -- pull <dir> <automerge:URL>`   | First pull of a shared workspace: each document into `<dir>/<name>.dagenda` |
 | `nix run .#collab -- pull <dir>`                   | Pull again (the URL is saved in `<dir>/workspace.url`)                |
 | `nix run .#collab -- status <dir>`                 | Each document, and whether it has edits to push or to pull           |
+| `nix run .#collab -- diff <dir>`                   | What changed since your pull, and who changed it; and your unpushed edits |
 | `nix run .#collab -- push <dir> --as=<you>`        | Push edited files back, merged with what others typed since the pull |
 | `nix run .#collab -- undo <dir> --as=<you>`        | Take back your last push, keeping what others typed since            |
 | `nix run .#collab -- new <dir> --as=<you>`         | A new workspace from the `.dagenda` files in `<dir>` (`plan` first)  |
@@ -99,7 +101,13 @@ The crate docs (`rust/dagenda_core/src/lib.rs`, `parser.rs`) have the full gramm
 ## Editing a plan
 
 1. Read the whole plan first, every document of it: a task's `dri` or notes may live in another document's `extend`.
-2. Make the smallest edit that says it. Keep ids stable: other documents and milestones refer to them. Change a label, not an id, to rename.
+2. Make the smallest edit that says it. Keep ids stable: other documents and milestones refer to them. Change a label, not an id, to rename. For a status, a need, a milestone's scope or order, a `dri`, `est`, or `target`, use `dagenda edit`: it changes the text exactly where that's said (in whichever document), can't break the syntax, and refuses a loop or an unknown id. Give it every document of the plan.
+
+   ```console
+   $ nix run .#dagenda -- edit status signing in-progress plan.dagenda private.dagenda
+   $ nix run .#dagenda -- edit need betaCriteria cryptoReview plan.dagenda
+   $ nix run .#dagenda -- edit dri sdnFixups @alexjg,@expede plan.dagenda
+   ```
 3. Check every document together, and fix everything it reports (it reports all problems at once):
 
    ```console
@@ -114,7 +122,7 @@ When you move things between documents or restructure (merging documents, reinde
 
 A workspace is an Automerge document listing the plan's documents; each is a tab in the editor. Other people may be typing in it while you work, so:
 
-1. `pull` before every edit. Edit only the pulled files. `pull` refuses to write over edits you haven't pushed; push them, or `--discard` them.
+1. `pull` before every edit. Edit only the pulled files. `pull` refuses to write over edits you haven't pushed; push them, or `--discard` them. When `status` says a document is behind, `diff` shows what people changed since your last pull, and who: read it, and don't undo their work.
 2. `check` them all together.
 3. `push --as=<you>` (say who you are: "claude", "codex"). It checks the whole plan with the repo's parser and with the deployed editor's, and refuses if either finds errors, since people would see them. It applies your edits against the version you pulled, so concurrent typing merges instead of being overwritten, waits until the sync server has everything, and pulls the merged result.
 4. Run `status` to confirm: it shows each document and the last push.

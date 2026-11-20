@@ -5,6 +5,7 @@
 //! $ dagenda check public.dagenda private.dagenda --deny-warnings
 //! $ dagenda render ROADMAP.dagenda                 # text to stdout
 //! $ dagenda render ROADMAP.dagenda -o roadmap.svg  # format from the extension
+//! $ dagenda edit status parser done ROADMAP.dagenda # and need, scope, order, dri, est, target
 //! ```
 //!
 //! Files given together are one plan, so a private plan can `extend` a task
@@ -16,12 +17,15 @@
 //! rather than guessed at. It never writes over one of the plan's own
 //! documents, however the path is spelled.
 //!
+//! `edit` writes each document it changes back in place, and says what it
+//! did. It refuses an edit that would break the plan, and changes nothing.
+//!
 //! Exit status: 0 on success, 1 if there are errors (or warnings, with
-//! `--deny-warnings`) or a file can't be read or written, 2 for bad
-//! arguments (including an output it won't write).
+//! `--deny-warnings`), an edit is refused, or a file can't be read or
+//! written, 2 for bad arguments (including an output it won't write).
 
 use clap::{Parser, Subcommand};
-use dagenda_cli::render::Format;
+use dagenda_cli::{edit::EditCommand, render::Format};
 use dagenda_core::check::{Problem, Severity, Source, check};
 use std::{
     io::{self, Read, Write},
@@ -65,6 +69,13 @@ enum Command {
         /// Where to write it (default: stdout)
         #[arg(short, long)]
         output: Option<PathBuf>,
+    },
+
+    /// Change a plan in place, as the picture does: the smallest change to
+    /// the document that says it, refusing anything that would break the plan
+    Edit {
+        #[command(subcommand)]
+        edit: EditCommand,
     },
 }
 
@@ -144,6 +155,32 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             }
             Ok(ExitCode::SUCCESS)
         }
+
+        Command::Edit { edit } => {
+            let documents = edit.documents();
+            if documents.iter().any(|document| document == Path::new("-")) {
+                return Err(CliError::Stdin);
+            }
+            let sources = read_all(documents)?;
+            let (edits, said) = edit.apply(&sources)?;
+            let mut changed = Vec::new();
+            for change in edits {
+                let Some(path) = documents.get(change.document) else {
+                    continue;
+                };
+                std::fs::write(path, change.text).map_err(|source| CliError::Write {
+                    path: path.clone(),
+                    source,
+                })?;
+                changed.push(path.display().to_string());
+            }
+            if changed.is_empty() {
+                println!("{said} already; nothing changed");
+            } else {
+                println!("{said}: edited {}", changed.join(", "));
+            }
+            Ok(ExitCode::SUCCESS)
+        }
     }
 }
 
@@ -217,6 +254,12 @@ enum CliError {
         path.display()
     )]
     Overwrite { path: PathBuf },
+
+    #[error("edit writes its documents back, so it can't take one on stdin; give its path")]
+    Stdin,
+
+    #[error(transparent)]
+    Edit(#[from] dagenda_core::edit::EditError),
 }
 
 impl CliError {
@@ -224,8 +267,8 @@ impl CliError {
     /// that couldn't be read or written.
     fn exit_code(&self) -> ExitCode {
         match self {
-            Self::Read { .. } | Self::Write { .. } => ExitCode::FAILURE,
-            Self::UnknownFormat { .. } | Self::Overwrite { .. } => ExitCode::from(2),
+            Self::Read { .. } | Self::Write { .. } | Self::Edit(_) => ExitCode::FAILURE,
+            Self::UnknownFormat { .. } | Self::Overwrite { .. } | Self::Stdin => ExitCode::from(2),
         }
     }
 }

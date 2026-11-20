@@ -140,14 +140,18 @@
           '';
         };
 
-        # The collaborative editor's dev server (javascript/editor): installs
-        # its dependencies if needed, builds the component's Wasm, then serves
-        # it with Vite at http://localhost:5173 (PORT to change). The
-        # preview's Collaborate button reaches it through `nix run .#preview`
-        # (EDITOR_PORT there). Run from the repo root, or anywhere inside
-        # `nix develop`.
-        editor = pkgs.writeShellApplication {
-          name = "dagenda-editor";
+
+        # Collaboration (javascript/editor). On its own, the collaborative
+        # editor's dev server: it installs the JS dependencies if needed,
+        # builds the component's Wasm, and serves the editor with Vite at
+        # http://localhost:5173 (PORT to change); the preview's Collaborate
+        # button reaches it through `nix run .#preview` (EDITOR_PORT there).
+        # With a command, a shared plan from the command line, as files in a
+        # directory (cli/collab.mjs): `pull`, `push`, `undo`, `status`,
+        # `diff`, or `new`, directories relative to where you run it. Run from
+        # the repo root, or anywhere inside `nix develop`.
+        collab = pkgs.writeShellApplication {
+          name = "dagenda-collab";
           runtimeInputs = [rust-toolchain pkgs.stdenv.cc] ++ wasm-pkgs ++ js-pkgs;
           text = ''
             root="''${WORKSPACE_ROOT:-$PWD}"
@@ -155,35 +159,19 @@
               echo "run this from the dagenda repo root" >&2
               exit 1
             fi
-            cd "$root"
-            [ -d javascript/editor/node_modules ] || pnpm install --frozen-lockfile
-            wasm-pack build --dev --target web --out-dir ../../javascript/dagenda-view/pkg rust/dagenda_wasm
-            cd javascript/editor
-            # Through node, not the .bin shim: its #!/bin/sh is not everywhere
-            exec node node_modules/vite/bin/vite.js --port "''${PORT:-5173}" --strictPort
-          '';
-        };
-
-        # A shared plan from the command line (javascript/editor/cli/collab.mjs):
-        # `pull`, `push`, `status`, or `new`, each on a directory holding one
-        # workspace, so any tool can edit its documents as files. Installs the
-        # editor's dependencies if needed. Run from the repo root, or anywhere
-        # inside `nix develop`; directories are relative to where you run it.
-        collab = pkgs.writeShellApplication {
-          name = "dagenda-collab";
-          runtimeInputs = [rust-toolchain pkgs.stdenv.cc] ++ wasm-pkgs ++ js-pkgs;
-          text = ''
-            root="''${WORKSPACE_ROOT:-$PWD}"
-            if [ ! -f "$root/javascript/editor/cli/collab.mjs" ]; then
-              echo "run this from the dagenda repo root" >&2
-              exit 1
-            fi
             [ -d "$root/javascript/editor/node_modules" ] || (cd "$root" && pnpm install --frozen-lockfile >&2)
-            # `push` and `new` check the plan with this repo's parser first
+            wasm() {
+              (cd "$root" && wasm-pack --log-level warn build --dev --target web --out-dir ../../javascript/dagenda-view/pkg rust/dagenda_wasm >&2)
+            }
             case "''${1:-}" in
-              push | new)
-                (cd "$root" && wasm-pack --log-level warn build --dev --target web --out-dir ../../javascript/dagenda-view/pkg rust/dagenda_wasm >&2)
+              "")
+                wasm
+                cd "$root/javascript/editor"
+                # Through node, not the .bin shim: its #!/bin/sh is not everywhere
+                exec node node_modules/vite/bin/vite.js --port "''${PORT:-5173}" --strictPort
                 ;;
+              # These check the plan with this repo's parser first
+              push | new) wasm ;;
             esac
             exec node "$root/javascript/editor/cli/collab.mjs" "$@"
           '';
@@ -258,8 +246,8 @@
           }
 
           {
-            commands.editor = cmd "Collaborative editor at http://localhost:5173 (PORT to change)" ''
-              ${pkgs.lib.getExe editor}
+            commands.collab = cmd "Collaborative editor at http://localhost:5173 (PORT to change); with pull, push, diff, …: a shared plan as files" ''
+              ${pkgs.lib.getExe collab} "$@"
             '';
             packages = [];
           }
@@ -398,7 +386,7 @@
             type = "app";
             program = pkgs.lib.getExe drv;
           })
-          (ci-checks // {inherit collab dagenda editor preview site;});
+          (ci-checks // {inherit collab dagenda preview site;});
 
         packages = {
           inherit dagenda;

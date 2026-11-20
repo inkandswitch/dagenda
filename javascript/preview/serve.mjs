@@ -14,7 +14,7 @@
 // (Linux inotify) report metadata-only changes too.
 //
 // `/collab/` goes to the collaborative editor's own dev server (`nix run
-// .#editor`, on EDITOR_PORT, default 5173), as the deployed site has it next
+// .#collab`, on EDITOR_PORT, default 5173), as the deployed site has it next
 // to the preview; the browser carries the `#source=…` hash across.
 //
 // Usage: node javascript/preview/serve.mjs   (env: PORT, default 8080)

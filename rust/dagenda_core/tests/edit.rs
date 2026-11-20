@@ -2,7 +2,9 @@
 
 use dagenda_core::{
     check::Source,
-    edit::{self, Edit, EditError},
+    date::Date,
+    edit::{self, Edit, EditError, Setting},
+    handle::{Handle, Handles},
     id::Id,
     status::Status,
 };
@@ -340,6 +342,103 @@ fn a_document_that_doesn_t_parse_is_named() -> TestResult {
         Err(String::from(
             "`private` doesn't parse, so the picture can't edit it"
         ))
+    );
+    Ok(())
+}
+
+fn people(names: &[&str]) -> Result<Handles, Box<dyn std::error::Error>> {
+    let handles = names
+        .iter()
+        .map(|name| Handle::new(name))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(Handles::new(handles).ok_or("no one")?)
+}
+
+#[test]
+fn setting_a_detail_rewrites_its_value_in_place() -> TestResult {
+    let edits = edit::set(
+        &one("roadmap\n[ ] a\n  est 2026-11\n  dri @ann\n  note Keep me.\n"),
+        &id("a")?,
+        &Setting::Dri(people(&["@ann", "@bo"])?),
+    )?;
+    assert_eq!(
+        texts(edits),
+        [(
+            0,
+            String::from("roadmap\n[ ] a\n  est 2026-11\n  dri @ann, @bo\n  note Keep me.\n")
+        )]
+    );
+    Ok(())
+}
+
+/// The detail stays with the document that says it: a private `extend`
+/// keeps its DRI private.
+#[test]
+fn setting_a_detail_another_document_says_edits_that_one() -> TestResult {
+    let sources = [
+        Source {
+            name: "plan".into(),
+            text: "roadmap\n[ ] a\n".into(),
+        },
+        Source {
+            name: "private".into(),
+            text: "roadmap\nextend a\n  dri @ann\n".into(),
+        },
+    ];
+    let edits = edit::set(&sources, &id("a")?, &Setting::Dri(people(&["@bo"])?))?;
+    assert_eq!(
+        texts(edits),
+        [(1, String::from("roadmap\nextend a\n  dri @bo\n"))]
+    );
+    Ok(())
+}
+
+#[test]
+fn setting_a_new_detail_puts_it_at_the_top_of_the_block() -> TestResult {
+    let plan =
+        one("roadmap\ntrack t\n    [ ] a [A]\n        needs b\n    [ ] b\nmilestone m\n  a\n");
+    let est = edit::set(&plan, &id("b")?, &Setting::Est(Date::new("2026-Q4")?))?;
+    assert_eq!(
+        texts(est),
+        [(
+            0,
+            String::from(
+                "roadmap\ntrack t\n    [ ] a [A]\n        needs b\n    [ ] b\n      est 2026-Q4\nmilestone m\n  a\n"
+            )
+        )],
+        "a block with nothing in it yet gets the usual step in"
+    );
+    let target = edit::set(&plan, &id("m")?, &Setting::Target(Date::new("EOY26")?))?;
+    assert_eq!(
+        texts(target),
+        [(
+            0,
+            String::from(
+                "roadmap\ntrack t\n    [ ] a [A]\n        needs b\n    [ ] b\nmilestone m\n  target EOY26\n  a\n"
+            )
+        )],
+        "a milestone takes a target"
+    );
+    Ok(())
+}
+
+#[test]
+fn setting_what_it_already_says_changes_nothing() -> TestResult {
+    let plan = one("roadmap\n[ ] a\n  target 2026-Q4\n");
+    assert!(edit::set(&plan, &id("a")?, &Setting::Target(Date::new("2026-Q4")?))?.is_empty());
+    Ok(())
+}
+
+#[test]
+fn only_a_target_goes_on_a_milestone() -> TestResult {
+    let plan = one("roadmap\n[ ] a\nmilestone m\n  a\n");
+    assert_eq!(
+        edit::set(&plan, &id("m")?, &Setting::Dri(people(&["@ann"])?)),
+        Err(EditError::NotATask(id("m")?))
+    );
+    assert_eq!(
+        edit::set(&plan, &id("z")?, &Setting::Est(Date::new("2026")?)),
+        Err(EditError::Unknown(id("z")?))
     );
     Ok(())
 }

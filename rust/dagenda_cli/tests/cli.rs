@@ -197,3 +197,83 @@ fn a_dash_reads_stdin() -> TestResult {
     assert!(stderr(&output).starts_with("<stdin>:3:9: error: "));
     Ok(())
 }
+
+fn stdout(output: &Output) -> String {
+    String::from_utf8_lossy(&output.stdout).into_owned()
+}
+
+#[test]
+fn edit_changes_only_what_it_says_and_says_what_it_did() -> TestResult {
+    let dir = Scratch::new("edit")?;
+    dir.write("plan.dagenda", CLEAN)?;
+    let done = dir.run(&["edit", "status", "resolver", "done", "plan.dagenda"])?;
+    assert_eq!(done.status.code(), Some(0), "{}", stderr(&done));
+    assert_eq!(
+        dir.read("plan.dagenda")?,
+        "roadmap\n[x] parser\n[x] resolver\n  needs parser\n"
+    );
+    assert_eq!(stdout(&done), "`resolver` is done: edited plan.dagenda\n");
+
+    let again = dir.run(&["edit", "status", "resolver", "[x]", "plan.dagenda"])?;
+    assert_eq!(again.status.code(), Some(0));
+    assert_eq!(
+        stdout(&again),
+        "`resolver` is done already; nothing changed\n"
+    );
+    Ok(())
+}
+
+/// The plan's documents go together, and a detail is changed where it's
+/// written: a private `extend` keeps its DRI private.
+#[test]
+fn edit_changes_the_document_that_says_it() -> TestResult {
+    let dir = Scratch::new("edit-documents")?;
+    dir.write("plan.dagenda", CLEAN)?;
+    dir.write("private.dagenda", "roadmap\nextend resolver\n  dri @ann\n")?;
+    let dri = dir.run(&[
+        "edit",
+        "dri",
+        "resolver",
+        "@ann,@bo",
+        "plan.dagenda",
+        "private.dagenda",
+    ])?;
+    assert_eq!(dri.status.code(), Some(0), "{}", stderr(&dri));
+    assert_eq!(dir.read("plan.dagenda")?, CLEAN);
+    assert_eq!(
+        dir.read("private.dagenda")?,
+        "roadmap\nextend resolver\n  dri @ann, @bo\n"
+    );
+    Ok(())
+}
+
+#[test]
+fn edit_refuses_what_would_break_the_plan_and_changes_nothing() -> TestResult {
+    let dir = Scratch::new("edit-refused")?;
+    dir.write("plan.dagenda", CLEAN)?;
+    let refused = dir.run(&["edit", "need", "parser", "resolver", "plan.dagenda"])?;
+    assert_eq!(refused.status.code(), Some(1));
+    assert!(
+        stderr(&refused).contains("so `parser` can't need it"),
+        "{}",
+        stderr(&refused)
+    );
+    assert_eq!(dir.read("plan.dagenda")?, CLEAN);
+
+    for args in [
+        &["edit", "status", "parser", "finished", "plan.dagenda"][..],
+        &["edit", "dri", "parser", "@ann,@ann", "plan.dagenda"],
+        &["edit", "est", "parser", "2w", "plan.dagenda"],
+        &["edit", "status", "parser", "done", "-"],
+    ] {
+        let output = dir.run(args)?;
+        assert_eq!(
+            output.status.code(),
+            Some(2),
+            "{args:?}: {}",
+            stderr(&output)
+        );
+        assert_eq!(dir.read("plan.dagenda")?, CLEAN, "{args:?}");
+    }
+    Ok(())
+}

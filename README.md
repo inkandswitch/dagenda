@@ -80,7 +80,11 @@ $ dagenda check ROADMAP.dagenda
 $ dagenda check public.dagenda private.dagenda --deny-warnings
 $ dagenda render ROADMAP.dagenda                 # milestones and tracks, as text
 $ dagenda render ROADMAP.dagenda -o roadmap.svg  # the tech tree
+$ dagenda edit status parser done ROADMAP.dagenda
+$ dagenda edit dri engine @alice,@bob public.dagenda private.dagenda
 ```
+
+`dagenda edit` changes a plan the way the picture does, for scripts and agents: a task's `status`, a `need`, a milestone's `scope` or `order`, a `dri`, `est`, or `target`. Each is the smallest change, made in whichever document says it, and it refuses a loop or an unknown id rather than break the plan.
 
 Files given together are one plan, so they can refer to each other's ids. Problems come out as `path:line:column: severity: message`, all of them in one run: the first mistake in each malformed block, and every id that doesn't resolve. `render -o` takes the format from the extension (`.svg` or `.txt`) or from `--format`, refuses to guess at any other, and never writes over one of the plan's own files. Errors are things that don't resolve (an unknown id, a task that needs itself); warnings are things that resolve but don't mean what they look like (a dropped must-have, a done task that needs unfinished work).
 
@@ -106,14 +110,15 @@ Both pages edit the picture too: click a card's badge to set its status, drag fr
 The [collaborative editor](javascript/editor/) is the preview with sync. A plan's documents (public, private, …) live in Automerge, synced over [Subduction], and a _workspace_ document lists them: a tab per document, with presence, per-person undo, and offline use, and one picture drawn from all of them. The preview's _Collaborate_ button opens its text there as a new shared plan.
 
 ```console
-$ nix run .#editor    # http://localhost:5173; share the URL it gives you
+$ nix run .#collab    # http://localhost:5173; share the URL it gives you
 ```
 
-A shared plan can be edited from the command line too, as files, alongside the people in the editor. `pull` writes each document to `<name>.dagenda`; `push` merges your edits with whatever was typed since, instead of overwriting it:
+Give `collab` a command and it works on a shared plan from the command line instead, as files, alongside the people in the editor. `pull` writes each document to `<name>.dagenda`; `push` merges your edits with whatever was typed since, instead of overwriting it:
 
 ```console
 $ nix run .#collab -- pull plan/ automerge:…   # the first time; the URL is kept in plan/workspace.url
 $ nix run .#collab -- status plan/             # what has edits to push, or to pull
+$ nix run .#collab -- diff plan/               # what's changed since the pull, and who changed it
 $ nix run .#collab -- push plan/ --as=claude   # named, so people know whose edits these are
 $ nix run .#collab -- undo plan/               # take back the last push, keeping what's been typed since
 $ nix run .#collab -- new plan/                # a new workspace from the .dagenda files there
@@ -153,8 +158,8 @@ $ nix develop                       # toolchain and a command menu
 $ cargo test --workspace
 $ nix run .#dagenda -- check plan.dagenda
 $ nix run .#preview                 # the preview, with hot reload
-$ nix run .#editor                  # the collaborative editor, with Vite
-$ nix run .#collab -- pull <dir>     # a shared plan as files (also push, status, new)
+$ nix run .#collab                  # the collaborative editor, with Vite
+$ nix run .#collab -- pull <dir>     # a shared plan as files (also push, diff, undo, status, new)
 $ nix run .#ci-clippy               # also: ci-bolero, ci-deny, ci-doc, ci-editor, ci-fmt, ci-js, ci-msrv, ci-mutants, ci-no-std, ci-test, ci-typos
 ```
 

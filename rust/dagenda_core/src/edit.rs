@@ -1,4 +1,5 @@
-//! Edits made on the picture, as new text for the documents they touch.
+//! Edits made on the picture (or by a tool), as new text for the documents
+//! they touch.
 //!
 //! The text is the truth: a click or a drag on the tech tree asks for an
 //! edit here, and gets back each changed document's whole new text. The
@@ -23,10 +24,12 @@
 use crate::{
     ast::{self, Document, Item, TrackChild},
     check::Source,
+    date::Date,
+    handle::Handles,
     id::Id,
     parser,
     plan::Plan,
-    span::Spanned,
+    span::{Span, Spanned},
     status::Status,
 };
 use alloc::{
@@ -306,6 +309,104 @@ pub fn reorder(
     ))
 }
 
+/// Set a task's `dri`, `est`, or `target`, or a milestone's `target`: on
+/// the line that says it now, whichever document that's in (an `extend`
+/// keeps what it set), or else on a new line at the top of the block that
+/// defines it. No edits if it already says that.
+///
+/// ```
+/// use dagenda_core::{check::Source, edit::{self, Setting}, handle::{Handle, Handles}, id::Id};
+///
+/// let plan = Source {
+///     name: "plan".into(),
+///     text: "roadmap\n[ ] a\n  needs b\n[ ] b\n".into(),
+/// };
+/// let bob = Handles::new(vec![Handle::new("@bob")?]).ok_or("no one")?;
+/// let edits = edit::set(&[plan], &Id::new("a")?, &Setting::Dri(bob))?;
+/// assert_eq!(edits[0].text, "roadmap\n[ ] a\n  dri @bob\n  needs b\n[ ] b\n");
+/// # Ok::<(), Box<dyn core::error::Error>>(())
+/// ```
+///
+/// # Errors
+///
+/// Returns [`EditError`] if a document doesn't parse, or `id` isn't a task
+/// (or, for a `target`, a milestone).
+pub fn set(sources: &[Source], id: &Id, setting: &Setting) -> Result<Vec<Edit>, EditError> {
+    let documents = parse(sources)?;
+    let (document, head, now) = match find_task(&documents, id) {
+        Ok((document, task)) => {
+            let now = extends(&documents, id)
+                .chain(core::iter::once((document, &task.node.details)))
+                .find_map(|(index, details)| current(details, setting).map(|now| (index, now)));
+            (document, task.span.start, now)
+        }
+        Err(EditError::NotATask(_)) if matches!(setting, Setting::Target(_)) => {
+            let (document, milestone) = find_milestone(&documents, id)?;
+            let now = match setting {
+                Setting::Target(date) => milestone
+                    .node
+                    .target
+                    .as_ref()
+                    .map(|target| (document, (target.span, target.node == *date))),
+                Setting::Dri(_) | Setting::Est(_) => None,
+            };
+            (document, milestone.span.start, now)
+        }
+        Err(e) => return Err(e),
+    };
+
+    let splice = match now {
+        Some((_, (_, true))) => return Ok(Vec::new()),
+        Some((document, (span, false))) => (document, (span.start, span.end, setting.to_string())),
+        None => {
+            let text = text_of(sources, document);
+            let at = next_line(text, head);
+            let line = format!("{} {setting}", setting.keyword());
+            (
+                document,
+                (at, at, new_line(text, at, child_indent(text, head), &line)),
+            )
+        }
+    };
+    Ok(edits(sources, [splice]))
+}
+
+/// A detail a task has one of, wherever it's written: `dri`, `est`, or
+/// `target` (which a milestone has too).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Setting {
+    /// `dri @alice, @bob`
+    Dri(Handles),
+
+    /// `est <date>`
+    Est(Date),
+
+    /// `target <date>`
+    Target(Date),
+}
+
+impl Setting {
+    /// Its keyword, as in `dri`.
+    #[must_use]
+    pub const fn keyword(&self) -> &'static str {
+        match self {
+            Self::Dri(_) => "dri",
+            Self::Est(_) => "est",
+            Self::Target(_) => "target",
+        }
+    }
+}
+
+/// The value, as written after the keyword.
+impl fmt::Display for Setting {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Dri(handles) => write!(f, "{handles}"),
+            Self::Est(date) | Self::Target(date) => write!(f, "{date}"),
+        }
+    }
+}
+
 /// Why an edit made on the picture can't be made.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum EditError {
@@ -443,6 +544,46 @@ fn apply(text: &str, mut splices: Vec<Splice>) -> String {
     }
     out.push_str(text.get(cursor..).unwrap_or_default());
     out
+}
+
+/// Where `setting`'s detail is in `details`, and whether it already says that.
+fn current(details: &ast::Details, setting: &Setting) -> Option<(Span, bool)> {
+    match setting {
+        Setting::Dri(handles) => details
+            .dri
+            .as_ref()
+            .map(|dri| (dri.span, dri.node == *handles)),
+        Setting::Est(date) => details
+            .est
+            .as_ref()
+            .map(|est| (est.span, est.node == *date)),
+        Setting::Target(date) => details
+            .target
+            .as_ref()
+            .map(|target| (target.span, target.node == *date)),
+    }
+}
+
+/// Each `extend` of `id`'s details, and which document it's in.
+fn extends<'a>(
+    documents: &'a [Document],
+    id: &'a Id,
+) -> impl Iterator<Item = (usize, &'a ast::Details)> {
+    documents
+        .iter()
+        .enumerate()
+        .flat_map(move |(index, document)| {
+            document.items.iter().filter_map(move |item| match item {
+                Item::Extend(extend) if extend.node.id.node == *id => {
+                    Some((index, &extend.node.details))
+                }
+                Item::Extend(_)
+                | Item::Track(_)
+                | Item::Task(_)
+                | Item::Milestone(_)
+                | Item::Person(_) => None,
+            })
+        })
 }
 
 /// Where a task is defined (not extended), and in which document.
