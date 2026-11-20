@@ -1,36 +1,24 @@
-title: A tour of the notation
+A tour of the notation
 
-tracks
-  core [Core], dri @alice
-    | The track's own note.
-  views [Views [nested]], in core
+Milestones
+  ◇ itParses · It parses · EOY26
+    ▰▰▰▰▰▱▱▱▱▱ 1 of 2 · next: resolver
+  ◇ firstPicture · First picture
+    ▱▱▱▱▱▱▱▱▱▱ 0 of 2 · next: resolver → techTree
 
-tasks
-  [x] parser [Parser], in core: finished
-    est 2w; pr gh:owner/repo#1 (https://github.com/owner/repo/pull/1)
-  [-] resolver [Resolver], in core: ready
-    needs parser; target 2026-Q4; issue gh:owner/repo#2 (https://github.com/owner/repo/issues/2)
-    | Resolves ids across every document.
-    |
-    | ```
-    | // Not a comment: this is inside the note.
-    | ```
-  [x] duplicates [Duplicate ids], in core, under resolver: finished
-  [ ] cycles [Cycles], in core, under resolver: ready
-  [ ] techTree [Tech tree], in views: blocked by resolver, itParses
-    needs resolver, itParses
-  [?] skillTree [Skill tree], in views: ready
-  [*] layout [Layout research], in views: ready
-  [!] fonts [Fonts], in views: ready
-  [>] gantt [Gantt], in views: ready
-  [~] mermaid [Mermaid export], in views: dropped
-  [ ] untracked [A task outside any track]: ready
+Core
+  [x] parser · Parser
+  [-] resolver · Resolver
+    [x] duplicates · Duplicate ids
+    [ ] cycles · Cycles
+  Views [nested]
+    [ ] techTree · Tech tree · waits on resolver, itParses
+    [?] skillTree · Skill tree
+    [*] layout · Layout research
+    [!] fonts · Fonts
+    [>] gantt · Gantt
+    [~] mermaid · Mermaid export
 
-milestones
-  itParses [It parses]: not reached; 1/2 needed, 0/1 wanted, target EOY26
-    critical path: resolver
-  firstPicture [First picture]: not reached; 0/2 needed, 0/1 wanted
-    critical path: resolver → techTree
-    | Waits on a milestone, through a task that needs it.
+Other tasks
+  [ ] untracked · A task outside any track
 
-warnings

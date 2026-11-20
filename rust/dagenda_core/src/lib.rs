@@ -73,6 +73,12 @@
 //! source ──parser::document──▶ ast::Document ──┐
 //! source ──parser::document──▶ ast::Document ──┼──Plan::resolve──▶ plan::Plan
 //!                                              ┘   (ids, then derived state)
+//!                                                          │
+//!                                    ┌─────────────────────┴───────────┐
+//!                                    ▼                                 ▼
+//!                             Plan::to_text                      Plan::to_svg
+//!                          (outline: milestones,          (tech_tree: layout,
+//!                           tracks, status boxes)          then SVG)
 //! ```
 //!
 //! [`parse`] does both steps for a single document.
@@ -105,11 +111,13 @@ extern crate alloc;
 pub mod ast;
 pub mod handle;
 pub mod id;
+pub mod outline;
 pub mod parser;
 pub mod plan;
 pub mod reference;
 pub mod span;
 pub mod status;
+pub mod tech_tree;
 pub mod text;
 
 use parser::ParseError;

@@ -1,0 +1,32 @@
+title: Every warning
+
+tracks
+  work [Work]
+
+tasks
+  [x] shipped [Shipped], in work: finished
+    needs unfinished
+  [ ] unfinished [Unfinished], in work: ready
+    dri @bob
+  [~] dropped [Dropped], in work: dropped
+  [>] deferred [Deferred], in work: ready
+  [ ] waiting [Waiting], in work: blocked by dropped
+    needs dropped
+  [x] parent [Parent], in work: finished
+  [ ] child [Open child], in work, under parent: ready
+  [x] doneChild [Done child], in work, under parent: finished
+  [~] droppedChild [Dropped child], in work, under parent: dropped
+
+milestones
+  stuck [Stuck]: not reached; 0/2 needed, 0/0 wanted
+    critical path: dropped
+  empty [Empty]: reached; 0/0 needed, 0/1 wanted
+
+warnings
+  6:11: `shipped` is done, but it needs `unfinished`, which isn't
+  11:11: `waiting` needs `dropped`, which is dropped, so `waiting` can never finish
+  12:3: `parent` is done, but its subtask `child` isn't
+  17:8: `unfinished` is defined in this document, so put these details on it directly
+  21:3: `dropped` is dropped, so `stuck` can never be reached; take it off the list, or move it below the cut line
+  22:3: `deferred` is deferred but still holds up `stuck`; move it below the cut line if `stuck` can go without it
+  24:1: `empty` has no must-haves above its cut line, so it counts as reached

@@ -7,6 +7,7 @@ use dagenda_core::{
     plan::{Plan, Readiness},
     span::Span,
     status::Status,
+    tech_tree::TechTree,
 };
 use std::{fs, path::Path};
 use testresult::TestResult;
@@ -129,9 +130,64 @@ fn assert_in_bounds(span: Span, source: &str) {
     );
 }
 
+/// The tech tree fits: every node inside the canvas and inside its lane, no
+/// two nodes overlapping, every line between two different nodes, and (with
+/// no subtasks folded in to make loops) every must-have line pointing right.
+fn assert_laid_out(plan: &Plan) {
+    let tree = TechTree::new(plan);
+    for node in &tree.nodes {
+        assert!(node.x + node.width <= tree.width && node.y + node.height <= tree.height);
+        let lane = tree.lanes.get(node.lane);
+        assert!(
+            lane.is_some_and(
+                |lane| lane.y <= node.y && node.y + node.height <= lane.y + lane.height
+            ),
+            "{} is outside its lane",
+            node.id
+        );
+    }
+
+    for (index, a) in tree.nodes.iter().enumerate() {
+        for b in tree.nodes.iter().skip(index + 1) {
+            let apart = a.x + a.width <= b.x
+                || b.x + b.width <= a.x
+                || a.y + a.height <= b.y
+                || b.y + b.height <= a.y;
+            assert!(apart, "{} overlaps {}", a.id, b.id);
+        }
+    }
+
+    let flat = plan.tasks().iter().all(|task| task.parent.is_none());
+    for edge in &tree.edges {
+        assert_ne!(edge.from, edge.to);
+        let (from, to) = (tree.nodes.get(edge.from), tree.nodes.get(edge.to));
+        assert!(from.is_some() && to.is_some(), "a line to a missing node");
+        if let (Some(from), Some(to)) = (from, to)
+            && flat
+            && !edge.wanted
+        {
+            assert!(
+                from.column < to.column,
+                "{} → {} points left",
+                from.id,
+                to.id
+            );
+        }
+    }
+
+    let svg = plan.to_svg();
+    assert!(svg.starts_with("<svg") && svg.ends_with("</svg>"));
+    for node in &tree.nodes {
+        assert!(svg.contains(&format!("data-id=\"{}\"", node.id)));
+    }
+    assert!(!plan.to_text().is_empty() || plan.tasks().is_empty());
+}
+
 /// What's derived agrees with itself: readiness with statuses and needs,
 /// progress with what's finished, critical paths with what isn't.
 fn assert_consistent(plan: &Plan, source: &str) {
+    assert_laid_out(plan);
+
     for warning in plan.warnings() {
         assert_in_bounds(warning.at.span, source);
     }

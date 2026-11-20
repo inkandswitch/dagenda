@@ -1,7 +1,15 @@
-//! Goldens: each `golden/*.dagenda` must derive the report in its `.txt`.
+//! Goldens: each `golden/*.dagenda` must produce exactly what's in the files
+//! beside it.
 //!
-//! The reports were reviewed by hand when blessed. After an intended change,
-//! check the diffs and re-bless with `BLESS=1 cargo test --test golden`.
+//! | File          | Holds                                                |
+//! |---------------|------------------------------------------------------|
+//! | `*.plan.txt`  | everything the core derives from it (`common::report`) |
+//! | `*.txt`       | `Plan::to_text`                                      |
+//! | `*.svg`       | `Plan::to_svg`, the tech tree                        |
+//!
+//! They were reviewed by hand when blessed (the SVGs by eye). After an
+//! intended change, check the diffs and re-bless with
+//! `BLESS=1 cargo test --test golden`.
 
 mod common;
 
@@ -23,20 +31,31 @@ fn goldens() -> TestResult {
 
     let mut failures = Vec::new();
     for case in cases {
-        let report = common::report(&fs::read_to_string(&case)?, true);
-        let expected_path = case.with_extension("txt");
+        let source = fs::read_to_string(&case)?;
+        let plan = dagenda_core::parse(&source).ok();
+        let outputs = [
+            ("plan.txt", Some(common::report(&source, true))),
+            ("txt", plan.as_ref().map(dagenda_core::plan::Plan::to_text)),
+            ("svg", plan.as_ref().map(dagenda_core::plan::Plan::to_svg)),
+        ];
 
-        if bless {
-            fs::write(&expected_path, &report)?;
-            continue;
-        }
+        for (extension, output) in outputs {
+            let Some(output) = output else {
+                continue;
+            };
+            let expected_path = case.with_extension(extension);
+            if bless {
+                fs::write(&expected_path, &output)?;
+                continue;
+            }
 
-        let expected = fs::read_to_string(&expected_path).unwrap_or_default();
-        if report != expected {
-            failures.push(format!(
-                "{}\n--- derived ---\n{report}--- expected ---\n{expected}",
-                case.display()
-            ));
+            let expected = fs::read_to_string(&expected_path).unwrap_or_default();
+            if output != expected {
+                failures.push(format!(
+                    "{}\n--- produced ---\n{output}\n--- expected ---\n{expected}",
+                    expected_path.display()
+                ));
+            }
         }
     }
 
