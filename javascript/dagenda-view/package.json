@@ -1,0 +1,23 @@
+{
+  "name": "@inkandswitch/dagenda-view",
+  "version": "0.0.0",
+  "private": true,
+  "description": "<dagenda-view>: a roadmap's tech tree, drawn from the dagenda notation",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/inkandswitch/dagenda.git",
+    "directory": "javascript/dagenda-view"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./dagenda-view.js"
+  },
+  "files": [
+    "dagenda-view.js",
+    "pkg/"
+  ],
+  "scripts": {
+    "build": "wasm-pack build --release --target web --out-dir ../../javascript/dagenda-view/pkg ../../rust/dagenda_wasm"
+  }
+}

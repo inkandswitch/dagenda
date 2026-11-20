@@ -321,9 +321,11 @@ const STYLE: &str = r"<style>
   .dagenda:not(.light) .band { fill: #23221f; }
   .dagenda:not(.light) .odd .band { fill: #2a2925; }
   .dagenda:not(.light) .heading, .dagenda:not(.light) .caption { fill: #9a958c; }
-  .dagenda:not(.light) :is(.card, .box) { fill: #1f1e1c; stroke: #5b574f; }
-  .dagenda:not(.light) .done .card { fill: #1f2e20; stroke: #6aa56f; }
+  .dagenda:not(.light) :is(.card, .box) { fill: #1f1e1c; }
+  .dagenda:not(.light) :is(.not-started, .idea, .deferred, .dropped) :is(.card, .box), .dagenda:not(.light) :is(.in-progress, .research) .box { stroke: #5b574f; }
+  .dagenda:not(.light) .done .card { fill: #1f2e20; }
   .dagenda:not(.light) .done .box { fill: #6aa56f; }
+  .dagenda:not(.light) .needs-attention .box { stroke: #e5615a; }
   .dagenda:not(.light) .needs-attention .card { fill: #3a1f1f; stroke: #e5615a; }
   .dagenda:not(.light) .gate { fill: #3a3218; stroke: #c9a227; }
   .dagenda:not(.light) .reached .gate { fill: #8a6d16; }
@@ -333,9 +335,11 @@ const STYLE: &str = r"<style>
 .dagenda.dark .band { fill: #23221f; }
 .dagenda.dark .odd .band { fill: #2a2925; }
 .dagenda.dark .heading, .dagenda.dark .caption { fill: #9a958c; }
-.dagenda.dark :is(.card, .box) { fill: #1f1e1c; stroke: #5b574f; }
-.dagenda.dark .done .card { fill: #1f2e20; stroke: #6aa56f; }
+.dagenda.dark :is(.card, .box) { fill: #1f1e1c; }
+.dagenda.dark :is(.not-started, .idea, .deferred, .dropped) :is(.card, .box), .dagenda.dark :is(.in-progress, .research) .box { stroke: #5b574f; }
+.dagenda.dark .done .card { fill: #1f2e20; }
 .dagenda.dark .done .box { fill: #6aa56f; }
+.dagenda.dark .needs-attention .box { stroke: #e5615a; }
 .dagenda.dark .needs-attention .card { fill: #3a1f1f; stroke: #e5615a; }
 .dagenda.dark .gate { fill: #3a3218; stroke: #c9a227; }
 .dagenda.dark .reached .gate { fill: #8a6d16; }
