@@ -18,11 +18,12 @@ test("colours the parts of a task line", () => {
 })
 
 test("colours details by kind", () => {
-  const html = highlight("needs a, b\ndri @alice\npr gh:owner/repo#1\nest 2w")
+  const html = highlight("needs a, b\ndri @alice\npr gh:owner/repo#1\nest 2026-11-19\nlink https://example.com [Spec]")
   assert.match(html, /<span class="id">a<\/span>, <span class="id">b<\/span>/)
   assert.match(html, /<span class="person">@alice<\/span>/)
   assert.match(html, /<span class="ref">gh:owner\/repo#1<\/span>/)
-  assert.match(html, /<span class="value">2w<\/span>/)
+  assert.match(html, /<span class="value">2026-11-19<\/span>/)
+  assert.match(html, /<span class="ref">https:\/\/example.com<\/span> <span class="label">\[Spec\]<\/span>/)
 })
 
 test("escapes what HTML would swallow", () => {

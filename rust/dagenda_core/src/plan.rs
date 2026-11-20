@@ -15,9 +15,10 @@ pub mod warning;
 
 use crate::{
     ast::Document,
+    date::Date,
     handle::Handle,
     id::Id,
-    reference::Ref,
+    reference::{self, Ref},
     span::Span,
     status::Status,
     text::{Note, Text},
@@ -340,17 +341,20 @@ pub struct Task {
     /// What it can't finish without.
     pub needs: Vec<Located<Id>>,
 
-    /// The estimate, as written.
-    pub est: Option<Located<Text>>,
+    /// When it's expected to land.
+    pub est: Option<Located<Date>>,
 
-    /// When it should land, as written.
-    pub target: Option<Located<Text>>,
+    /// When it should land.
+    pub target: Option<Located<Date>>,
 
     /// The person responsible for it.
     pub dri: Option<Located<Handle>>,
 
     /// Its issues and pull requests.
     pub refs: Vec<Located<Ref>>,
+
+    /// Links to anything else about it.
+    pub links: Vec<Located<reference::Link>>,
 
     /// Notes about it.
     pub notes: Vec<Located<Note>>,
@@ -374,8 +378,8 @@ pub struct Milestone {
     /// Its display text, if it has any.
     pub label: Option<Text>,
 
-    /// When it should be reached, as written.
-    pub target: Option<Located<Text>>,
+    /// When it should be reached.
+    pub target: Option<Located<Date>>,
 
     /// Notes about it.
     pub notes: Vec<Located<Note>>,

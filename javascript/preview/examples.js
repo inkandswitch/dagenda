@@ -42,11 +42,14 @@ track core [Core]
 
   [x] task parser [Parser]
     pr gh:owner/repo#1
-    est 2w
+    est 2026-11-19
 
   [-] task resolver [Resolver]
     needs parser
     issue gh:owner/repo#2
+    link https://github.com/owner/repo/issues/2#issuecomment-3
+    link https://example.com/resolver-design [Design doc]
+    est 2026-12
     target 2026-Q4
     note
       Resolves ids across every document.
@@ -55,6 +58,7 @@ track core [Core]
       // Not a comment: this is inside the note.
       \`\`\`
     [x] task duplicates [Duplicate ids]
+      dri @bob
     [ ] task cycles [Cycles]
 
   track views [Views \\[nested\\]]

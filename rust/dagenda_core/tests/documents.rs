@@ -27,7 +27,7 @@ extend signatures
   dri @alice
   needs fragments
   [ ] task wireFormat [Pick the wire format]
-    est 3d
+    est 2026-12-01
 ";
 
 fn resolve(sources: &[&str]) -> Result<Plan, Box<dyn std::error::Error>> {
@@ -123,7 +123,7 @@ fn two_documents_cant_both_set_a_detail() -> TestResult {
 
 #[test]
 fn extending_a_task_in_its_own_document_is_a_warning() -> TestResult {
-    let plan = resolve(&["roadmap\n[ ] task a\nextend a\n  est 1w\n"])?;
+    let plan = resolve(&["roadmap\n[ ] task a\nextend a\n  est 2026-12\n"])?;
     let kinds: Vec<_> = plan.warnings().iter().map(|w| &w.kind).collect();
     assert_eq!(kinds, [&WarningKind::ExtendSameDocument(id("a")?)]);
     Ok(())

@@ -35,10 +35,11 @@
 //! | `---`                         | A milestone's cut line: the members below it are nice-to-haves          |
 //! | `extend <id>`                 | Details and subtasks for a task defined in another document             |
 //! | `needs <id>, <id>, …`         | This can't finish until those do                                        |
-//! | `est <duration>`              | An estimate, as in `2w`                                                 |
-//! | `target <when>`               | When it should land, as in `2026-Q4` or `EOY26`                         |
+//! | `est <date>`                  | When it's expected to land, as in `2026-11-19`                          |
+//! | `target <date>`               | When it should land, as in `2026-Q4` or `EOY26`                         |
 //! | `dri @<handle>`               | The person responsible                                                  |
 //! | `pr gh:<owner>/<repo>#<n>`    | A pull request (`issue gh:…` for an issue)                              |
+//! | `link <url> [<label>]`        | Any other page about it: a GitHub comment, a doc, a demo                |
 //! | `note <text>`                 | A note in markdown; leave the text off and indent it below for a long one |
 //! | `// …`                        | A comment line                                                          |
 //!
@@ -109,6 +110,7 @@
 extern crate alloc;
 
 pub mod ast;
+pub mod date;
 pub mod handle;
 pub mod id;
 pub mod outline;

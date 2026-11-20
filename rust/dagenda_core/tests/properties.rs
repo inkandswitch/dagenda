@@ -4,6 +4,7 @@ mod common;
 
 use bolero::check;
 use dagenda_core::{
+    date::Date,
     plan::{Plan, Readiness},
     span::Span,
     status::Status,
@@ -37,6 +38,30 @@ fn plans_are_consistent() {
                 Err(error) => assert_in_bounds(error.span(), &source),
             }
         });
+}
+
+/// A date parses back to what was written, and covers at least a day, or
+/// it's an error; never a panic.
+#[test]
+fn dates_round_trip() {
+    check!()
+        .with_type::<(u8, u16, u8, u8)>()
+        .for_each(|&(form, year, month, day)| {
+            let written = match form % 5 {
+                0 => format!("{year:04}-{month:02}-{day:02}"),
+                1 => format!("{year:04}-{month:02}"),
+                2 => format!("{year:04}-Q{}", month % 6),
+                3 => format!("{year:04}"),
+                _ => format!("EOY{:02}", day % 100),
+            };
+            if let Ok(date) = Date::new(&written) {
+                assert_eq!(date.to_string(), written);
+                assert!(date.first() <= date.last(), "{written}");
+            }
+        });
+    check!().with_type::<String>().for_each(|written| {
+        let _ = Date::new(written);
+    });
 }
 
 /// How far a block is indented doesn't matter, only that it's further than
@@ -75,7 +100,7 @@ const TRACKS: [&str; 2] = ["s", "t"];
 fn build(lines: &[(u8, u8, u8, u8)]) -> String {
     let mut source = String::from("roadmap\n");
     for &(indent, kind, first, second) in lines {
-        let line = match kind % 8 {
+        let line = match kind % 11 {
             0 => {
                 let mark = BOXES
                     .get(usize::from(second) % BOXES.len())
@@ -89,7 +114,13 @@ fn build(lines: &[(u8, u8, u8, u8)]) -> String {
             4 => String::from("---"),
             5 => format!("track {}", pick(&TRACKS, first)),
             6 => format!("extend {}", pick(&TASKS, first)),
-            _ => String::from("note something"),
+            7 => String::from("note something"),
+            8 => format!("dri @{}", pick(&["alice", "bob", "carol"], first)),
+            9 => format!("est 2026-{:02}", first % 14),
+            _ => format!(
+                "link https://github.com/o/r/pull/{first} [{}]",
+                pick(&TASKS, second)
+            ),
         };
         source.push_str(&" ".repeat(usize::from(indent % 4) * 2));
         source.push_str(&line);

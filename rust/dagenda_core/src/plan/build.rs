@@ -141,6 +141,11 @@ impl<'d> Builder<'d> {
                 .map(|target| locate(document, target)),
             dri: details.dri.as_ref().map(|dri| locate(document, dri)),
             refs: details.refs.iter().map(|r| locate(document, r)).collect(),
+            links: details
+                .links
+                .iter()
+                .map(|link| locate(document, link))
+                .collect(),
             notes: details
                 .notes
                 .iter()
@@ -611,6 +616,8 @@ fn merge(
         .extend(details.needs.iter().map(|need| locate(document, need)));
     task.refs
         .extend(details.refs.iter().map(|r| locate(document, r)));
+    task.links
+        .extend(details.links.iter().map(|link| locate(document, link)));
     task.notes
         .extend(details.notes.iter().map(|note| locate(document, note)));
     set_once(

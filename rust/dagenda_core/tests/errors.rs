@@ -76,11 +76,11 @@ fn parse_errors_say_what_to_do() {
             "3:6: expected a GitHub reference like `gh:owner/repo#123`",
         ),
         (
-            "roadmap\n[ ] task x\n  est 1w\n  est 2w",
+            "roadmap\n[ ] task x\n  est 2026-11\n  est 2026-12",
             "4:7: a task can only have one `est`",
         ),
         (
-            "roadmap\ntrack a\n  est 1w",
+            "roadmap\ntrack a\n  est 2026-11",
             "3:3: `est` can't go in a track",
         ),
         (
@@ -165,9 +165,49 @@ fn resolve_errors_name_the_ids() {
 }
 
 #[test]
+fn dates_and_links_say_what_to_do() {
+    for (source, expected) in [
+        (
+            "roadmap\n[ ] task x\n  est 2w",
+            "3:7: expected a date like `2026-11-19` or `2026-Q4`; a duration doesn't say when it lands",
+        ),
+        (
+            "roadmap\n[ ] task x\n  est next week",
+            "3:7: expected a date like `2026-11-19`, `2026-11`, `2026-Q4`, `2026`, or `EOY26`",
+        ),
+        (
+            "roadmap\n[ ] task x\n  target 2026-13",
+            "3:10: there's no month 13; months run from 01 to 12",
+        ),
+        (
+            "roadmap\n[ ] task x\n  est 2027-02-29",
+            "3:7: 2027-02 has no day 29",
+        ),
+        (
+            "roadmap\nmilestone m\n  target 2026-Q5",
+            "3:10: quarters run from Q1 to Q4",
+        ),
+        (
+            "roadmap\n[ ] task x\n  link example.com/design",
+            "3:8: expected a web address starting with `https://`",
+        ),
+        (
+            "roadmap\n[ ] task x\n  link https://example.com [Design",
+            "3:35: expected `]` to close the label",
+        ),
+        (
+            "roadmap\nmilestone m\n  link https://example.com",
+            "3:3: `link` can't go in a milestone",
+        ),
+    ] {
+        assert_eq!(error(source), expected, "{source:?}");
+    }
+}
+
+#[test]
 fn editors_line_endings_and_marks_are_fine() {
     for source in [
-        "roadmap\r\n[ ] task x\r\n  est 2w\r\n",
+        "roadmap\r\n[ ] task x\r\n  est 2026-11-19\r\n",
         "\u{feff}roadmap\n[ ] task x\n",
         "  roadmap\n    [ ] task x\n",
         "roadmap\n\n// a comment\n[ ] task x\n   \n",

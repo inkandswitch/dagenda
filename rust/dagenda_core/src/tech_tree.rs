@@ -46,6 +46,7 @@
 pub mod svg;
 
 use crate::{
+    date::Date,
     id::Id,
     plan::{Count, DocumentId, Plan, Progress, Readiness},
     status::Status,
@@ -281,7 +282,7 @@ impl Node {
 }
 
 /// What a node is.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Shape {
     /// A top-level task.
     Task {
@@ -300,8 +301,8 @@ pub enum Shape {
         /// How many of its members are finished.
         progress: Progress,
 
-        /// When it should be reached, as written.
-        target: Option<Text>,
+        /// When it should be reached.
+        target: Option<Date>,
     },
 }
 
@@ -427,7 +428,7 @@ fn nodes(plan: &Plan) -> (Vec<Node>, BTreeMap<Id, usize>) {
         });
         let shape = Shape::Milestone {
             progress,
-            target: milestone.target.as_ref().map(|target| target.node.clone()),
+            target: milestone.target.as_ref().map(|target| target.node),
         };
         nodes.push(node(&milestone.id, milestone.label.as_ref(), shape));
     }

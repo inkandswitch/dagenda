@@ -11,8 +11,11 @@
 //! task      = box "task" id [ label ] NL [ INDENT { task | detail } DEDENT ]
 //! milestone = "milestone" id [ label ] NL [ INDENT { id NL | "---" NL | target | note } DEDENT ]
 //! extend    = "extend" id NL [ INDENT { task | detail } DEDENT ]
-//! detail    = needs | est | target | dri | pr | issue | note
+//! detail    = needs | est | target | dri | pr | issue | link | note
 //! needs     = "needs" id { "," id } NL
+//! est       = "est" date NL                      (target is the same)
+//! date      = YYYY-MM-DD | YYYY-MM | YYYY-Qn | YYYY | EOYyy
+//! link      = "link" url [ label ] NL
 //! note      = "note" text NL | "note" NL INDENT markdown DEDENT
 //! box       = "[" ( " " | ">" | "x" | "-" | "?" | "!" | "*" | "~" ) "]"
 //! label     = "[" text "]"
@@ -29,9 +32,10 @@
 
 use crate::{
     ast::{Details, Document, Extend, Item, Milestone, Task, Track, TrackChild},
+    date::{Date, InvalidDate},
     handle::{Handle, InvalidHandle},
     id::{Id, InvalidId},
-    reference::{GithubRef, InvalidGithubRef, Ref, RefKind},
+    reference::{GithubRef, InvalidGithubRef, InvalidUrl, Link, Ref, RefKind, Url},
     span::{Span, Spanned},
     status::Status,
     text::{EmptyNote, InvalidText, Note, Text},
@@ -229,7 +233,11 @@ impl<'a> Parser<'a> {
                     match parser.detail(Place::Track, child, key, word, value)? {
                         Detail::Dri(dri) => set_once(&mut track.dri, dri, key, Place::Track)?,
                         Detail::Note(note) => track.notes.push(note),
-                        Detail::Needs(_) | Detail::Est(_) | Detail::Target(_) | Detail::Ref(_) => {
+                        Detail::Needs(_)
+                        | Detail::Est(_)
+                        | Detail::Target(_)
+                        | Detail::Ref(_)
+                        | Detail::Link(_) => {
                             return Err(misplaced(key.quoted(), word.span(), Place::Track));
                         }
                     }
@@ -356,7 +364,11 @@ impl<'a> Parser<'a> {
                             set_once(&mut milestone.target, target, key, Place::Milestone)?;
                         }
                         Detail::Note(note) => milestone.notes.push(note),
-                        Detail::Needs(_) | Detail::Est(_) | Detail::Dri(_) | Detail::Ref(_) => {
+                        Detail::Needs(_)
+                        | Detail::Est(_)
+                        | Detail::Dri(_)
+                        | Detail::Ref(_)
+                        | Detail::Link(_) => {
                             return Err(misplaced(key.quoted(), word.span(), Place::Milestone));
                         }
                     }
@@ -389,19 +401,27 @@ impl<'a> Parser<'a> {
         if value.is_empty() {
             return match key {
                 Key::Note => self.note_block(line, word).map(Detail::Note),
-                Key::Needs | Key::Est | Key::Target | Key::Dri | Key::Pr | Key::Issue => Err(
-                    ParseError::new(word.span(), ParseErrorKind::MissingValue(key.keyword())),
-                ),
+                Key::Needs
+                | Key::Est
+                | Key::Target
+                | Key::Dri
+                | Key::Pr
+                | Key::Issue
+                | Key::Link => Err(ParseError::new(
+                    word.span(),
+                    ParseErrorKind::MissingValue(key.keyword()),
+                )),
             };
         }
 
         Ok(match key {
             Key::Needs => Detail::Needs(ids(value)?),
-            Key::Est => Detail::Est(parse_value(value, Text::new)?),
-            Key::Target => Detail::Target(parse_value(value, Text::new)?),
+            Key::Est => Detail::Est(parse_value(value, Date::new)?),
+            Key::Target => Detail::Target(parse_value(value, Date::new)?),
             Key::Dri => Detail::Dri(parse_value(value, Handle::new)?),
             Key::Pr => Detail::Ref(reference(RefKind::PullRequest, value)?),
             Key::Issue => Detail::Ref(reference(RefKind::Issue, value)?),
+            Key::Link => Detail::Link(link(value)?),
             Key::Note => Detail::Note(parse_value(value, Note::new)?),
         })
     }
@@ -746,6 +766,23 @@ fn ids(piece: Piece<'_>) -> Result<Vec<Spanned<Id>>, ParseError> {
     Ok(ids)
 }
 
+/// `<url> [<label>]` after `link`.
+fn link(piece: Piece<'_>) -> Result<Spanned<Link>, ParseError> {
+    let (address, rest) = piece.split_word();
+    let url = parse_value(address, Url::new)?;
+    let label = if rest.is_empty() {
+        None
+    } else {
+        Some(label(rest)?)
+    };
+    let end = label.as_ref().map_or(url.span.end, |label| label.span.end);
+    let link = Link {
+        url: url.node,
+        label: label.map(|label| label.node),
+    };
+    Ok(Spanned::new(link, Span::new(piece.start, end)))
+}
+
 fn reference(kind: RefKind, piece: Piece<'_>) -> Result<Spanned<Ref>, ParseError> {
     parse_value(piece, |written| {
         GithubRef::new(written).map(|target| Ref { kind, target })
@@ -766,10 +803,11 @@ fn parse_value<T, E: Into<ParseErrorKind>, F: FnOnce(&str) -> Result<T, E>>(
 #[derive(Debug)]
 enum Detail {
     Needs(Vec<Spanned<Id>>),
-    Est(Spanned<Text>),
-    Target(Spanned<Text>),
+    Est(Spanned<Date>),
+    Target(Spanned<Date>),
     Dri(Spanned<Handle>),
     Ref(Spanned<Ref>),
+    Link(Spanned<Link>),
     Note(Spanned<Note>),
 }
 
@@ -782,6 +820,7 @@ enum Key {
     Dri,
     Pr,
     Issue,
+    Link,
     Note,
 }
 
@@ -794,6 +833,7 @@ impl Key {
             "dri" => Some(Self::Dri),
             "pr" => Some(Self::Pr),
             "issue" => Some(Self::Issue),
+            "link" => Some(Self::Link),
             "note" => Some(Self::Note),
             _ => None,
         }
@@ -807,6 +847,7 @@ impl Key {
             Self::Dri => "dri",
             Self::Pr => "pr",
             Self::Issue => "issue",
+            Self::Link => "link",
             Self::Note => "note",
         }
     }
@@ -819,6 +860,7 @@ impl Key {
             Self::Dri => "`dri`",
             Self::Pr => "`pr`",
             Self::Issue => "`issue`",
+            Self::Link => "`link`",
             Self::Note => "`note`",
         }
     }
@@ -832,6 +874,7 @@ fn add(details: &mut Details, detail: Detail, place: Place) -> Result<(), ParseE
         Detail::Target(target) => set_once(&mut details.target, target, Key::Target, place)?,
         Detail::Dri(dri) => set_once(&mut details.dri, dri, Key::Dri, place)?,
         Detail::Ref(reference) => details.refs.push(reference),
+        Detail::Link(link) => details.links.push(link),
         Detail::Note(note) => details.notes.push(note),
     }
     Ok(())
@@ -1024,6 +1067,14 @@ pub enum ParseErrorKind {
     /// A `pr` or `issue` that isn't a valid reference.
     #[error(transparent)]
     GithubRef(#[from] InvalidGithubRef),
+
+    /// An `est` or `target` that isn't a date.
+    #[error(transparent)]
+    Date(#[from] InvalidDate),
+
+    /// A `link` that isn't a web address.
+    #[error(transparent)]
+    Url(#[from] InvalidUrl),
 
     /// A one-line note that's empty.
     #[error(transparent)]

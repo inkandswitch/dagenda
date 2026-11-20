@@ -2,7 +2,7 @@
 // (transparent) textarea, line for line.
 
 const BLOCKS = new Set(["extend", "milestone", "roadmap", "task", "title", "track"])
-const DETAILS = new Set(["dri", "est", "issue", "needs", "note", "pr", "target"])
+const DETAILS = new Set(["dri", "est", "issue", "link", "needs", "note", "pr", "target"])
 
 /** The status class for each box's mark, as the SVG uses. */
 export const STATUS = {
@@ -76,6 +76,10 @@ const colour = (text) => {
       case "pr":
       case "issue":
         return html + span("ref", after)
+      case "link": {
+        const [, url = "", space = "", label = ""] = /^(\S*)(\s*)(.*)$/su.exec(after) ?? []
+        return html + span("ref", url) + escape(space) + span("label", label)
+      }
       default:
         return html + span("value", after)
     }

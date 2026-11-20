@@ -6,9 +6,10 @@
 //! track inside a task, has no representation here.
 
 use crate::{
+    date::Date,
     handle::Handle,
     id::Id,
-    reference::Ref,
+    reference::{Link, Ref},
     span::{Span, Spanned},
     status::Status,
     text::{Note, Text},
@@ -127,17 +128,20 @@ pub struct Details {
     /// What it can't finish without, from every `needs` line.
     pub needs: Vec<Spanned<Id>>,
 
-    /// The estimate, as written (`2w`).
-    pub est: Option<Spanned<Text>>,
+    /// When it's expected to land (`2026-11-19`).
+    pub est: Option<Spanned<Date>>,
 
-    /// When it should land, as written (`2026-Q4`, `EOY26`).
-    pub target: Option<Spanned<Text>>,
+    /// When it should land (`2026-Q4`, `EOY26`).
+    pub target: Option<Spanned<Date>>,
 
     /// The person responsible for it.
     pub dri: Option<Spanned<Handle>>,
 
     /// Its issues and pull requests.
     pub refs: Vec<Spanned<Ref>>,
+
+    /// Links to anything else about it.
+    pub links: Vec<Spanned<Link>>,
 
     /// Notes about it.
     pub notes: Vec<Spanned<Note>>,
@@ -153,8 +157,8 @@ pub struct Milestone {
     /// The display text in brackets, if any.
     pub label: Option<Spanned<Text>>,
 
-    /// When it should be reached, as written.
-    pub target: Option<Spanned<Text>>,
+    /// When it should be reached.
+    pub target: Option<Spanned<Date>>,
 
     /// Notes about it.
     pub notes: Vec<Spanned<Note>>,

@@ -49,8 +49,11 @@ roadmap
 extend newRepo
   dri @bob
   [ ] task inbox [Document inbox]
-    est 1w
+    est 2026-12
+    link https://github.com/owner/repo/issues/12#issuecomment-345
 ```
+
+`est` and `target` take a date at whatever precision you know: `2026-11-19`, `2026-11`, `2026-Q4`, `2026`, or `EOY26`. A duration like `2w` is an error, since it doesn't say when anything lands.
 
 The full set of forms, the grammar, and the indentation rules are in the [`dagenda_core`](rust/dagenda_core/) crate docs.
 

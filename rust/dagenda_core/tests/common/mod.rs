@@ -180,6 +180,11 @@ fn details(task: &Task) -> Vec<String> {
             .iter()
             .map(|reference| format!("{} ({})", reference.node, reference.node.url())),
     );
+    details.extend(
+        task.links
+            .iter()
+            .map(|link| format!("{} ({})", link.node, link.node.name())),
+    );
     details
 }
 
