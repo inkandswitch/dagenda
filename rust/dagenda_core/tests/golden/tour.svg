@@ -1,148 +1,247 @@
-<svg xmlns="http://www.w3.org/2000/svg" class="dagenda tech-tree" viewBox="0 0 896 570" width="896" height="570" font-family="system-ui, sans-serif" font-size="13">
+<svg xmlns="http://www.w3.org/2000/svg" class="dagenda tech-tree" viewBox="0 0 1208 814" width="1208" height="814" font-family="system-ui, sans-serif" font-size="13">
 <style>
 .dagenda .canvas { fill: #fff; }
 .dagenda text { fill: #1d1c1a; }
 .dagenda .title { font-size: 18px; font-weight: 650; }
-.dagenda .band { fill: #f6f5f2; }
-.dagenda .odd .band { fill: #efede8; }
-.dagenda .heading { fill: #6b6760; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; }
-.dagenda .edge { fill: none; stroke: #9a958c; stroke-width: 1.5; }
-.dagenda .edge.met { stroke: #6aa56f; }
+.dagenda .branch { fill: #f4f2ee; stroke: #e4e0d8; stroke-width: 1; }
+.dagenda .branch, .dagenda .banner rect { fill-opacity: 0.85; }
+.dagenda .band.reached { fill: #5aa362; fill-opacity: 0.08; }
+/* Track colours: teal, indigo, rose, ochre, sage, plum, sky, terracotta */
+.dagenda .branch.hue-0, .dagenda .banner.hue-0 rect { fill: #edf6f4; stroke: #c5e4de; }
+.dagenda .banner.hue-0 rect { fill: #c5e4de; }
+.dagenda .banner.hue-0 text { fill: #1f5c54; }
+.dagenda .branch.hue-1, .dagenda .banner.hue-1 rect { fill: #eef0fa; stroke: #cdd3f1; }
+.dagenda .banner.hue-1 rect { fill: #cdd3f1; }
+.dagenda .banner.hue-1 text { fill: #2f3a7a; }
+.dagenda .branch.hue-2, .dagenda .banner.hue-2 rect { fill: #fbeef1; stroke: #f2c9d3; }
+.dagenda .banner.hue-2 rect { fill: #f2c9d3; }
+.dagenda .banner.hue-2 text { fill: #7a2a3e; }
+.dagenda .branch.hue-3, .dagenda .banner.hue-3 rect { fill: #f8f2e3; stroke: #ecdcae; }
+.dagenda .banner.hue-3 rect { fill: #ecdcae; }
+.dagenda .banner.hue-3 text { fill: #6b5214; }
+.dagenda .branch.hue-4, .dagenda .banner.hue-4 rect { fill: #eff4ea; stroke: #d3e2c4; }
+.dagenda .banner.hue-4 rect { fill: #d3e2c4; }
+.dagenda .banner.hue-4 text { fill: #3d5a2a; }
+.dagenda .branch.hue-5, .dagenda .banner.hue-5 rect { fill: #f4eef7; stroke: #e0cdea; }
+.dagenda .banner.hue-5 rect { fill: #e0cdea; }
+.dagenda .banner.hue-5 text { fill: #5a2f6b; }
+.dagenda .branch.hue-6, .dagenda .banner.hue-6 rect { fill: #ecf3f9; stroke: #c7dcee; }
+.dagenda .banner.hue-6 rect { fill: #c7dcee; }
+.dagenda .banner.hue-6 text { fill: #24506f; }
+.dagenda .branch.hue-7, .dagenda .banner.hue-7 rect { fill: #f9efea; stroke: #efd0c2; }
+.dagenda .banner.hue-7 rect { fill: #efd0c2; }
+.dagenda .banner.hue-7 text { fill: #7a3b22; }
+.dagenda .era line { stroke: #c9a227; stroke-width: 1.5; stroke-dasharray: 8 6; }
+.dagenda .era text { fill: #9a7a17; font-size: 11px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; }
+.dagenda .era.reached line { stroke: #5aa362; }
+.dagenda .era.reached text { fill: #3f7d46; }
+.dagenda .banner rect { fill: #e9e5dd; }
+.dagenda .banner text { fill: #4a4640; font-size: 12px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; }
+.dagenda .edge { fill: none; stroke: #a8a399; stroke-width: 2; stroke-linejoin: round; }
+.dagenda .edge.met { stroke: #5aa362; }
 .dagenda .edge.wanted { stroke-dasharray: 5 4; }
-.dagenda .arrow { fill: #9a958c; }
-.dagenda .card { fill: #fff; stroke: #c9c4bb; stroke-width: 1.25; }
-.dagenda .box { fill: #fff; stroke: #8a857c; stroke-width: 1.25; }
+.dagenda .card { fill: #fff; stroke: #c9c4bb; stroke-width: 1.5; }
+.dagenda .badge { fill: #fff; stroke: #8a857c; stroke-width: 1.5; }
 .dagenda .mark { font-family: ui-monospace, monospace; font-size: 11px; font-weight: 700; }
 .dagenda .caption { fill: #6b6760; }
-.dagenda .done .card { fill: #edf6ed; stroke: #6aa56f; }
-.dagenda .done .box { fill: #6aa56f; stroke: #6aa56f; }
-.dagenda .done .mark { fill: #fff; }
-.dagenda .in-progress .card { stroke: #2f6fd6; stroke-width: 2; }
+.dagenda .available .card { stroke: #b08a1e; stroke-width: 2; }
+.dagenda .available .badge { stroke: #b08a1e; stroke-width: 2; }
+.dagenda .locked { opacity: 0.55; }
+.dagenda .done .card { fill: #edf6ed; stroke: #5aa362; stroke-width: 2; }
+.dagenda .done .badge { fill: #5aa362; stroke: #5aa362; }
+.dagenda .check { fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.dagenda .in-progress .card { stroke: #2f6fd6; stroke-width: 2.5; }
+.dagenda .in-progress .badge { stroke: #2f6fd6; }
 .dagenda .in-progress .mark { fill: #2f6fd6; }
-.dagenda .needs-attention .card { fill: #fdeeee; stroke: #d33; stroke-width: 2; }
+.dagenda .needs-attention .card { fill: #fdeeee; stroke: #d33; stroke-width: 2.5; }
+.dagenda .needs-attention .badge { stroke: #d33; }
 .dagenda .needs-attention .mark { fill: #d33; }
 .dagenda .idea .card { stroke-dasharray: 5 3; }
-.dagenda .research .card { stroke: #8a5cc8; stroke-dasharray: 2 3; stroke-width: 1.75; }
+.dagenda .research .card { stroke: #8a5cc8; stroke-dasharray: 2 3; stroke-width: 2; }
+.dagenda .research .badge { stroke: #8a5cc8; }
 .dagenda .research .mark { fill: #8a5cc8; }
 .dagenda .deferred { opacity: 0.6; }
 .dagenda .dropped { opacity: 0.45; }
 .dagenda .dropped .label { text-decoration: line-through; }
-.dagenda .gate { fill: #fff8e1; stroke: #c9a227; stroke-width: 1.75; }
+.dagenda .gate { fill: #fff8e1; stroke: #c9a227; stroke-width: 2; }
 .dagenda .milestone .label { font-weight: 650; }
 .dagenda .reached .gate { fill: #f3d36b; stroke: #a8841a; }
 @media (prefers-color-scheme: dark) {
   .dagenda:not(.light) .canvas { fill: #1a1917; }
   .dagenda:not(.light) text { fill: #ecebe8; }
-  .dagenda:not(.light) .band { fill: #23221f; }
-  .dagenda:not(.light) .odd .band { fill: #2a2925; }
-  .dagenda:not(.light) .heading, .dagenda:not(.light) .caption { fill: #9a958c; }
-  .dagenda:not(.light) :is(.card, .box) { fill: #1f1e1c; }
-  .dagenda:not(.light) :is(.not-started, .idea, .deferred, .dropped) :is(.card, .box), .dagenda:not(.light) :is(.in-progress, .research) .box { stroke: #5b574f; }
+  .dagenda:not(.light) .branch { fill: #232220; stroke: #302e2a; }
+  .dagenda:not(.light) .branch.hue-0, .dagenda:not(.light) .banner.hue-0 rect { fill: #1c2826; stroke: #2b4a45; }
+  .dagenda:not(.light) .banner.hue-0 rect { fill: #2b4a45; }
+  .dagenda:not(.light) .banner.hue-0 text { fill: #a8dcd3; }
+  .dagenda:not(.light) .branch.hue-1, .dagenda:not(.light) .banner.hue-1 rect { fill: #1f2130; stroke: #333b63; }
+  .dagenda:not(.light) .banner.hue-1 rect { fill: #333b63; }
+  .dagenda:not(.light) .banner.hue-1 text { fill: #c3cbf2; }
+  .dagenda:not(.light) .branch.hue-2, .dagenda:not(.light) .banner.hue-2 rect { fill: #2b1f23; stroke: #5a2f3b; }
+  .dagenda:not(.light) .banner.hue-2 rect { fill: #5a2f3b; }
+  .dagenda:not(.light) .banner.hue-2 text { fill: #f2c2cf; }
+  .dagenda:not(.light) .branch.hue-3, .dagenda:not(.light) .banner.hue-3 rect { fill: #29251a; stroke: #574a22; }
+  .dagenda:not(.light) .banner.hue-3 rect { fill: #574a22; }
+  .dagenda:not(.light) .banner.hue-3 text { fill: #ecd9a0; }
+  .dagenda:not(.light) .branch.hue-4, .dagenda:not(.light) .banner.hue-4 rect { fill: #212720; stroke: #3a4d30; }
+  .dagenda:not(.light) .banner.hue-4 rect { fill: #3a4d30; }
+  .dagenda:not(.light) .banner.hue-4 text { fill: #c9ddb8; }
+  .dagenda:not(.light) .branch.hue-5, .dagenda:not(.light) .banner.hue-5 rect { fill: #261f2a; stroke: #4b3456; }
+  .dagenda:not(.light) .banner.hue-5 rect { fill: #4b3456; }
+  .dagenda:not(.light) .banner.hue-5 text { fill: #dcc6e8; }
+  .dagenda:not(.light) .branch.hue-6, .dagenda:not(.light) .banner.hue-6 rect { fill: #1d242b; stroke: #2c4a63; }
+  .dagenda:not(.light) .banner.hue-6 rect { fill: #2c4a63; }
+  .dagenda:not(.light) .banner.hue-6 text { fill: #b9d6ee; }
+  .dagenda:not(.light) .branch.hue-7, .dagenda:not(.light) .banner.hue-7 rect { fill: #2a201c; stroke: #5a3626; }
+  .dagenda:not(.light) .banner.hue-7 rect { fill: #5a3626; }
+  .dagenda:not(.light) .banner.hue-7 text { fill: #efc4b0; }
+  .dagenda:not(.light) .era line { stroke: #9a7d22; }
+  .dagenda:not(.light) .era text { fill: #c9a227; }
+  .dagenda:not(.light) .era.reached line { stroke: #4c8a53; }
+  .dagenda:not(.light) .era.reached text { fill: #7bc283; }
+  .dagenda:not(.light) .banner rect { fill: #2e2c28; }
+  .dagenda:not(.light) .banner text, .dagenda:not(.light) .caption { fill: #b4afa6; }
+  .dagenda:not(.light) :is(.card, .badge) { fill: #1f1e1c; }
+  .dagenda:not(.light) :is(.not-started, .idea, .deferred, .dropped):not(.available) :is(.card, .badge) { stroke: #5b574f; }
   .dagenda:not(.light) .done .card { fill: #1f2e20; }
-  .dagenda:not(.light) .done .box { fill: #6aa56f; }
-  .dagenda:not(.light) .needs-attention .box { stroke: #e5615a; }
+  .dagenda:not(.light) .done .badge { fill: #5aa362; }
   .dagenda:not(.light) .needs-attention .card { fill: #3a1f1f; stroke: #e5615a; }
+  .dagenda:not(.light) .available .card, .dagenda:not(.light) .available .badge { stroke: #d6ae3a; }
   .dagenda:not(.light) .gate { fill: #3a3218; stroke: #c9a227; }
   .dagenda:not(.light) .reached .gate { fill: #8a6d16; }
+  .dagenda:not(.light) .edge { stroke: #6f6b63; }
+  .dagenda:not(.light) .edge.met { stroke: #5aa362; }
 }
 .dagenda.dark .canvas { fill: #1a1917; }
 .dagenda.dark text { fill: #ecebe8; }
-.dagenda.dark .band { fill: #23221f; }
-.dagenda.dark .odd .band { fill: #2a2925; }
-.dagenda.dark .heading, .dagenda.dark .caption { fill: #9a958c; }
-.dagenda.dark :is(.card, .box) { fill: #1f1e1c; }
-.dagenda.dark :is(.not-started, .idea, .deferred, .dropped) :is(.card, .box), .dagenda.dark :is(.in-progress, .research) .box { stroke: #5b574f; }
+.dagenda.dark .branch { fill: #232220; stroke: #302e2a; }
+.dagenda.dark .branch.hue-0, .dagenda.dark .banner.hue-0 rect { fill: #1c2826; stroke: #2b4a45; }
+.dagenda.dark .banner.hue-0 rect { fill: #2b4a45; }
+.dagenda.dark .banner.hue-0 text { fill: #a8dcd3; }
+.dagenda.dark .branch.hue-1, .dagenda.dark .banner.hue-1 rect { fill: #1f2130; stroke: #333b63; }
+.dagenda.dark .banner.hue-1 rect { fill: #333b63; }
+.dagenda.dark .banner.hue-1 text { fill: #c3cbf2; }
+.dagenda.dark .branch.hue-2, .dagenda.dark .banner.hue-2 rect { fill: #2b1f23; stroke: #5a2f3b; }
+.dagenda.dark .banner.hue-2 rect { fill: #5a2f3b; }
+.dagenda.dark .banner.hue-2 text { fill: #f2c2cf; }
+.dagenda.dark .branch.hue-3, .dagenda.dark .banner.hue-3 rect { fill: #29251a; stroke: #574a22; }
+.dagenda.dark .banner.hue-3 rect { fill: #574a22; }
+.dagenda.dark .banner.hue-3 text { fill: #ecd9a0; }
+.dagenda.dark .branch.hue-4, .dagenda.dark .banner.hue-4 rect { fill: #212720; stroke: #3a4d30; }
+.dagenda.dark .banner.hue-4 rect { fill: #3a4d30; }
+.dagenda.dark .banner.hue-4 text { fill: #c9ddb8; }
+.dagenda.dark .branch.hue-5, .dagenda.dark .banner.hue-5 rect { fill: #261f2a; stroke: #4b3456; }
+.dagenda.dark .banner.hue-5 rect { fill: #4b3456; }
+.dagenda.dark .banner.hue-5 text { fill: #dcc6e8; }
+.dagenda.dark .branch.hue-6, .dagenda.dark .banner.hue-6 rect { fill: #1d242b; stroke: #2c4a63; }
+.dagenda.dark .banner.hue-6 rect { fill: #2c4a63; }
+.dagenda.dark .banner.hue-6 text { fill: #b9d6ee; }
+.dagenda.dark .branch.hue-7, .dagenda.dark .banner.hue-7 rect { fill: #2a201c; stroke: #5a3626; }
+.dagenda.dark .banner.hue-7 rect { fill: #5a3626; }
+.dagenda.dark .banner.hue-7 text { fill: #efc4b0; }
+.dagenda.dark .era line { stroke: #9a7d22; }
+.dagenda.dark .era text { fill: #c9a227; }
+.dagenda.dark .era.reached line { stroke: #4c8a53; }
+.dagenda.dark .era.reached text { fill: #7bc283; }
+.dagenda.dark .banner rect { fill: #2e2c28; }
+.dagenda.dark .banner text, .dagenda.dark .caption { fill: #b4afa6; }
+.dagenda.dark :is(.card, .badge) { fill: #1f1e1c; }
+.dagenda.dark :is(.not-started, .idea, .deferred, .dropped):not(.available) :is(.card, .badge) { stroke: #5b574f; }
 .dagenda.dark .done .card { fill: #1f2e20; }
-.dagenda.dark .done .box { fill: #6aa56f; }
-.dagenda.dark .needs-attention .box { stroke: #e5615a; }
+.dagenda.dark .done .badge { fill: #5aa362; }
 .dagenda.dark .needs-attention .card { fill: #3a1f1f; stroke: #e5615a; }
+.dagenda.dark .available .card, .dagenda.dark .available .badge { stroke: #d6ae3a; }
 .dagenda.dark .gate { fill: #3a3218; stroke: #c9a227; }
 .dagenda.dark .reached .gate { fill: #8a6d16; }
+.dagenda.dark .edge { stroke: #6f6b63; }
+.dagenda.dark .edge.met { stroke: #5aa362; }
 </style>
-<defs><marker id="dagenda-arrow" viewBox="0 0 8 8" refX="1" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="arrow" d="M0,0 L8,4 L0,8 z"/></marker></defs>
-<rect class="canvas" width="896" height="570"/>
+<rect class="canvas" width="1208" height="814"/>
 <text class="title" x="16" y="34">A tour of the notation</text>
-<g class="lane even" data-lane="0"><rect class="band" x="0" y="50" width="896" height="86"/><text class="heading" x="16" y="67">Milestones</text></g>
-<g class="lane odd" data-lane="1" data-track="core"><rect class="band" x="0" y="142" width="896" height="86"/><text class="heading" x="16" y="159">Core</text></g>
-<g class="lane even" data-lane="2" data-track="views"><rect class="band" x="0" y="234" width="896" height="243"/><text class="heading" x="28" y="251">Views [nested]</text></g>
-<g class="lane odd" data-lane="3"><rect class="band" x="0" y="483" width="896" height="71"/><text class="heading" x="16" y="500">Other tasks</text></g>
-<path class="edge met" data-from="parser" data-to="resolver" d="M96,184 C175,184 176,192 255,192" marker-end="url(#dagenda-arrow)"/>
-<path class="edge waiting" data-from="resolver" data-to="itParses" d="M380,192 C420,192 390,100 430,100" marker-end="url(#dagenda-arrow)"/>
-<path class="edge waiting" data-from="techTree" data-to="firstPicture" d="M707,276 C747,276 717,100 757,100" marker-end="url(#dagenda-arrow)"/>
-<path class="edge waiting wanted" data-from="skillTree" data-to="firstPicture" d="M111,276 C434,276 434,100 757,100" marker-end="url(#dagenda-arrow)"/>
-<path class="edge waiting" data-from="itParses" data-to="techTree" d="M553,100 C593,100 563,276 603,276" marker-end="url(#dagenda-arrow)"/>
+<rect class="branch track hue-0" data-branch="0" data-track="core" x="16" y="50" width="178" height="688" rx="12"/>
+<rect class="branch track hue-1" data-branch="1" data-track="views" x="224" y="50" width="506" height="688" rx="12"/>
+<rect class="branch untracked" data-branch="2" x="760" y="50" width="178" height="688" rx="12"/>
+<g class="banner track hue-0 depth-0" data-track="core"><rect x="16" y="774" width="714" height="24" rx="8"/><text x="373" y="790" text-anchor="middle">Core</text></g>
+<g class="banner track hue-1 depth-1" data-track="views"><rect x="224" y="744" width="506" height="24" rx="8"/><text x="477" y="760" text-anchor="middle">Views [nested]</text></g>
+<g class="banner untracked depth-0"><rect x="760" y="744" width="178" height="54" rx="8"/><text x="849" y="790" text-anchor="middle">Other tasks</text></g>
+<g class="era" data-milestone="itParses"><line x1="16" y1="471" x2="982" y2="471"/><text x="22" y="464">It parses</text></g>
+<g class="era" data-milestone="firstPicture"><line x1="16" y1="264" x2="982" y2="264"/><text x="22" y="257">First picture</text></g>
+<path class="edge met" data-from="parser" data-to="resolver" d="M105,667 L105,621"/>
+<path class="edge waiting wanted" data-from="skillTree" data-to="firstPicture" d="M395,346 L395,332 Q395,324 403,324 L1061,324 Q1069,324 1069,316 L1069,290"/>
+<path class="edge waiting" data-from="itParses" data-to="techTree" d="M1069,445 L1069,431 Q1069,423 1061,423 L567,423 Q559,423 559,415 L559,399"/>
+<g class="edge member" data-from="resolver" data-to="itParses"/>
+<g class="edge member" data-from="techTree" data-to="firstPicture"/>
 <g class="node task done" data-id="parser" data-status="done">
 <title>Parser (parser): done</title>
-<rect class="card" x="16" y="168" width="80" height="33" rx="6"/>
-<rect class="box" x="26" y="179" width="12" height="12" rx="2"/>
-<text class="mark" x="32" y="189" text-anchor="middle">x</text>
-<text class="label" text-anchor="start"><tspan x="45" y="189">Parser</tspan></text>
+<rect class="card" x="30" y="667" width="150" height="43" rx="10"/>
+<circle class="badge" cx="105" cy="710" r="10"/>
+<path class="check" d="M100,710 l3,4 l6,-8"/>
+<text class="label" text-anchor="middle"><tspan x="105" y="689">Parser</tspan></text>
 </g>
-<g class="node task in-progress" data-id="resolver" data-status="in-progress">
+<g class="node task in-progress available" data-id="resolver" data-status="in-progress">
 <title>Resolver (resolver): in progress</title>
-<rect class="card" x="261" y="168" width="119" height="48" rx="6"/>
-<rect class="box" x="271" y="179" width="12" height="12" rx="2"/>
-<text class="mark" x="277" y="189" text-anchor="middle">-</text>
-<text class="label" text-anchor="start"><tspan x="290" y="189">Resolver</tspan></text>
-<text class="caption" x="290" y="204" text-anchor="start" font-size="11">1 of 2 subtasks</text>
+<rect class="card" x="30" y="553" width="150" height="58" rx="10"/>
+<circle class="badge" cx="105" cy="611" r="10"/>
+<text class="mark" x="105" y="615" text-anchor="middle">-</text>
+<text class="label" text-anchor="middle"><tspan x="105" y="575">Resolver</tspan></text>
+<text class="caption" x="105" y="590" text-anchor="middle" font-size="11">1 of 2 subtasks</text>
 </g>
-<g class="node task not-started" data-id="techTree" data-status="not-started">
-<title>Tech tree (techTree): not started</title>
-<rect class="card" x="609" y="260" width="98" height="33" rx="6"/>
-<rect class="box" x="619" y="271" width="12" height="12" rx="2"/>
-<text class="label" text-anchor="start"><tspan x="638" y="281">Tech tree</tspan></text>
+<g class="node task not-started locked" data-id="techTree" data-status="not-started">
+<title>Tech tree (techTree): not started, waiting on something</title>
+<rect class="card" x="484" y="346" width="150" height="43" rx="10"/>
+<circle class="badge" cx="559" cy="389" r="10"/>
+<text class="label" text-anchor="middle"><tspan x="559" y="368">Tech tree</tspan></text>
 </g>
-<g class="node task idea" data-id="skillTree" data-status="idea">
+<g class="node task idea available" data-id="skillTree" data-status="idea">
 <title>Skill tree (skillTree): an idea</title>
-<rect class="card" x="16" y="260" width="95" height="33" rx="6"/>
-<rect class="box" x="26" y="271" width="12" height="12" rx="2"/>
-<text class="mark" x="32" y="281" text-anchor="middle">?</text>
-<text class="label" text-anchor="start"><tspan x="45" y="281">Skill tree</tspan></text>
+<rect class="card" x="320" y="346" width="150" height="43" rx="10"/>
+<circle class="badge" cx="395" cy="389" r="10"/>
+<text class="mark" x="395" y="393" text-anchor="middle">?</text>
+<text class="label" text-anchor="middle"><tspan x="395" y="368">Skill tree</tspan></text>
 </g>
-<g class="node task research" data-id="layout" data-status="research">
+<g class="node task research available" data-id="layout" data-status="research">
 <title>Layout research (layout): research</title>
-<rect class="card" x="16" y="303" width="140" height="33" rx="6"/>
-<rect class="box" x="26" y="314" width="12" height="12" rx="2"/>
-<text class="mark" x="32" y="324" text-anchor="middle">*</text>
-<text class="label" text-anchor="start"><tspan x="45" y="324">Layout research</tspan></text>
+<rect class="card" x="238" y="68" width="150" height="43" rx="10"/>
+<circle class="badge" cx="313" cy="111" r="10"/>
+<text class="mark" x="313" y="115" text-anchor="middle">*</text>
+<text class="label" text-anchor="middle"><tspan x="313" y="90">Layout research</tspan></text>
 </g>
-<g class="node task needs-attention" data-id="fonts" data-status="needs-attention">
+<g class="node task needs-attention available" data-id="fonts" data-status="needs-attention">
 <title>Fonts (fonts): needs attention</title>
-<rect class="card" x="16" y="346" width="75" height="33" rx="6"/>
-<rect class="box" x="26" y="357" width="12" height="12" rx="2"/>
-<text class="mark" x="32" y="367" text-anchor="middle">!</text>
-<text class="label" text-anchor="start"><tspan x="45" y="367">Fonts</tspan></text>
+<rect class="card" x="402" y="68" width="150" height="43" rx="10"/>
+<circle class="badge" cx="477" cy="111" r="10"/>
+<text class="mark" x="477" y="115" text-anchor="middle">!</text>
+<text class="label" text-anchor="middle"><tspan x="477" y="90">Fonts</tspan></text>
 </g>
-<g class="node task deferred" data-id="gantt" data-status="deferred">
+<g class="node task deferred available" data-id="gantt" data-status="deferred">
 <title>Gantt (gantt): deferred</title>
-<rect class="card" x="16" y="389" width="73" height="33" rx="6"/>
-<rect class="box" x="26" y="400" width="12" height="12" rx="2"/>
-<text class="mark" x="32" y="410" text-anchor="middle">&gt;</text>
-<text class="label" text-anchor="start"><tspan x="45" y="410">Gantt</tspan></text>
+<rect class="card" x="566" y="68" width="150" height="43" rx="10"/>
+<circle class="badge" cx="641" cy="111" r="10"/>
+<text class="mark" x="641" y="115" text-anchor="middle">&gt;</text>
+<text class="label" text-anchor="middle"><tspan x="641" y="90">Gantt</tspan></text>
 </g>
 <g class="node task dropped" data-id="mermaid" data-status="dropped">
 <title>Mermaid export (mermaid): dropped</title>
-<rect class="card" x="16" y="432" width="135" height="33" rx="6"/>
-<rect class="box" x="26" y="443" width="12" height="12" rx="2"/>
-<text class="mark" x="32" y="453" text-anchor="middle">~</text>
-<text class="label" text-anchor="start"><tspan x="45" y="453">Mermaid export</tspan></text>
+<rect class="card" x="320" y="139" width="150" height="43" rx="10"/>
+<circle class="badge" cx="395" cy="182" r="10"/>
+<text class="mark" x="395" y="186" text-anchor="middle">~</text>
+<text class="label" text-anchor="middle"><tspan x="395" y="161">Mermaid export</tspan></text>
 </g>
-<g class="node task not-started" data-id="untracked" data-status="not-started">
+<g class="node task not-started available" data-id="untracked" data-status="not-started">
 <title>A task outside any track (untracked): not started</title>
-<rect class="card" x="16" y="509" width="189" height="33" rx="6"/>
-<rect class="box" x="26" y="520" width="12" height="12" rx="2"/>
-<text class="label" text-anchor="start"><tspan x="45" y="530">A task outside any track</tspan></text>
+<rect class="card" x="774" y="68" width="150" height="60" rx="10"/>
+<circle class="badge" cx="849" cy="128" r="10"/>
+<text class="label" text-anchor="middle"><tspan x="849" y="90">A task outside any</tspan><tspan x="849" y="107">track</tspan></text>
 </g>
 <g class="node milestone" data-id="itParses">
 <title>It parses (itParses)</title>
-<polygon class="gate" points="446,76 543,76 553,100 543,124 446,124 436,100"/>
-<text class="label" text-anchor="middle"><tspan x="494" y="97">It parses</tspan></text>
-<text class="caption" x="494" y="112" text-anchor="middle" font-size="11">1 of 2 · EOY26</text>
+<polygon class="gate" points="994,445 1144,445 1156,471 1144,497 994,497 982,471"/>
+<text class="label" text-anchor="middle"><tspan x="1069" y="467">It parses</tspan></text>
+<text class="caption" x="1069" y="482" text-anchor="middle" font-size="11">1 of 2 · EOY26</text>
 </g>
 <g class="node milestone" data-id="firstPicture">
 <title>First picture (firstPicture)</title>
-<polygon class="gate" points="773,76 870,76 880,100 870,124 773,124 763,100"/>
-<text class="label" text-anchor="middle"><tspan x="821" y="97">First picture</tspan></text>
-<text class="caption" x="821" y="112" text-anchor="middle" font-size="11">0 of 2</text>
+<polygon class="gate" points="994,238 1144,238 1156,264 1144,290 994,290 982,264"/>
+<text class="label" text-anchor="middle"><tspan x="1069" y="260">First picture</tspan></text>
+<text class="caption" x="1069" y="275" text-anchor="middle" font-size="11">0 of 2</text>
 </g>
 </svg>

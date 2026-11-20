@@ -2,26 +2,32 @@
 //! for scripting, so a page can make it interactive without drawing it
 //! again.
 //!
-//! | Attribute               | On          | Value                                                 |
-//! |-------------------------|-------------|-------------------------------------------------------|
-//! | `data-id`               | nodes       | the task's or milestone's id                          |
-//! | `data-status`           | task nodes  | `not-started`, `done`, `in-progress`, and so on       |
-//! | `data-lane`             | lanes       | the lane's index, top to bottom                       |
-//! | `data-track`            | track lanes | the track's id                                        |
-//! | `data-from`/`data-to`   | edges       | the prerequisite's and the dependent's ids            |
-//! | `class`                 | nodes       | `node task` or `node milestone`, a status, `reached`  |
-//! | `class`                 | edges       | `edge`, then `met` or `waiting`, and `wanted`         |
+//! | Attribute             | On                | Value                                                   |
+//! |-----------------------|-------------------|---------------------------------------------------------|
+//! | `data-id`             | nodes             | the task's or milestone's id                            |
+//! | `data-status`         | task nodes        | `not-started`, `done`, `in-progress`, and so on         |
+//! | `data-branch`         | branches          | the branch's index, left to right                       |
+//! | `data-track`          | branches, banners | the track's id                                          |
+//! | `data-milestone`      | bands, eras       | the milestone's id                                      |
+//! | `data-from`/`data-to` | edges             | the prerequisite's and the dependent's ids              |
+//! | `class`               | nodes             | `node task` or `node milestone`; a status; `locked` or `available`; `reached` |
+//! | `class`               | branches, banners | `track`, `untracked`, or `milestones`; `hue-0` to `hue-7` for a track's colour |
+//! | `class`               | eras              | `era`, and `reached`                                    |
+//! | `class`               | edges             | `edge`, then `met` or `waiting`, and `wanted`; or `edge member`, an empty `g` for a line the band implies (for scripts that follow the graph) |
 //!
 //! Colours are literal rather than CSS variables, which many non-browser
 //! viewers ignore. The picture follows the system's dark mode unless the
 //! page puts a `light` or `dark` class on the `svg` element.
 
 use super::{
-    BOX, CAPTION, FONT, LINE, MARGIN, NOTCH, Node, PAD_X, PAD_Y, SMALL_FONT, Shape, TITLE_FONT,
-    TechTree,
+    BADGE_RADIUS, BranchKind, CAPTION, FONT, Hue, LINE, MARGIN, NOTCH, Node, PAD_Y, Point,
+    SMALL_FONT, Shape, TITLE_FONT, TechTree,
 };
 use crate::{plan::Plan, status::Status};
-use alloc::string::{String, ToString};
+use alloc::{
+    string::{String, ToString},
+    vec::Vec,
+};
 use core::fmt;
 
 impl TechTree {
@@ -51,48 +57,89 @@ impl Plan {
 /// A tech tree, written as SVG.
 struct Svg<'a>(&'a TechTree);
 
-impl fmt::Display for Svg<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Svg<'_> {
+    fn frame(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let tree = self.0;
-        let (width, height) = (tree.width, tree.height);
-        writeln!(
-            f,
-            r#"<svg xmlns="http://www.w3.org/2000/svg" class="dagenda tech-tree" viewBox="0 0 {width} {height}" width="{width}" height="{height}" font-family="system-ui, sans-serif" font-size="{FONT}">"#
-        )?;
-        f.write_str(STYLE)?;
-        f.write_str(DEFS)?;
-        writeln!(
-            f,
-            r#"<rect class="canvas" width="{width}" height="{height}"/>"#
-        )?;
-
-        if let Some(title) = &tree.title {
+        // The milestones' column is open ground: their lines cross it
+        let panels = tree
+            .branches
+            .iter()
+            .enumerate()
+            .filter(|(_, branch)| branch.kind != BranchKind::Milestones);
+        for (index, branch) in panels {
             writeln!(
                 f,
-                r#"<text class="title" x="{MARGIN}" y="{}">{}</text>"#,
-                MARGIN + TITLE_FONT,
-                Escaped(title.as_str())
+                r#"<rect class="branch {}{}" data-branch="{index}"{} x="{}" y="{}" width="{}" height="{}" rx="12"/>"#,
+                kind_class(&branch.kind),
+                Colour(branch.hue),
+                Track(&branch.kind),
+                branch.x,
+                branch.y,
+                branch.width,
+                branch.height
             )?;
         }
 
-        for (index, lane) in tree.lanes.iter().enumerate() {
-            let parity = if index % 2 == 0 { "even" } else { "odd" };
-            let track = match &lane.kind {
-                super::LaneKind::Track(id) => format_attr(" data-track", id.as_str()),
-                super::LaneKind::Milestones | super::LaneKind::Untracked => String::new(),
+        // Over the panels, so it shows on every track's colour
+        for band in tree.bands.iter().filter(|band| band.reached) {
+            let Some(gate) = band.milestone.and_then(|gate| tree.nodes.get(gate)) else {
+                continue;
             };
-            let indent = u32::try_from(lane.depth).unwrap_or(0).saturating_mul(12);
             writeln!(
                 f,
-                r#"<g class="lane {parity}" data-lane="{index}"{track}><rect class="band" x="0" y="{}" width="{width}" height="{}"/><text class="heading" x="{}" y="{}">{}</text></g>"#,
-                lane.y,
-                lane.height,
-                MARGIN + indent,
-                lane.y + 17,
-                Escaped(&lane.heading)
+                r#"<rect class="band reached" data-milestone="{}" x="0" y="{}" width="{}" height="{}"/>"#,
+                gate.id,
+                band.top,
+                tree.width,
+                band.bottom.saturating_sub(band.top)
             )?;
         }
 
+        for banner in &tree.banners {
+            writeln!(
+                f,
+                r#"<g class="banner {}{} depth-{}"{}><rect x="{}" y="{}" width="{}" height="{}" rx="8"/><text x="{}" y="{}" text-anchor="middle">{}</text></g>"#,
+                kind_class(&banner.kind),
+                Colour(banner.hue),
+                banner.depth,
+                Track(&banner.kind),
+                banner.x,
+                banner.y,
+                banner.width,
+                banner.height,
+                banner.x + banner.width / 2,
+                banner.y + banner.height - 8,
+                Escaped(&banner.heading)
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Each milestone's line, from the left edge to its gate, with its name
+    /// at the left end.
+    fn eras(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let tree = self.0;
+        for band in &tree.bands {
+            let Some(gate) = band.milestone.and_then(|gate| tree.nodes.get(gate)) else {
+                continue;
+            };
+            let reached = if band.reached { " reached" } else { "" };
+            writeln!(
+                f,
+                r#"<g class="era{reached}" data-milestone="{}"><line x1="{MARGIN}" y1="{y}" x2="{}" y2="{y}"/><text x="{}" y="{}">{}</text></g>"#,
+                gate.id,
+                gate.x,
+                MARGIN + 6,
+                band.top - 7,
+                Escaped(&gate.lines.join(" ")),
+                y = band.top,
+            )?;
+        }
+        Ok(())
+    }
+
+    fn edges(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let tree = self.0;
         for edge in &tree.edges {
             let (Some(from), Some(to)) = (tree.nodes.get(edge.from), tree.nodes.get(edge.to))
             else {
@@ -102,63 +149,119 @@ impl fmt::Display for Svg<'_> {
             let wanted = if edge.wanted { " wanted" } else { "" };
             writeln!(
                 f,
-                r#"<path class="edge {state}{wanted}" data-from="{}" data-to="{}" d="{}" marker-end="url(#dagenda-arrow)"/>"#,
+                r#"<path class="edge {state}{wanted}" data-from="{}" data-to="{}" d="{}"/>"#,
                 from.id,
                 to.id,
-                Curve(from, to)
+                Route(&edge.route)
+            )?;
+        }
+        for edge in &tree.implied {
+            let (Some(from), Some(to)) = (tree.nodes.get(edge.from), tree.nodes.get(edge.to))
+            else {
+                continue;
+            };
+            writeln!(
+                f,
+                r#"<g class="edge member" data-from="{}" data-to="{}"/>"#,
+                from.id, to.id
+            )?;
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Display for Svg<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let tree = self.0;
+        let (width, height) = (tree.width, tree.height);
+        writeln!(
+            f,
+            r#"<svg xmlns="http://www.w3.org/2000/svg" class="dagenda tech-tree" viewBox="0 0 {width} {height}" width="{width}" height="{height}" font-family="system-ui, sans-serif" font-size="{FONT}">"#
+        )?;
+        f.write_str(STYLE)?;
+        writeln!(
+            f,
+            r#"<rect class="canvas" width="{width}" height="{height}"/>"#
+        )?;
+        if let Some(title) = &tree.title {
+            writeln!(
+                f,
+                r#"<text class="title" x="{MARGIN}" y="{}">{}</text>"#,
+                MARGIN + TITLE_FONT,
+                Escaped(title.as_str())
             )?;
         }
 
+        self.frame(f)?;
+        self.eras(f)?;
+        self.edges(f)?;
         for node in &tree.nodes {
             match &node.shape {
-                Shape::Task { status, .. } => task(f, node, *status)?,
+                Shape::Task { status, locked, .. } => task(f, node, *status, *locked)?,
                 Shape::Milestone { progress, .. } => {
                     milestone(f, node, progress.is_reached())?;
                 }
             }
         }
-
         f.write_str("</svg>")
     }
 }
 
-fn task(f: &mut fmt::Formatter<'_>, node: &Node, status: Status) -> fmt::Result {
+fn task(f: &mut fmt::Formatter<'_>, node: &Node, status: Status, locked: bool) -> fmt::Result {
     let class = status_class(status);
-    let (x, y) = (node.x, node.y);
+    let access = if locked {
+        " locked"
+    } else if matches!(status, Status::Done | Status::Dropped) {
+        ""
+    } else {
+        " available"
+    };
     writeln!(
         f,
-        r#"<g class="node task {class}" data-id="{}" data-status="{class}">"#,
+        r#"<g class="node task {class}{access}" data-id="{}" data-status="{class}">"#,
         node.id
     )?;
     writeln!(
         f,
-        "<title>{} ({}): {}</title>",
+        "<title>{} ({}): {}{}</title>",
         Escaped(&node.lines.join(" ")),
         node.id,
-        status.describe()
+        status.describe(),
+        if locked { ", waiting on something" } else { "" }
     )?;
     writeln!(
         f,
-        r#"<rect class="card" x="{x}" y="{y}" width="{}" height="{}" rx="6"/>"#,
-        node.width, node.height
+        r#"<rect class="card" x="{}" y="{}" width="{}" height="{}" rx="10"/>"#,
+        node.x, node.y, node.width, node.height
     )?;
 
-    let (box_x, box_y) = (x + PAD_X, y + PAD_Y + 3);
+    let (middle, bottom) = (node.middle(), node.y + node.height);
     writeln!(
         f,
-        r#"<rect class="box" x="{box_x}" y="{box_y}" width="{BOX}" height="{BOX}" rx="2"/>"#
+        r#"<circle class="badge" cx="{middle}" cy="{bottom}" r="{BADGE_RADIUS}"/>"#
     )?;
-    if status != Status::NotStarted {
-        writeln!(
+    match status {
+        Status::NotStarted => {}
+        // Drawn rather than set in a font, so it looks the same everywhere
+        Status::Done => writeln!(
             f,
-            r#"<text class="mark" x="{}" y="{}" text-anchor="middle">{}</text>"#,
-            box_x + BOX / 2,
-            box_y + 10,
+            r#"<path class="check" d="M{},{bottom} l3,4 l6,-8"/>"#,
+            middle - 5
+        )?,
+        Status::Deferred
+        | Status::InProgress
+        | Status::Idea
+        | Status::NeedsAttention
+        | Status::Research
+        | Status::Dropped => writeln!(
+            f,
+            r#"<text class="mark" x="{middle}" y="{}" text-anchor="middle">{}</text>"#,
+            bottom + 4,
             Escaped(&status.mark().to_string())
-        )?;
+        )?,
     }
 
-    label(f, node, x + PAD_X + BOX + super::BOX_GAP, "start")?;
+    label(f, node)?;
     f.write_str("</g>\n")
 }
 
@@ -188,18 +291,19 @@ fn milestone(f: &mut fmt::Formatter<'_>, node: &Node, reached: bool) -> fmt::Res
         x + NOTCH,
         y + height,
     )?;
-    label(f, node, x + width / 2, "middle")?;
+    label(f, node)?;
     f.write_str("</g>\n")
 }
 
-/// A node's label lines and caption, starting at `x`.
-fn label(f: &mut fmt::Formatter<'_>, node: &Node, x: u32, anchor: &str) -> fmt::Result {
-    let mut baseline = node.y + PAD_Y + FONT;
-    write!(f, r#"<text class="label" text-anchor="{anchor}">"#)?;
+/// A card's label lines and caption, centred.
+fn label(f: &mut fmt::Formatter<'_>, node: &Node) -> fmt::Result {
+    let middle = node.middle();
+    let mut baseline = node.y + PAD_Y + FONT - 1;
+    write!(f, r#"<text class="label" text-anchor="middle">"#)?;
     for line in &node.lines {
         write!(
             f,
-            r#"<tspan x="{x}" y="{baseline}">{}</tspan>"#,
+            r#"<tspan x="{middle}" y="{baseline}">{}</tspan>"#,
             Escaped(line)
         )?;
         baseline += LINE;
@@ -209,7 +313,7 @@ fn label(f: &mut fmt::Formatter<'_>, node: &Node, x: u32, anchor: &str) -> fmt::
     if let Some(caption) = &node.caption {
         writeln!(
             f,
-            r#"<text class="caption" x="{x}" y="{}" text-anchor="{anchor}" font-size="{SMALL_FONT}">{}</text>"#,
+            r#"<text class="caption" x="{middle}" y="{}" text-anchor="middle" font-size="{SMALL_FONT}">{}</text>"#,
             baseline - LINE + CAPTION,
             Escaped(caption)
         )?;
@@ -217,34 +321,87 @@ fn label(f: &mut fmt::Formatter<'_>, node: &Node, x: u32, anchor: &str) -> fmt::
     Ok(())
 }
 
-/// The curve from a node's right side to another's left, ending where the
-/// arrowhead begins.
-struct Curve<'a>(&'a Node, &'a Node);
+/// A route's path: straight runs between its corners, each corner rounded,
+/// and straight through any point that isn't a corner.
+struct Route<'a>(&'a [Point]);
 
-impl fmt::Display for Curve<'_> {
+impl fmt::Display for Route<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (from, to) = (self.0, self.1);
-        let x1 = i64::from(from.x) + i64::from(from.width);
-        let y1 = i64::from(from.y) + i64::from(from.height) / 2;
-        let x2 = i64::from(to.x) - 6;
-        let y2 = i64::from(to.y) + i64::from(to.height) / 2;
-        let bend = ((x2 - x1) / 2).max(40);
-        write!(
-            f,
-            "M{x1},{y1} C{},{y1} {},{y2} {x2},{y2}",
-            x1 + bend,
-            x2 - bend
-        )
+        const RADIUS: i64 = 8;
+
+        let points: Vec<(i64, i64)> = self
+            .0
+            .iter()
+            .map(|point| (i64::from(point.x), i64::from(point.y)))
+            .collect();
+        let Some(&(x, y)) = points.first() else {
+            return Ok(());
+        };
+        write!(f, "M{x},{y}")?;
+
+        let step = |from: (i64, i64), to: (i64, i64), distance: i64| {
+            let (dx, dy) = ((to.0 - from.0).signum(), (to.1 - from.1).signum());
+            (from.0 + dx * distance, from.1 + dy * distance)
+        };
+        for window in points.windows(3) {
+            let &[before, corner, after] = window else {
+                continue;
+            };
+            let turns = (corner.0 - before.0).signum() != (after.0 - corner.0).signum()
+                || (corner.1 - before.1).signum() != (after.1 - corner.1).signum();
+            if !turns {
+                continue;
+            }
+            let span_in = (corner.0 - before.0).abs() + (corner.1 - before.1).abs();
+            let span_out = (after.0 - corner.0).abs() + (after.1 - corner.1).abs();
+            let radius = RADIUS.min(span_in / 2).min(span_out / 2);
+            let (start, end) = (step(corner, before, radius), step(corner, after, radius));
+            write!(
+                f,
+                " L{},{} Q{},{} {},{}",
+                start.0, start.1, corner.0, corner.1, end.0, end.1
+            )?;
+        }
+
+        if let Some(&(x, y)) = points.last()
+            && points.len() > 1
+        {
+            write!(f, " L{x},{y}")?;
+        }
+        Ok(())
     }
 }
 
-/// ` name="value"`, escaped.
-fn format_attr(name: &str, value: &str) -> String {
-    let mut out = String::from(name);
-    out.push_str("=\"");
-    out.push_str(&Escaped(value).to_string());
-    out.push('"');
-    out
+/// ` hue-n` for a track's colour, else nothing.
+struct Colour(Option<Hue>);
+
+impl fmt::Display for Colour {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            Some(hue) => write!(f, " hue-{}", hue.index()),
+            None => Ok(()),
+        }
+    }
+}
+
+/// ` data-track="id"` for a track's branch or banner, else nothing.
+struct Track<'a>(&'a BranchKind);
+
+impl fmt::Display for Track<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            BranchKind::Track(id) => write!(f, r#" data-track="{id}""#),
+            BranchKind::Untracked | BranchKind::Milestones => Ok(()),
+        }
+    }
+}
+
+const fn kind_class(kind: &BranchKind) -> &'static str {
+    match kind {
+        BranchKind::Track(_) => "track",
+        BranchKind::Untracked => "untracked",
+        BranchKind::Milestones => "milestones",
+    }
 }
 
 const fn status_class(status: Status) -> &'static str {
@@ -278,9 +435,6 @@ impl fmt::Display for Escaped<'_> {
     }
 }
 
-const DEFS: &str = r#"<defs><marker id="dagenda-arrow" viewBox="0 0 8 8" refX="1" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="arrow" d="M0,0 L8,4 L0,8 z"/></marker></defs>
-"#;
-
 /// Literal colours rather than CSS variables, which many non-browser SVG
 /// viewers ignore. No angle brackets in here: inline SVG styles are parsed
 /// as markup.
@@ -288,60 +442,156 @@ const STYLE: &str = r"<style>
 .dagenda .canvas { fill: #fff; }
 .dagenda text { fill: #1d1c1a; }
 .dagenda .title { font-size: 18px; font-weight: 650; }
-.dagenda .band { fill: #f6f5f2; }
-.dagenda .odd .band { fill: #efede8; }
-.dagenda .heading { fill: #6b6760; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; }
-.dagenda .edge { fill: none; stroke: #9a958c; stroke-width: 1.5; }
-.dagenda .edge.met { stroke: #6aa56f; }
+.dagenda .branch { fill: #f4f2ee; stroke: #e4e0d8; stroke-width: 1; }
+.dagenda .branch, .dagenda .banner rect { fill-opacity: 0.85; }
+.dagenda .band.reached { fill: #5aa362; fill-opacity: 0.08; }
+/* Track colours: teal, indigo, rose, ochre, sage, plum, sky, terracotta */
+.dagenda .branch.hue-0, .dagenda .banner.hue-0 rect { fill: #edf6f4; stroke: #c5e4de; }
+.dagenda .banner.hue-0 rect { fill: #c5e4de; }
+.dagenda .banner.hue-0 text { fill: #1f5c54; }
+.dagenda .branch.hue-1, .dagenda .banner.hue-1 rect { fill: #eef0fa; stroke: #cdd3f1; }
+.dagenda .banner.hue-1 rect { fill: #cdd3f1; }
+.dagenda .banner.hue-1 text { fill: #2f3a7a; }
+.dagenda .branch.hue-2, .dagenda .banner.hue-2 rect { fill: #fbeef1; stroke: #f2c9d3; }
+.dagenda .banner.hue-2 rect { fill: #f2c9d3; }
+.dagenda .banner.hue-2 text { fill: #7a2a3e; }
+.dagenda .branch.hue-3, .dagenda .banner.hue-3 rect { fill: #f8f2e3; stroke: #ecdcae; }
+.dagenda .banner.hue-3 rect { fill: #ecdcae; }
+.dagenda .banner.hue-3 text { fill: #6b5214; }
+.dagenda .branch.hue-4, .dagenda .banner.hue-4 rect { fill: #eff4ea; stroke: #d3e2c4; }
+.dagenda .banner.hue-4 rect { fill: #d3e2c4; }
+.dagenda .banner.hue-4 text { fill: #3d5a2a; }
+.dagenda .branch.hue-5, .dagenda .banner.hue-5 rect { fill: #f4eef7; stroke: #e0cdea; }
+.dagenda .banner.hue-5 rect { fill: #e0cdea; }
+.dagenda .banner.hue-5 text { fill: #5a2f6b; }
+.dagenda .branch.hue-6, .dagenda .banner.hue-6 rect { fill: #ecf3f9; stroke: #c7dcee; }
+.dagenda .banner.hue-6 rect { fill: #c7dcee; }
+.dagenda .banner.hue-6 text { fill: #24506f; }
+.dagenda .branch.hue-7, .dagenda .banner.hue-7 rect { fill: #f9efea; stroke: #efd0c2; }
+.dagenda .banner.hue-7 rect { fill: #efd0c2; }
+.dagenda .banner.hue-7 text { fill: #7a3b22; }
+.dagenda .era line { stroke: #c9a227; stroke-width: 1.5; stroke-dasharray: 8 6; }
+.dagenda .era text { fill: #9a7a17; font-size: 11px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; }
+.dagenda .era.reached line { stroke: #5aa362; }
+.dagenda .era.reached text { fill: #3f7d46; }
+.dagenda .banner rect { fill: #e9e5dd; }
+.dagenda .banner text { fill: #4a4640; font-size: 12px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; }
+.dagenda .edge { fill: none; stroke: #a8a399; stroke-width: 2; stroke-linejoin: round; }
+.dagenda .edge.met { stroke: #5aa362; }
 .dagenda .edge.wanted { stroke-dasharray: 5 4; }
-.dagenda .arrow { fill: #9a958c; }
-.dagenda .card { fill: #fff; stroke: #c9c4bb; stroke-width: 1.25; }
-.dagenda .box { fill: #fff; stroke: #8a857c; stroke-width: 1.25; }
+.dagenda .card { fill: #fff; stroke: #c9c4bb; stroke-width: 1.5; }
+.dagenda .badge { fill: #fff; stroke: #8a857c; stroke-width: 1.5; }
 .dagenda .mark { font-family: ui-monospace, monospace; font-size: 11px; font-weight: 700; }
 .dagenda .caption { fill: #6b6760; }
-.dagenda .done .card { fill: #edf6ed; stroke: #6aa56f; }
-.dagenda .done .box { fill: #6aa56f; stroke: #6aa56f; }
-.dagenda .done .mark { fill: #fff; }
-.dagenda .in-progress .card { stroke: #2f6fd6; stroke-width: 2; }
+.dagenda .available .card { stroke: #b08a1e; stroke-width: 2; }
+.dagenda .available .badge { stroke: #b08a1e; stroke-width: 2; }
+.dagenda .locked { opacity: 0.55; }
+.dagenda .done .card { fill: #edf6ed; stroke: #5aa362; stroke-width: 2; }
+.dagenda .done .badge { fill: #5aa362; stroke: #5aa362; }
+.dagenda .check { fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.dagenda .in-progress .card { stroke: #2f6fd6; stroke-width: 2.5; }
+.dagenda .in-progress .badge { stroke: #2f6fd6; }
 .dagenda .in-progress .mark { fill: #2f6fd6; }
-.dagenda .needs-attention .card { fill: #fdeeee; stroke: #d33; stroke-width: 2; }
+.dagenda .needs-attention .card { fill: #fdeeee; stroke: #d33; stroke-width: 2.5; }
+.dagenda .needs-attention .badge { stroke: #d33; }
 .dagenda .needs-attention .mark { fill: #d33; }
 .dagenda .idea .card { stroke-dasharray: 5 3; }
-.dagenda .research .card { stroke: #8a5cc8; stroke-dasharray: 2 3; stroke-width: 1.75; }
+.dagenda .research .card { stroke: #8a5cc8; stroke-dasharray: 2 3; stroke-width: 2; }
+.dagenda .research .badge { stroke: #8a5cc8; }
 .dagenda .research .mark { fill: #8a5cc8; }
 .dagenda .deferred { opacity: 0.6; }
 .dagenda .dropped { opacity: 0.45; }
 .dagenda .dropped .label { text-decoration: line-through; }
-.dagenda .gate { fill: #fff8e1; stroke: #c9a227; stroke-width: 1.75; }
+.dagenda .gate { fill: #fff8e1; stroke: #c9a227; stroke-width: 2; }
 .dagenda .milestone .label { font-weight: 650; }
 .dagenda .reached .gate { fill: #f3d36b; stroke: #a8841a; }
 @media (prefers-color-scheme: dark) {
   .dagenda:not(.light) .canvas { fill: #1a1917; }
   .dagenda:not(.light) text { fill: #ecebe8; }
-  .dagenda:not(.light) .band { fill: #23221f; }
-  .dagenda:not(.light) .odd .band { fill: #2a2925; }
-  .dagenda:not(.light) .heading, .dagenda:not(.light) .caption { fill: #9a958c; }
-  .dagenda:not(.light) :is(.card, .box) { fill: #1f1e1c; }
-  .dagenda:not(.light) :is(.not-started, .idea, .deferred, .dropped) :is(.card, .box), .dagenda:not(.light) :is(.in-progress, .research) .box { stroke: #5b574f; }
+  .dagenda:not(.light) .branch { fill: #232220; stroke: #302e2a; }
+  .dagenda:not(.light) .branch.hue-0, .dagenda:not(.light) .banner.hue-0 rect { fill: #1c2826; stroke: #2b4a45; }
+  .dagenda:not(.light) .banner.hue-0 rect { fill: #2b4a45; }
+  .dagenda:not(.light) .banner.hue-0 text { fill: #a8dcd3; }
+  .dagenda:not(.light) .branch.hue-1, .dagenda:not(.light) .banner.hue-1 rect { fill: #1f2130; stroke: #333b63; }
+  .dagenda:not(.light) .banner.hue-1 rect { fill: #333b63; }
+  .dagenda:not(.light) .banner.hue-1 text { fill: #c3cbf2; }
+  .dagenda:not(.light) .branch.hue-2, .dagenda:not(.light) .banner.hue-2 rect { fill: #2b1f23; stroke: #5a2f3b; }
+  .dagenda:not(.light) .banner.hue-2 rect { fill: #5a2f3b; }
+  .dagenda:not(.light) .banner.hue-2 text { fill: #f2c2cf; }
+  .dagenda:not(.light) .branch.hue-3, .dagenda:not(.light) .banner.hue-3 rect { fill: #29251a; stroke: #574a22; }
+  .dagenda:not(.light) .banner.hue-3 rect { fill: #574a22; }
+  .dagenda:not(.light) .banner.hue-3 text { fill: #ecd9a0; }
+  .dagenda:not(.light) .branch.hue-4, .dagenda:not(.light) .banner.hue-4 rect { fill: #212720; stroke: #3a4d30; }
+  .dagenda:not(.light) .banner.hue-4 rect { fill: #3a4d30; }
+  .dagenda:not(.light) .banner.hue-4 text { fill: #c9ddb8; }
+  .dagenda:not(.light) .branch.hue-5, .dagenda:not(.light) .banner.hue-5 rect { fill: #261f2a; stroke: #4b3456; }
+  .dagenda:not(.light) .banner.hue-5 rect { fill: #4b3456; }
+  .dagenda:not(.light) .banner.hue-5 text { fill: #dcc6e8; }
+  .dagenda:not(.light) .branch.hue-6, .dagenda:not(.light) .banner.hue-6 rect { fill: #1d242b; stroke: #2c4a63; }
+  .dagenda:not(.light) .banner.hue-6 rect { fill: #2c4a63; }
+  .dagenda:not(.light) .banner.hue-6 text { fill: #b9d6ee; }
+  .dagenda:not(.light) .branch.hue-7, .dagenda:not(.light) .banner.hue-7 rect { fill: #2a201c; stroke: #5a3626; }
+  .dagenda:not(.light) .banner.hue-7 rect { fill: #5a3626; }
+  .dagenda:not(.light) .banner.hue-7 text { fill: #efc4b0; }
+  .dagenda:not(.light) .era line { stroke: #9a7d22; }
+  .dagenda:not(.light) .era text { fill: #c9a227; }
+  .dagenda:not(.light) .era.reached line { stroke: #4c8a53; }
+  .dagenda:not(.light) .era.reached text { fill: #7bc283; }
+  .dagenda:not(.light) .banner rect { fill: #2e2c28; }
+  .dagenda:not(.light) .banner text, .dagenda:not(.light) .caption { fill: #b4afa6; }
+  .dagenda:not(.light) :is(.card, .badge) { fill: #1f1e1c; }
+  .dagenda:not(.light) :is(.not-started, .idea, .deferred, .dropped):not(.available) :is(.card, .badge) { stroke: #5b574f; }
   .dagenda:not(.light) .done .card { fill: #1f2e20; }
-  .dagenda:not(.light) .done .box { fill: #6aa56f; }
-  .dagenda:not(.light) .needs-attention .box { stroke: #e5615a; }
+  .dagenda:not(.light) .done .badge { fill: #5aa362; }
   .dagenda:not(.light) .needs-attention .card { fill: #3a1f1f; stroke: #e5615a; }
+  .dagenda:not(.light) .available .card, .dagenda:not(.light) .available .badge { stroke: #d6ae3a; }
   .dagenda:not(.light) .gate { fill: #3a3218; stroke: #c9a227; }
   .dagenda:not(.light) .reached .gate { fill: #8a6d16; }
+  .dagenda:not(.light) .edge { stroke: #6f6b63; }
+  .dagenda:not(.light) .edge.met { stroke: #5aa362; }
 }
 .dagenda.dark .canvas { fill: #1a1917; }
 .dagenda.dark text { fill: #ecebe8; }
-.dagenda.dark .band { fill: #23221f; }
-.dagenda.dark .odd .band { fill: #2a2925; }
-.dagenda.dark .heading, .dagenda.dark .caption { fill: #9a958c; }
-.dagenda.dark :is(.card, .box) { fill: #1f1e1c; }
-.dagenda.dark :is(.not-started, .idea, .deferred, .dropped) :is(.card, .box), .dagenda.dark :is(.in-progress, .research) .box { stroke: #5b574f; }
+.dagenda.dark .branch { fill: #232220; stroke: #302e2a; }
+.dagenda.dark .branch.hue-0, .dagenda.dark .banner.hue-0 rect { fill: #1c2826; stroke: #2b4a45; }
+.dagenda.dark .banner.hue-0 rect { fill: #2b4a45; }
+.dagenda.dark .banner.hue-0 text { fill: #a8dcd3; }
+.dagenda.dark .branch.hue-1, .dagenda.dark .banner.hue-1 rect { fill: #1f2130; stroke: #333b63; }
+.dagenda.dark .banner.hue-1 rect { fill: #333b63; }
+.dagenda.dark .banner.hue-1 text { fill: #c3cbf2; }
+.dagenda.dark .branch.hue-2, .dagenda.dark .banner.hue-2 rect { fill: #2b1f23; stroke: #5a2f3b; }
+.dagenda.dark .banner.hue-2 rect { fill: #5a2f3b; }
+.dagenda.dark .banner.hue-2 text { fill: #f2c2cf; }
+.dagenda.dark .branch.hue-3, .dagenda.dark .banner.hue-3 rect { fill: #29251a; stroke: #574a22; }
+.dagenda.dark .banner.hue-3 rect { fill: #574a22; }
+.dagenda.dark .banner.hue-3 text { fill: #ecd9a0; }
+.dagenda.dark .branch.hue-4, .dagenda.dark .banner.hue-4 rect { fill: #212720; stroke: #3a4d30; }
+.dagenda.dark .banner.hue-4 rect { fill: #3a4d30; }
+.dagenda.dark .banner.hue-4 text { fill: #c9ddb8; }
+.dagenda.dark .branch.hue-5, .dagenda.dark .banner.hue-5 rect { fill: #261f2a; stroke: #4b3456; }
+.dagenda.dark .banner.hue-5 rect { fill: #4b3456; }
+.dagenda.dark .banner.hue-5 text { fill: #dcc6e8; }
+.dagenda.dark .branch.hue-6, .dagenda.dark .banner.hue-6 rect { fill: #1d242b; stroke: #2c4a63; }
+.dagenda.dark .banner.hue-6 rect { fill: #2c4a63; }
+.dagenda.dark .banner.hue-6 text { fill: #b9d6ee; }
+.dagenda.dark .branch.hue-7, .dagenda.dark .banner.hue-7 rect { fill: #2a201c; stroke: #5a3626; }
+.dagenda.dark .banner.hue-7 rect { fill: #5a3626; }
+.dagenda.dark .banner.hue-7 text { fill: #efc4b0; }
+.dagenda.dark .era line { stroke: #9a7d22; }
+.dagenda.dark .era text { fill: #c9a227; }
+.dagenda.dark .era.reached line { stroke: #4c8a53; }
+.dagenda.dark .era.reached text { fill: #7bc283; }
+.dagenda.dark .banner rect { fill: #2e2c28; }
+.dagenda.dark .banner text, .dagenda.dark .caption { fill: #b4afa6; }
+.dagenda.dark :is(.card, .badge) { fill: #1f1e1c; }
+.dagenda.dark :is(.not-started, .idea, .deferred, .dropped):not(.available) :is(.card, .badge) { stroke: #5b574f; }
 .dagenda.dark .done .card { fill: #1f2e20; }
-.dagenda.dark .done .box { fill: #6aa56f; }
-.dagenda.dark .needs-attention .box { stroke: #e5615a; }
+.dagenda.dark .done .badge { fill: #5aa362; }
 .dagenda.dark .needs-attention .card { fill: #3a1f1f; stroke: #e5615a; }
+.dagenda.dark .available .card, .dagenda.dark .available .badge { stroke: #d6ae3a; }
 .dagenda.dark .gate { fill: #3a3218; stroke: #c9a227; }
 .dagenda.dark .reached .gate { fill: #8a6d16; }
+.dagenda.dark .edge { stroke: #6f6b63; }
+.dagenda.dark .edge.met { stroke: #5aa362; }
 </style>
 ";

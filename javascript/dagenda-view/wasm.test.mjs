@@ -45,6 +45,7 @@ test("renders the tech tree and the text", () => {
   const svg = renderSvg(PLAN)
   assert.match(svg, /^<svg/)
   assert.match(svg, /data-id="resolver"/)
+  assert.match(svg, /<g class="edge member" data-from="resolver" data-to="first"\/>/, "hover can follow what the band implies")
   assert.match(renderText(PLAN), /\[ \] resolver · Resolver/)
 })
 

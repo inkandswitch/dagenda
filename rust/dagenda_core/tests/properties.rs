@@ -7,7 +7,7 @@ use dagenda_core::{
     plan::{Plan, Readiness},
     span::Span,
     status::Status,
-    tech_tree::TechTree,
+    tech_tree::{Edge, Node, TechTree},
 };
 use std::{fs, path::Path};
 use testresult::TestResult;
@@ -130,19 +130,23 @@ fn assert_in_bounds(span: Span, source: &str) {
     );
 }
 
-/// The tech tree fits: every node inside the canvas and inside its lane, no
-/// two nodes overlapping, every line between two different nodes, and (with
-/// no subtasks folded in to make loops) every must-have line pointing right.
+/// The tech tree fits: every card inside the canvas and inside its branch,
+/// and no two cards overlapping. Every line runs in right angles from the
+/// top of its prerequisite to the bottom of what waits on it, and never
+/// passes behind any other card. The bands stack, and (with no subtasks
+/// folded in to make loops) every must-have line points up and everything
+/// a milestone needs sits under its line.
 fn assert_laid_out(plan: &Plan) {
     let tree = TechTree::new(plan);
     for node in &tree.nodes {
         assert!(node.x + node.width <= tree.width && node.y + node.height <= tree.height);
-        let lane = tree.lanes.get(node.lane);
+        let branch = tree.branches.get(node.branch);
         assert!(
-            lane.is_some_and(
-                |lane| lane.y <= node.y && node.y + node.height <= lane.y + lane.height
-            ),
-            "{} is outside its lane",
+            branch.is_some_and(|branch| branch.x <= node.x
+                && node.x + node.width <= branch.x + branch.width
+                && branch.y <= node.y
+                && node.y + node.height <= branch.y + branch.height),
+            "{} is outside its branch",
             node.id
         );
     }
@@ -162,15 +166,30 @@ fn assert_laid_out(plan: &Plan) {
         assert_ne!(edge.from, edge.to);
         let (from, to) = (tree.nodes.get(edge.from), tree.nodes.get(edge.to));
         assert!(from.is_some() && to.is_some(), "a line to a missing node");
-        if let (Some(from), Some(to)) = (from, to)
-            && flat
-            && !edge.wanted
-        {
+        let (Some(from), Some(to)) = (from, to) else {
+            continue;
+        };
+        if flat && !edge.wanted {
+            assert!(from.row < to.row, "{} → {} points down", from.id, to.id);
+        }
+        assert_routed(&tree, edge, from, to);
+    }
+
+    for pair in tree.bands.windows(2) {
+        let [below, above] = pair else { continue };
+        assert_eq!(below.top, above.bottom, "bands stack without gaps");
+    }
+    for band in tree.bands.iter().filter(|_| flat) {
+        let Some(gate) = band.milestone.and_then(|gate| tree.nodes.get(gate)) else {
+            continue;
+        };
+        for member in plan.milestone(&gate.id).into_iter().flat_map(|m| &m.needs) {
+            let card = tree.nodes.iter().find(|node| node.id == member.node);
             assert!(
-                from.column < to.column,
-                "{} → {} points left",
-                from.id,
-                to.id
+                card.is_some_and(|card| card.y > band.top),
+                "{} sits above {}'s line",
+                member.node,
+                gate.id
             );
         }
     }
@@ -181,6 +200,51 @@ fn assert_laid_out(plan: &Plan) {
         assert!(svg.contains(&format!("data-id=\"{}\"", node.id)));
     }
     assert!(!plan.to_text().is_empty() || plan.tasks().is_empty());
+}
+
+fn assert_routed(tree: &TechTree, edge: &Edge, from: &Node, to: &Node) {
+    let route = &edge.route;
+    assert_eq!(
+        route.first().map(|p| (p.x, p.y)),
+        Some((from.middle(), from.y)),
+        "{} → {} starts at the top of {}",
+        from.id,
+        to.id,
+        from.id
+    );
+    assert_eq!(
+        route.last().map(|p| (p.x, p.y)),
+        Some((to.middle(), to.entry())),
+        "{} → {} ends at the bottom of {}",
+        from.id,
+        to.id,
+        to.id
+    );
+
+    for pair in route.windows(2) {
+        let [a, b] = pair else { continue };
+        assert!(
+            a.x == b.x || a.y == b.y,
+            "{} → {} turns a corner off the grid",
+            from.id,
+            to.id
+        );
+        assert!(a.x <= tree.width && b.x <= tree.width && a.y <= tree.height && b.y <= tree.height);
+
+        let (left, right) = (a.x.min(b.x), a.x.max(b.x));
+        let (top, bottom) = (a.y.min(b.y), a.y.max(b.y));
+        for card in tree
+            .nodes
+            .iter()
+            .filter(|card| card.id != from.id && card.id != to.id)
+        {
+            let behind = left < card.x + card.width
+                && card.x < right.max(left + 1)
+                && top < card.y + card.height
+                && card.y < bottom.max(top + 1);
+            assert!(!behind, "{} → {} passes behind {}", from.id, to.id, card.id);
+        }
+    }
 }
 
 /// What's derived agrees with itself: readiness with statuses and needs,

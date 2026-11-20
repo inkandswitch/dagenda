@@ -1,125 +1,223 @@
-<svg xmlns="http://www.w3.org/2000/svg" class="dagenda tech-tree" viewBox="0 0 295 373" width="295" height="373" font-family="system-ui, sans-serif" font-size="13">
+<svg xmlns="http://www.w3.org/2000/svg" class="dagenda tech-tree" viewBox="0 0 792 713" width="792" height="713" font-family="system-ui, sans-serif" font-size="13">
 <style>
 .dagenda .canvas { fill: #fff; }
 .dagenda text { fill: #1d1c1a; }
 .dagenda .title { font-size: 18px; font-weight: 650; }
-.dagenda .band { fill: #f6f5f2; }
-.dagenda .odd .band { fill: #efede8; }
-.dagenda .heading { fill: #6b6760; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; }
-.dagenda .edge { fill: none; stroke: #9a958c; stroke-width: 1.5; }
-.dagenda .edge.met { stroke: #6aa56f; }
+.dagenda .branch { fill: #f4f2ee; stroke: #e4e0d8; stroke-width: 1; }
+.dagenda .branch, .dagenda .banner rect { fill-opacity: 0.85; }
+.dagenda .band.reached { fill: #5aa362; fill-opacity: 0.08; }
+/* Track colours: teal, indigo, rose, ochre, sage, plum, sky, terracotta */
+.dagenda .branch.hue-0, .dagenda .banner.hue-0 rect { fill: #edf6f4; stroke: #c5e4de; }
+.dagenda .banner.hue-0 rect { fill: #c5e4de; }
+.dagenda .banner.hue-0 text { fill: #1f5c54; }
+.dagenda .branch.hue-1, .dagenda .banner.hue-1 rect { fill: #eef0fa; stroke: #cdd3f1; }
+.dagenda .banner.hue-1 rect { fill: #cdd3f1; }
+.dagenda .banner.hue-1 text { fill: #2f3a7a; }
+.dagenda .branch.hue-2, .dagenda .banner.hue-2 rect { fill: #fbeef1; stroke: #f2c9d3; }
+.dagenda .banner.hue-2 rect { fill: #f2c9d3; }
+.dagenda .banner.hue-2 text { fill: #7a2a3e; }
+.dagenda .branch.hue-3, .dagenda .banner.hue-3 rect { fill: #f8f2e3; stroke: #ecdcae; }
+.dagenda .banner.hue-3 rect { fill: #ecdcae; }
+.dagenda .banner.hue-3 text { fill: #6b5214; }
+.dagenda .branch.hue-4, .dagenda .banner.hue-4 rect { fill: #eff4ea; stroke: #d3e2c4; }
+.dagenda .banner.hue-4 rect { fill: #d3e2c4; }
+.dagenda .banner.hue-4 text { fill: #3d5a2a; }
+.dagenda .branch.hue-5, .dagenda .banner.hue-5 rect { fill: #f4eef7; stroke: #e0cdea; }
+.dagenda .banner.hue-5 rect { fill: #e0cdea; }
+.dagenda .banner.hue-5 text { fill: #5a2f6b; }
+.dagenda .branch.hue-6, .dagenda .banner.hue-6 rect { fill: #ecf3f9; stroke: #c7dcee; }
+.dagenda .banner.hue-6 rect { fill: #c7dcee; }
+.dagenda .banner.hue-6 text { fill: #24506f; }
+.dagenda .branch.hue-7, .dagenda .banner.hue-7 rect { fill: #f9efea; stroke: #efd0c2; }
+.dagenda .banner.hue-7 rect { fill: #efd0c2; }
+.dagenda .banner.hue-7 text { fill: #7a3b22; }
+.dagenda .era line { stroke: #c9a227; stroke-width: 1.5; stroke-dasharray: 8 6; }
+.dagenda .era text { fill: #9a7a17; font-size: 11px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; }
+.dagenda .era.reached line { stroke: #5aa362; }
+.dagenda .era.reached text { fill: #3f7d46; }
+.dagenda .banner rect { fill: #e9e5dd; }
+.dagenda .banner text { fill: #4a4640; font-size: 12px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; }
+.dagenda .edge { fill: none; stroke: #a8a399; stroke-width: 2; stroke-linejoin: round; }
+.dagenda .edge.met { stroke: #5aa362; }
 .dagenda .edge.wanted { stroke-dasharray: 5 4; }
-.dagenda .arrow { fill: #9a958c; }
-.dagenda .card { fill: #fff; stroke: #c9c4bb; stroke-width: 1.25; }
-.dagenda .box { fill: #fff; stroke: #8a857c; stroke-width: 1.25; }
+.dagenda .card { fill: #fff; stroke: #c9c4bb; stroke-width: 1.5; }
+.dagenda .badge { fill: #fff; stroke: #8a857c; stroke-width: 1.5; }
 .dagenda .mark { font-family: ui-monospace, monospace; font-size: 11px; font-weight: 700; }
 .dagenda .caption { fill: #6b6760; }
-.dagenda .done .card { fill: #edf6ed; stroke: #6aa56f; }
-.dagenda .done .box { fill: #6aa56f; stroke: #6aa56f; }
-.dagenda .done .mark { fill: #fff; }
-.dagenda .in-progress .card { stroke: #2f6fd6; stroke-width: 2; }
+.dagenda .available .card { stroke: #b08a1e; stroke-width: 2; }
+.dagenda .available .badge { stroke: #b08a1e; stroke-width: 2; }
+.dagenda .locked { opacity: 0.55; }
+.dagenda .done .card { fill: #edf6ed; stroke: #5aa362; stroke-width: 2; }
+.dagenda .done .badge { fill: #5aa362; stroke: #5aa362; }
+.dagenda .check { fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.dagenda .in-progress .card { stroke: #2f6fd6; stroke-width: 2.5; }
+.dagenda .in-progress .badge { stroke: #2f6fd6; }
 .dagenda .in-progress .mark { fill: #2f6fd6; }
-.dagenda .needs-attention .card { fill: #fdeeee; stroke: #d33; stroke-width: 2; }
+.dagenda .needs-attention .card { fill: #fdeeee; stroke: #d33; stroke-width: 2.5; }
+.dagenda .needs-attention .badge { stroke: #d33; }
 .dagenda .needs-attention .mark { fill: #d33; }
 .dagenda .idea .card { stroke-dasharray: 5 3; }
-.dagenda .research .card { stroke: #8a5cc8; stroke-dasharray: 2 3; stroke-width: 1.75; }
+.dagenda .research .card { stroke: #8a5cc8; stroke-dasharray: 2 3; stroke-width: 2; }
+.dagenda .research .badge { stroke: #8a5cc8; }
 .dagenda .research .mark { fill: #8a5cc8; }
 .dagenda .deferred { opacity: 0.6; }
 .dagenda .dropped { opacity: 0.45; }
 .dagenda .dropped .label { text-decoration: line-through; }
-.dagenda .gate { fill: #fff8e1; stroke: #c9a227; stroke-width: 1.75; }
+.dagenda .gate { fill: #fff8e1; stroke: #c9a227; stroke-width: 2; }
 .dagenda .milestone .label { font-weight: 650; }
 .dagenda .reached .gate { fill: #f3d36b; stroke: #a8841a; }
 @media (prefers-color-scheme: dark) {
   .dagenda:not(.light) .canvas { fill: #1a1917; }
   .dagenda:not(.light) text { fill: #ecebe8; }
-  .dagenda:not(.light) .band { fill: #23221f; }
-  .dagenda:not(.light) .odd .band { fill: #2a2925; }
-  .dagenda:not(.light) .heading, .dagenda:not(.light) .caption { fill: #9a958c; }
-  .dagenda:not(.light) :is(.card, .box) { fill: #1f1e1c; }
-  .dagenda:not(.light) :is(.not-started, .idea, .deferred, .dropped) :is(.card, .box), .dagenda:not(.light) :is(.in-progress, .research) .box { stroke: #5b574f; }
+  .dagenda:not(.light) .branch { fill: #232220; stroke: #302e2a; }
+  .dagenda:not(.light) .branch.hue-0, .dagenda:not(.light) .banner.hue-0 rect { fill: #1c2826; stroke: #2b4a45; }
+  .dagenda:not(.light) .banner.hue-0 rect { fill: #2b4a45; }
+  .dagenda:not(.light) .banner.hue-0 text { fill: #a8dcd3; }
+  .dagenda:not(.light) .branch.hue-1, .dagenda:not(.light) .banner.hue-1 rect { fill: #1f2130; stroke: #333b63; }
+  .dagenda:not(.light) .banner.hue-1 rect { fill: #333b63; }
+  .dagenda:not(.light) .banner.hue-1 text { fill: #c3cbf2; }
+  .dagenda:not(.light) .branch.hue-2, .dagenda:not(.light) .banner.hue-2 rect { fill: #2b1f23; stroke: #5a2f3b; }
+  .dagenda:not(.light) .banner.hue-2 rect { fill: #5a2f3b; }
+  .dagenda:not(.light) .banner.hue-2 text { fill: #f2c2cf; }
+  .dagenda:not(.light) .branch.hue-3, .dagenda:not(.light) .banner.hue-3 rect { fill: #29251a; stroke: #574a22; }
+  .dagenda:not(.light) .banner.hue-3 rect { fill: #574a22; }
+  .dagenda:not(.light) .banner.hue-3 text { fill: #ecd9a0; }
+  .dagenda:not(.light) .branch.hue-4, .dagenda:not(.light) .banner.hue-4 rect { fill: #212720; stroke: #3a4d30; }
+  .dagenda:not(.light) .banner.hue-4 rect { fill: #3a4d30; }
+  .dagenda:not(.light) .banner.hue-4 text { fill: #c9ddb8; }
+  .dagenda:not(.light) .branch.hue-5, .dagenda:not(.light) .banner.hue-5 rect { fill: #261f2a; stroke: #4b3456; }
+  .dagenda:not(.light) .banner.hue-5 rect { fill: #4b3456; }
+  .dagenda:not(.light) .banner.hue-5 text { fill: #dcc6e8; }
+  .dagenda:not(.light) .branch.hue-6, .dagenda:not(.light) .banner.hue-6 rect { fill: #1d242b; stroke: #2c4a63; }
+  .dagenda:not(.light) .banner.hue-6 rect { fill: #2c4a63; }
+  .dagenda:not(.light) .banner.hue-6 text { fill: #b9d6ee; }
+  .dagenda:not(.light) .branch.hue-7, .dagenda:not(.light) .banner.hue-7 rect { fill: #2a201c; stroke: #5a3626; }
+  .dagenda:not(.light) .banner.hue-7 rect { fill: #5a3626; }
+  .dagenda:not(.light) .banner.hue-7 text { fill: #efc4b0; }
+  .dagenda:not(.light) .era line { stroke: #9a7d22; }
+  .dagenda:not(.light) .era text { fill: #c9a227; }
+  .dagenda:not(.light) .era.reached line { stroke: #4c8a53; }
+  .dagenda:not(.light) .era.reached text { fill: #7bc283; }
+  .dagenda:not(.light) .banner rect { fill: #2e2c28; }
+  .dagenda:not(.light) .banner text, .dagenda:not(.light) .caption { fill: #b4afa6; }
+  .dagenda:not(.light) :is(.card, .badge) { fill: #1f1e1c; }
+  .dagenda:not(.light) :is(.not-started, .idea, .deferred, .dropped):not(.available) :is(.card, .badge) { stroke: #5b574f; }
   .dagenda:not(.light) .done .card { fill: #1f2e20; }
-  .dagenda:not(.light) .done .box { fill: #6aa56f; }
-  .dagenda:not(.light) .needs-attention .box { stroke: #e5615a; }
+  .dagenda:not(.light) .done .badge { fill: #5aa362; }
   .dagenda:not(.light) .needs-attention .card { fill: #3a1f1f; stroke: #e5615a; }
+  .dagenda:not(.light) .available .card, .dagenda:not(.light) .available .badge { stroke: #d6ae3a; }
   .dagenda:not(.light) .gate { fill: #3a3218; stroke: #c9a227; }
   .dagenda:not(.light) .reached .gate { fill: #8a6d16; }
+  .dagenda:not(.light) .edge { stroke: #6f6b63; }
+  .dagenda:not(.light) .edge.met { stroke: #5aa362; }
 }
 .dagenda.dark .canvas { fill: #1a1917; }
 .dagenda.dark text { fill: #ecebe8; }
-.dagenda.dark .band { fill: #23221f; }
-.dagenda.dark .odd .band { fill: #2a2925; }
-.dagenda.dark .heading, .dagenda.dark .caption { fill: #9a958c; }
-.dagenda.dark :is(.card, .box) { fill: #1f1e1c; }
-.dagenda.dark :is(.not-started, .idea, .deferred, .dropped) :is(.card, .box), .dagenda.dark :is(.in-progress, .research) .box { stroke: #5b574f; }
+.dagenda.dark .branch { fill: #232220; stroke: #302e2a; }
+.dagenda.dark .branch.hue-0, .dagenda.dark .banner.hue-0 rect { fill: #1c2826; stroke: #2b4a45; }
+.dagenda.dark .banner.hue-0 rect { fill: #2b4a45; }
+.dagenda.dark .banner.hue-0 text { fill: #a8dcd3; }
+.dagenda.dark .branch.hue-1, .dagenda.dark .banner.hue-1 rect { fill: #1f2130; stroke: #333b63; }
+.dagenda.dark .banner.hue-1 rect { fill: #333b63; }
+.dagenda.dark .banner.hue-1 text { fill: #c3cbf2; }
+.dagenda.dark .branch.hue-2, .dagenda.dark .banner.hue-2 rect { fill: #2b1f23; stroke: #5a2f3b; }
+.dagenda.dark .banner.hue-2 rect { fill: #5a2f3b; }
+.dagenda.dark .banner.hue-2 text { fill: #f2c2cf; }
+.dagenda.dark .branch.hue-3, .dagenda.dark .banner.hue-3 rect { fill: #29251a; stroke: #574a22; }
+.dagenda.dark .banner.hue-3 rect { fill: #574a22; }
+.dagenda.dark .banner.hue-3 text { fill: #ecd9a0; }
+.dagenda.dark .branch.hue-4, .dagenda.dark .banner.hue-4 rect { fill: #212720; stroke: #3a4d30; }
+.dagenda.dark .banner.hue-4 rect { fill: #3a4d30; }
+.dagenda.dark .banner.hue-4 text { fill: #c9ddb8; }
+.dagenda.dark .branch.hue-5, .dagenda.dark .banner.hue-5 rect { fill: #261f2a; stroke: #4b3456; }
+.dagenda.dark .banner.hue-5 rect { fill: #4b3456; }
+.dagenda.dark .banner.hue-5 text { fill: #dcc6e8; }
+.dagenda.dark .branch.hue-6, .dagenda.dark .banner.hue-6 rect { fill: #1d242b; stroke: #2c4a63; }
+.dagenda.dark .banner.hue-6 rect { fill: #2c4a63; }
+.dagenda.dark .banner.hue-6 text { fill: #b9d6ee; }
+.dagenda.dark .branch.hue-7, .dagenda.dark .banner.hue-7 rect { fill: #2a201c; stroke: #5a3626; }
+.dagenda.dark .banner.hue-7 rect { fill: #5a3626; }
+.dagenda.dark .banner.hue-7 text { fill: #efc4b0; }
+.dagenda.dark .era line { stroke: #9a7d22; }
+.dagenda.dark .era text { fill: #c9a227; }
+.dagenda.dark .era.reached line { stroke: #4c8a53; }
+.dagenda.dark .era.reached text { fill: #7bc283; }
+.dagenda.dark .banner rect { fill: #2e2c28; }
+.dagenda.dark .banner text, .dagenda.dark .caption { fill: #b4afa6; }
+.dagenda.dark :is(.card, .badge) { fill: #1f1e1c; }
+.dagenda.dark :is(.not-started, .idea, .deferred, .dropped):not(.available) :is(.card, .badge) { stroke: #5b574f; }
 .dagenda.dark .done .card { fill: #1f2e20; }
-.dagenda.dark .done .box { fill: #6aa56f; }
-.dagenda.dark .needs-attention .box { stroke: #e5615a; }
+.dagenda.dark .done .badge { fill: #5aa362; }
 .dagenda.dark .needs-attention .card { fill: #3a1f1f; stroke: #e5615a; }
+.dagenda.dark .available .card, .dagenda.dark .available .badge { stroke: #d6ae3a; }
 .dagenda.dark .gate { fill: #3a3218; stroke: #c9a227; }
 .dagenda.dark .reached .gate { fill: #8a6d16; }
+.dagenda.dark .edge { stroke: #6f6b63; }
+.dagenda.dark .edge.met { stroke: #5aa362; }
 </style>
-<defs><marker id="dagenda-arrow" viewBox="0 0 8 8" refX="1" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="arrow" d="M0,0 L8,4 L0,8 z"/></marker></defs>
-<rect class="canvas" width="295" height="373"/>
+<rect class="canvas" width="792" height="713"/>
 <text class="title" x="16" y="34">Every warning</text>
-<g class="lane even" data-lane="0"><rect class="band" x="0" y="50" width="295" height="86"/><text class="heading" x="16" y="67">Milestones</text></g>
-<g class="lane odd" data-lane="1" data-track="work"><rect class="band" x="0" y="142" width="295" height="215"/><text class="heading" x="16" y="159">Work</text></g>
-<path class="edge waiting" data-from="unfinished" data-to="shipped" d="M120,184 C160,184 145,184 185,184" marker-end="url(#dagenda-arrow)"/>
-<path class="edge waiting wanted" data-from="unfinished" data-to="empty" d="M120,184 C160,184 -30,100 10,100" marker-end="url(#dagenda-arrow)"/>
-<path class="edge waiting" data-from="dropped" data-to="waiting" d="M105,227 C145,227 145,227 185,227" marker-end="url(#dagenda-arrow)"/>
-<path class="edge waiting" data-from="dropped" data-to="stuck" d="M105,227 C145,227 145,100 185,100" marker-end="url(#dagenda-arrow)"/>
-<path class="edge waiting" data-from="deferred" data-to="stuck" d="M108,270 C148,270 145,100 185,100" marker-end="url(#dagenda-arrow)"/>
+<rect class="branch track hue-0" data-branch="0" data-track="work" x="16" y="50" width="506" height="617" rx="12"/>
+<rect class="band reached" data-milestone="empty" x="0" y="193" width="792" height="306"/>
+<g class="banner track hue-0 depth-0" data-track="work"><rect x="16" y="673" width="506" height="24" rx="8"/><text x="269" y="689" text-anchor="middle">Work</text></g>
+<g class="era" data-milestone="stuck"><line x1="16" y1="499" x2="566" y2="499"/><text x="22" y="492">Stuck</text></g>
+<g class="era reached" data-milestone="empty"><line x1="16" y1="193" x2="566" y2="193"/><text x="22" y="186">Empty</text></g>
+<path class="edge waiting" data-from="unfinished" data-to="shipped" d="M269,374 L269,328"/>
+<path class="edge waiting wanted" data-from="unfinished" data-to="empty" d="M269,374 L269,360 Q269,352 277,352 L645,352 Q653,352 653,344 L653,219"/>
+<path class="edge waiting" data-from="dropped" data-to="waiting" d="M105,581 L105,567 Q105,559 113,559 L529,559 Q537,559 537,551 L537,153 Q537,145 529,145 L277,145 Q269,145 269,137 L269,121"/>
+<g class="edge member" data-from="dropped" data-to="stuck"/>
+<g class="edge member" data-from="deferred" data-to="stuck"/>
 <g class="node task done" data-id="shipped" data-status="done">
 <title>Shipped (shipped): done</title>
-<rect class="card" x="191" y="168" width="88" height="33" rx="6"/>
-<rect class="box" x="201" y="179" width="12" height="12" rx="2"/>
-<text class="mark" x="207" y="189" text-anchor="middle">x</text>
-<text class="label" text-anchor="start"><tspan x="220" y="189">Shipped</tspan></text>
+<rect class="card" x="194" y="275" width="150" height="43" rx="10"/>
+<circle class="badge" cx="269" cy="318" r="10"/>
+<path class="check" d="M264,318 l3,4 l6,-8"/>
+<text class="label" text-anchor="middle"><tspan x="269" y="297">Shipped</tspan></text>
 </g>
-<g class="node task not-started" data-id="unfinished" data-status="not-started">
+<g class="node task not-started available" data-id="unfinished" data-status="not-started">
 <title>Unfinished (unfinished): not started</title>
-<rect class="card" x="16" y="168" width="104" height="33" rx="6"/>
-<rect class="box" x="26" y="179" width="12" height="12" rx="2"/>
-<text class="label" text-anchor="start"><tspan x="45" y="189">Unfinished</tspan></text>
+<rect class="card" x="194" y="374" width="150" height="43" rx="10"/>
+<circle class="badge" cx="269" cy="417" r="10"/>
+<text class="label" text-anchor="middle"><tspan x="269" y="396">Unfinished</tspan></text>
 </g>
 <g class="node task dropped" data-id="dropped" data-status="dropped">
 <title>Dropped (dropped): dropped</title>
-<rect class="card" x="16" y="211" width="89" height="33" rx="6"/>
-<rect class="box" x="26" y="222" width="12" height="12" rx="2"/>
-<text class="mark" x="32" y="232" text-anchor="middle">~</text>
-<text class="label" text-anchor="start"><tspan x="45" y="232">Dropped</tspan></text>
+<rect class="card" x="30" y="581" width="150" height="43" rx="10"/>
+<circle class="badge" cx="105" cy="624" r="10"/>
+<text class="mark" x="105" y="628" text-anchor="middle">~</text>
+<text class="label" text-anchor="middle"><tspan x="105" y="603">Dropped</tspan></text>
 </g>
-<g class="node task deferred" data-id="deferred" data-status="deferred">
+<g class="node task deferred available" data-id="deferred" data-status="deferred">
 <title>Deferred (deferred): deferred</title>
-<rect class="card" x="16" y="254" width="92" height="33" rx="6"/>
-<rect class="box" x="26" y="265" width="12" height="12" rx="2"/>
-<text class="mark" x="32" y="275" text-anchor="middle">&gt;</text>
-<text class="label" text-anchor="start"><tspan x="45" y="275">Deferred</tspan></text>
+<rect class="card" x="194" y="581" width="150" height="43" rx="10"/>
+<circle class="badge" cx="269" cy="624" r="10"/>
+<text class="mark" x="269" y="628" text-anchor="middle">&gt;</text>
+<text class="label" text-anchor="middle"><tspan x="269" y="603">Deferred</tspan></text>
 </g>
-<g class="node task not-started" data-id="waiting" data-status="not-started">
-<title>Waiting (waiting): not started</title>
-<rect class="card" x="191" y="211" width="85" height="33" rx="6"/>
-<rect class="box" x="201" y="222" width="12" height="12" rx="2"/>
-<text class="label" text-anchor="start"><tspan x="220" y="232">Waiting</tspan></text>
+<g class="node task not-started locked" data-id="waiting" data-status="not-started">
+<title>Waiting (waiting): not started, waiting on something</title>
+<rect class="card" x="194" y="68" width="150" height="43" rx="10"/>
+<circle class="badge" cx="269" cy="111" r="10"/>
+<text class="label" text-anchor="middle"><tspan x="269" y="90">Waiting</tspan></text>
 </g>
 <g class="node task done" data-id="parent" data-status="done">
 <title>Parent (parent): done</title>
-<rect class="card" x="16" y="297" width="119" height="48" rx="6"/>
-<rect class="box" x="26" y="308" width="12" height="12" rx="2"/>
-<text class="mark" x="32" y="318" text-anchor="middle">x</text>
-<text class="label" text-anchor="start"><tspan x="45" y="318">Parent</tspan></text>
-<text class="caption" x="45" y="333" text-anchor="start" font-size="11">1 of 3 subtasks</text>
+<rect class="card" x="358" y="581" width="150" height="58" rx="10"/>
+<circle class="badge" cx="433" cy="639" r="10"/>
+<path class="check" d="M428,639 l3,4 l6,-8"/>
+<text class="label" text-anchor="middle"><tspan x="433" y="603">Parent</tspan></text>
+<text class="caption" x="433" y="618" text-anchor="middle" font-size="11">1 of 3 subtasks</text>
 </g>
 <g class="node milestone" data-id="stuck">
 <title>Stuck (stuck)</title>
-<polygon class="gate" points="201,76 257,76 267,100 257,124 201,124 191,100"/>
-<text class="label" text-anchor="middle"><tspan x="229" y="97">Stuck</tspan></text>
-<text class="caption" x="229" y="112" text-anchor="middle" font-size="11">0 of 2</text>
+<polygon class="gate" points="578,473 728,473 740,499 728,525 578,525 566,499"/>
+<text class="label" text-anchor="middle"><tspan x="653" y="495">Stuck</tspan></text>
+<text class="caption" x="653" y="510" text-anchor="middle" font-size="11">0 of 2</text>
 </g>
 <g class="node milestone reached" data-id="empty">
 <title>Empty (empty)</title>
-<polygon class="gate" points="26,76 88,76 98,100 88,124 26,124 16,100"/>
-<text class="label" text-anchor="middle"><tspan x="57" y="97">Empty</tspan></text>
-<text class="caption" x="57" y="112" text-anchor="middle" font-size="11">reached</text>
+<polygon class="gate" points="578,167 728,167 740,193 728,219 578,219 566,193"/>
+<text class="label" text-anchor="middle"><tspan x="653" y="189">Empty</tspan></text>
+<text class="caption" x="653" y="204" text-anchor="middle" font-size="11">reached</text>
 </g>
 </svg>
