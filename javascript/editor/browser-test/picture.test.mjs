@@ -203,6 +203,10 @@ const BIG = [
 test("zooming with the wheel keeps the card under the pointer still", async () => {
   const a = await open("zoom")
   await write(a, BIG, "d5")
+  // Big enough to scroll, which is what lets a point stay put: a picture
+  // smaller than its pane just grows from its corner
+  for (let step = 0; step < 3; step++) await a.evaluate(`document.getElementById("zoom-in").click()`)
+  await sleep(100)
   const card = '.node[data-id="c3"] .card'
   const point = await middle(a, card)
   await a.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: point.x, y: point.y })
@@ -219,12 +223,13 @@ test("zooming with the wheel keeps the card under the pointer still", async () =
 test("zooming with the buttons keeps the middle of the view still", async () => {
   const a = await open("zoom-buttons")
   await write(a, BIG, "d5")
-  // The view's middle, as fractions of the picture, before and after
+  // The middle of the pane that scrolls the picture, as fractions of the
+  // picture, before and after
   const centre = `(() => {
-    const picture = document.getElementById("picture")
-    const view = picture.getBoundingClientRect()
-    const svg = picture.shadowRoot.querySelector("svg").getBoundingClientRect()
-    return { across: (view.x + picture.clientWidth / 2 - svg.x) / svg.width, down: (view.y + picture.clientHeight / 2 - svg.y) / svg.height }
+    const pane = document.getElementById("views").getBoundingClientRect()
+    const svg = document.getElementById("picture").shadowRoot.querySelector("svg").getBoundingClientRect()
+    const [x, y] = [pane.x + pane.width / 2, pane.y + Math.min(pane.height, innerHeight - pane.y) / 2]
+    return { across: (x - svg.x) / svg.width, down: (y - svg.y) / svg.height }
   })()`
   await a.evaluate(`document.getElementById("zoom-in").click()`)
   await a.evaluate(`document.getElementById("zoom-in").click()`)

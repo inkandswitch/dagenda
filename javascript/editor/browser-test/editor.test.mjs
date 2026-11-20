@@ -127,3 +127,26 @@ test("an edit syncs; with no server, the page says it's kept in this browser", a
   )
   assert.match(title, /kept in this browser/)
 })
+
+test("Tab indents every selected line, and Shift+Tab outdents them", async () => {
+  const a = await open("indent")
+  await a.until(ready, "the editor to load")
+  const source = "roadmap\ntrack t\n[ ] task a\n[ ] task b\n"
+  await a.evaluate(`(() => {
+    const { view } = window.editor.active()
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: ${JSON.stringify(source)} } })
+    // From the start of "[ ] task a" to the end of "[ ] task b"
+    view.dispatch({ selection: { anchor: 16, head: 36 } })
+    view.focus()
+  })()`)
+  const key = (modifiers) =>
+    a.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9, modifiers })
+  const text = () => a.evaluate("window.editor.active().view.state.doc.toString()")
+
+  await key(0)
+  assert.equal(await text(), "roadmap\ntrack t\n  [ ] task a\n  [ ] task b\n", "both lines in by two spaces")
+  await key(0)
+  assert.equal(await text(), "roadmap\ntrack t\n    [ ] task a\n    [ ] task b\n", "and again, still both")
+  await key(8)
+  assert.equal(await text(), "roadmap\ntrack t\n  [ ] task a\n  [ ] task b\n", "Shift+Tab takes two spaces off each")
+})

@@ -7,7 +7,17 @@
 
 import { automergeSyncPlugin } from "@automerge/automerge-codemirror"
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete"
-import { defaultKeymap, history, historyKeymap, redo, redoDepth, undo, undoDepth } from "@codemirror/commands"
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentLess,
+  indentMore,
+  redo,
+  redoDepth,
+  undo,
+  undoDepth,
+} from "@codemirror/commands"
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search"
 import { ChangeSet, EditorState, Transaction } from "@codemirror/state"
 import {
@@ -45,8 +55,9 @@ const setup = [
   keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...historyKeymap]),
 ]
 
-// Indentation is structure: Enter keeps the line's indent, and Tab indents
-// with two spaces, as in the preview
+// Indentation is structure: Enter keeps the line's indent; Tab indents with
+// two spaces (every line a selection touches), and Shift+Tab outdents, as
+// in the preview
 const indentation = keymap.of([
   {
     key: "Enter",
@@ -60,9 +71,11 @@ const indentation = keymap.of([
   {
     key: "Tab",
     run: (view) => {
+      if (!view.state.selection.ranges.every((range) => range.empty)) return indentMore(view)
       view.dispatch(view.state.replaceSelection("  "), { userEvent: "input" })
       return true
     },
+    shift: indentLess,
   },
 ])
 

@@ -184,7 +184,7 @@
               --out-dir "$out/dagenda-view/pkg" "$root/rust/dagenda_wasm"
             rm -f "$out/dagenda-view/pkg/.gitignore"
             cp "$root/javascript/dagenda-view/dagenda-view.js" "$root/javascript/dagenda-view/editing.js" "$out/dagenda-view/"
-            for file in index.html examples.js highlight.js main.js shell.js style.css; do
+            for file in index.html examples.js highlight.js indent.js main.js shell.js style.css; do
               cp "$root/javascript/preview/$file" "$out/preview/"
             done
             # The editor bundles the component, so it takes the same release

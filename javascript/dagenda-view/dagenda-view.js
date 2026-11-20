@@ -143,23 +143,55 @@ class DagendaView extends HTMLElement {
   /**
    * Resize to the new zoom, keeping one point of the picture still: the one
    * under the pointer if it's over the picture (a wheel or a pinch), else
-   * the middle of what's showing (the page's zoom buttons).
+   * the middle of what's showing (the page's zoom buttons). Whatever
+   * scrolls the picture (this element, or the page's pane around it) scrolls
+   * by however far that point moved.
    */
   #zoom() {
     const svg = this.#svg
     if (!svg || !this.isConnected) return this.#style()
-    const view = this.getBoundingClientRect()
-    const anchor = this.#pointer ?? { x: view.left + this.clientWidth / 2, y: view.top + this.clientHeight / 2 }
     const before = svg.getBoundingClientRect()
     if (before.width === 0 || before.height === 0) return this.#style()
+    const anchor = this.#pointer ?? this.#middle()
     // Where the anchor is across the picture, as fractions of its size
     const across = (anchor.x - before.left) / before.width
     const down = (anchor.y - before.top) / before.height
 
     this.#style()
     const after = svg.getBoundingClientRect()
-    this.scrollLeft += after.left + across * after.width - anchor.x
-    this.scrollTop += after.top + down * after.height - anchor.y
+    let dx = after.left + across * after.width - anchor.x
+    let dy = after.top + down * after.height - anchor.y
+    for (const scroller of this.#scrollers()) {
+      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) break
+      const [left, top] = [scroller.scrollLeft, scroller.scrollTop]
+      scroller.scrollLeft += dx
+      scroller.scrollTop += dy
+      dx -= scroller.scrollLeft - left
+      dy -= scroller.scrollTop - top
+    }
+  }
+
+  /** This element, then each ancestor that clips or scrolls it, then the page. */
+  #scrollers() {
+    const found = []
+    for (let element = this; element; element = element.parentElement) {
+      const { overflowX, overflowY } = getComputedStyle(element)
+      if (element === this || overflowX !== "visible" || overflowY !== "visible") found.push(element)
+    }
+    if (document.scrollingElement && !found.includes(document.scrollingElement)) found.push(document.scrollingElement)
+    return found
+  }
+
+  /** The middle of the part of the picture that's showing, in client coordinates. */
+  #middle() {
+    let { left, top, right, bottom } = this.getBoundingClientRect()
+    for (const clip of [...this.#scrollers().slice(1).map((element) => element.getBoundingClientRect()), { left: 0, top: 0, right: innerWidth, bottom: innerHeight }]) {
+      left = Math.max(left, clip.left)
+      top = Math.max(top, clip.top)
+      right = Math.min(right, clip.right)
+      bottom = Math.min(bottom, clip.bottom)
+    }
+    return { x: (left + right) / 2, y: (top + bottom) / 2 }
   }
 
   /** The plan's source text, for a plan of one document. Setting it redraws. */

@@ -6,6 +6,7 @@ import init, { locate, renderPlanText } from "../dagenda-view/pkg/dagenda_wasm.j
 import "../dagenda-view/dagenda-view.js"
 import { BASIC, TOUR } from "./examples.js"
 import { highlight } from "./highlight.js"
+import { indentLines } from "./indent.js"
 import { shell } from "./shell.js"
 
 const $ = (id) => document.getElementById(id)
@@ -60,12 +61,17 @@ const insert = (text, start = source.selectionStart, end = source.selectionEnd) 
   }
 }
 
-// Indentation is structure, so Tab indents with spaces and Enter keeps the
-// indent of the line above
+// Indentation is structure, so Tab indents with two spaces (every line a
+// selection touches), Shift+Tab outdents, and Enter keeps the indent of the
+// line above
 source.addEventListener("keydown", (e) => {
-  if (e.key === "Tab" && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+  if (e.key === "Tab" && !e.metaKey && !e.ctrlKey && !e.altKey) {
     e.preventDefault()
-    insert("  ")
+    const { selectionStart: start, selectionEnd: end, value } = source
+    if (!e.shiftKey && start === end) return insert("  ")
+    const { from, to, text, start: after, end: until } = indentLines(value, start, end, e.shiftKey)
+    if (text !== value.slice(from, to)) insert(text, from, to)
+    source.setSelectionRange(after, until)
   } else if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
     const before = source.value.slice(0, source.selectionStart)
     const indent = /^ */.exec(before.slice(before.lastIndexOf("\n") + 1))[0]
