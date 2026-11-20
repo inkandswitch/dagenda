@@ -77,6 +77,35 @@ test("clicking a badge sets the status from a menu", async () => {
   assert.match(await a.evaluate(text), /\[ \] b \[B\]/, "and nothing else")
 })
 
+test("clicking someone's sticker, or their name, shows only what they're on", async () => {
+  const a = await open("person")
+  await write(a, "roadmap\n@ann\n  avatar https://example.invalid/ann.png\n[ ] a [A]\n  dri @ann, @bo\n[ ] b [B]\n  dri @bo\n  needs a\n[ ] c [C]\n", "c")
+  const picture = `document.getElementById("picture")`
+  const assigned = `[...${picture}.shadowRoot.querySelectorAll(".node.assigned")].map((node) => node.dataset.id).join(" ")`
+
+  await click(a, await middle(a, '.sticker[data-person="@ann"]'))
+  await a.until(`${picture}.person === "@ann"`, "ann picked")
+  assert.equal(await a.evaluate(assigned), "a")
+  // With the pointer still on her card, what she isn't on fades: hovering
+  // doesn't take over
+  const opacity = (id) => `getComputedStyle(${picture}.shadowRoot.querySelector('.node[data-id="${id}"]')).opacity`
+  await a.until(`${opacity("b")} === "0.15" && ${opacity("c")} === "0.15"`, "the rest faded")
+  assert.equal(await a.evaluate(opacity("a")), "1")
+  assert.equal(await a.evaluate(`${picture}.selected`), null, "picking someone doesn't select their card")
+
+  // Someone with no avatar: their name on a card picks them
+  await click(a, await middle(a, '.node[data-id="b"] .fact.dri'))
+  await a.until(`${picture}.person === "@bo"`, "bo picked")
+  assert.equal(await a.evaluate(assigned), "a b")
+  // b waits on a, so it's locked, which dims it, but it's bo's: full strength
+  assert.equal(await a.evaluate(`${picture}.shadowRoot.querySelector('.node[data-id="b"]').classList.contains("locked")`), true)
+  await a.until(`${opacity("b")} === "1"`, "bo's locked card at full strength")
+
+  await click(a, await middle(a, '.node[data-id="b"] .fact.dri'))
+  await a.until(`${picture}.person === null`, "picking them again shows everything")
+  assert.equal(await a.evaluate(assigned), "")
+})
+
 test("dragging from a badge to a card adds a need", async () => {
   const a = await open("need")
   await write(a, "roadmap\n[ ] a [A]\n[ ] b [B]\n[ ] c [C]\n  needs b\n", "c")

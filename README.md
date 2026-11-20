@@ -66,7 +66,7 @@ A `dri` line can name several people: `dri @alice, @bob`. To put someone's face 
   avatar https://example.com/bob.png
 ```
 
-Everyone on a task who has an avatar gets a round sticker down the right side of its card, hanging a little off the edge, where no lines run; when more people are on it than fit (up to four), the last sticker says how many more there are. Nobody gets a picture by default: only a person block with an `avatar` makes a sticker. People can be defined in a private plan, so their pictures stay with the team.
+Everyone on a task who has an avatar gets a round sticker down the right side of its card, hanging a little off the edge, where no lines run; when more people are on it than fit (up to four), the last sticker says how many more there are. Nobody gets a picture by default: only a person block with an `avatar` makes a sticker. In the preview and the editor, click someone's sticker, or their `@name` on a card, to see only what they're assigned to; click again, or press Escape, to see everything. People can be defined in a private plan, so their pictures stay with the team.
 
 > [!NOTE]
 > Browsers load the pictures when the SVG is part of the page (as in the preview and the editor) or opened on its own, but not when it's shown through an `<img>` tag, the way GitHub shows a README's images. There, each sticker shows the person's initial instead.
@@ -113,7 +113,7 @@ Until Keyhive, a private document is one whose URL isn't linked from anything pu
 
 ## Planned
 
-- _Two more views._ A Gantt chart, and a skill tree in the spirit of Final Fantasy X's Sphere Grid.
+- _Two more views._ A Gantt chart, and a skill tree: a board of linked nodes, where finishing one opens up the paths around it.
 - _More picture edits._ Inserting a task, moving one to another track, and removing a need from the picture.
 - _A public site._ Static, built from the plan files in the repo and from snapshots of public Automerge documents.
 - _Links to the work._ GitHub issues and pull requests, resolved by [sans-effort] routines.

@@ -26,6 +26,13 @@
 // (all the way up and down, not just the lines drawn). Click a node to
 // select it; click it again, or press Escape, to clear.
 //
+// Click someone's sticker, or their @name on a card, to light up everything
+// they're assigned to, as hovering lights up a chain: their cards, the lines
+// between them, and the banners of tracks they run, with everything else
+// faded. Their cards show at full strength, even ones that are locked (dimmed
+// until what they wait on is done). It stays, whatever's hovered, until you
+// click them again, click the background, or press Escape.
+//
 // Text that doesn't parse or resolve keeps the last good picture up, so the
 // tree doesn't flicker while someone types.
 //
@@ -33,6 +40,7 @@
 //
 //   dagenda-render  { problems, ok }  after every change of source
 //   dagenda-select  { id }            a node was selected (id is null when cleared)
+//   dagenda-person  { handle }        a person was picked, as in "@alice" (null when cleared)
 //   dagenda-edit    { kind, edits }   an edit made on the picture: each changed
 //                                     document's index, new `source`, and the
 //                                     `base` text it was made from
@@ -54,6 +62,14 @@ const STYLE = `
   svg .edge.lit { stroke-width: 2.5; }
   svg .node.focus :is(.card, .gate) { stroke-width: 3; }
   svg .node.selected :is(.card, .gate) { stroke: #2f6fd6; stroke-width: 3; }
+  svg :is(.sticker, .fact.dri) { cursor: pointer; }
+  svg.picking :is(.node, .edge):not(.assigned) { opacity: 0.15; }
+  svg.picking .node.assigned { opacity: 1; }
+  svg.picking .node.assigned :is(.card, .gate) { stroke-width: 3; }
+  svg.picking .edge.assigned { stroke-width: 2.5; }
+  svg.picking .banner.assigned rect { stroke: #2f6fd6; stroke-width: 2; }
+  svg .sticker.picked .ring { stroke: #2f6fd6; stroke-width: 2.5; }
+  svg .fact.dri.picked { text-decoration: underline; }
   @media (prefers-reduced-motion: reduce) { svg .node, svg .edge { transition: none; } }
 `
 
@@ -78,6 +94,8 @@ class DagendaView extends HTMLElement {
   #documents = [{ name: "", source: "" }]
   #problems = []
   #selected = null
+  // The person picked, as in "@alice", or null
+  #person = null
   #canvas
   #svg = null
   // id → ids it waits on, and id → ids waiting on it, from the drawn lines.
@@ -95,8 +113,9 @@ class DagendaView extends HTMLElement {
     this.#canvas = shadow.querySelector("div")
 
     this.#canvas.addEventListener("pointerover", (e) => {
+      // While someone's picked, their cards stay lit, wherever the pointer goes
       const node = e.target.closest?.(".node")
-      if (node) this.#focus(node.dataset.id)
+      if (node && this.#person === null) this.#focus(node.dataset.id)
     })
     this.#canvas.addEventListener("pointerleave", () => this.#focus(null))
     // Zoom keeps the point under the pointer still, so track where it is
@@ -111,11 +130,20 @@ class DagendaView extends HTMLElement {
     this.#canvas.addEventListener("click", (e) => {
       // A card's links open their page; they don't select the card
       if (e.target.closest?.("a")) return
+      // A person's sticker, or their name on a card, picks them instead
+      const person = e.target.closest?.(".sticker[data-person]")?.dataset.person ?? e.target.closest?.(".fact.dri")?.textContent.trim()
+      if (person) {
+        this.person = person === this.#person ? null : person
+        return
+      }
       const node = e.target.closest?.(".node")
+      if (!node) this.person = null
       this.select(node && node.dataset.id !== this.#selected ? node.dataset.id : null)
     })
     this.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") this.select(null)
+      if (e.key !== "Escape") return
+      this.select(null)
+      this.person = null
     })
     attachEditing({
       host: this,
@@ -223,6 +251,24 @@ class DagendaView extends HTMLElement {
     return this.#selected
   }
 
+  /** The person picked, as in "@alice", or null. */
+  get person() {
+    return this.#person
+  }
+
+  /**
+   * Pick a person, as in "@alice", to see only what they're assigned to (null
+   * shows everything), firing `dagenda-person`.
+   */
+  set person(handle) {
+    const person = handle || null
+    if (person === this.#person) return
+    this.#person = person
+    this.#focus(null)
+    this.#pick()
+    this.dispatchEvent(new CustomEvent("dagenda-person", { bubbles: true, detail: { handle: person } }))
+  }
+
   /** The drawn SVG document's markup, or "" before the first good draw. */
   get svg() {
     return this.#svg ? this.#svg.outerHTML : ""
@@ -273,6 +319,7 @@ class DagendaView extends HTMLElement {
     if (this.#selected !== null && !ids.has(this.#selected)) this.select(null)
     this.#style()
     this.#mark()
+    this.#pick()
   }
 
   /** Light up what `id` needs and what waits on it; null clears. */
@@ -293,6 +340,32 @@ class DagendaView extends HTMLElement {
       const { from, to } = edge.dataset
       const lit = (upstream.has(from) && upstream.has(to)) || (downstream.has(from) && downstream.has(to))
       edge.classList.toggle("lit", lit)
+    }
+  }
+
+  /**
+   * Mark what the picked person is assigned to: cards and banners that list
+   * them, and the lines between two of their cards. The rest fades.
+   */
+  #pick() {
+    if (!this.#svg) return
+    const person = this.#person
+    this.#svg.classList.toggle("picking", person !== null)
+    const theirs = (element) => person !== null && (element.dataset.people ?? "").split(" ").includes(person)
+    const assigned = new Set()
+    for (const node of this.#svg.querySelectorAll(".node")) {
+      node.classList.toggle("assigned", theirs(node))
+      if (theirs(node)) assigned.add(node.dataset.id)
+    }
+    for (const banner of this.#svg.querySelectorAll(".banner")) banner.classList.toggle("assigned", theirs(banner))
+    for (const edge of this.#svg.querySelectorAll(".edge")) {
+      edge.classList.toggle("assigned", assigned.has(edge.dataset.from) && assigned.has(edge.dataset.to))
+    }
+    for (const sticker of this.#svg.querySelectorAll(".sticker")) {
+      sticker.classList.toggle("picked", person !== null && sticker.dataset.person === person)
+    }
+    for (const name of this.#svg.querySelectorAll(".fact.dri")) {
+      name.classList.toggle("picked", person !== null && name.textContent.trim() === person)
     }
   }
 

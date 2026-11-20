@@ -729,7 +729,27 @@ fn people_with_pictures_are_stickers_on_their_cards() -> TestResult {
         );
     }
 
+    assert!(
+        svg.contains(
+            r#"data-id="pair" data-status="not-started" data-people="@alice @bob @carol">"#
+        ),
+        "everyone on a card, avatar or not, for a page to pick them out"
+    );
+
     let plain = tree("roadmap\n[ ] a\n  dri @alice")?.to_svg();
     assert!(!plain.contains("dagenda-face"), "no stickers, no clip path");
+    Ok(())
+}
+
+/// A track's DRIs are on its banner, for a page to pick them out.
+#[test]
+fn banners_say_who_runs_their_track() -> TestResult {
+    let svg =
+        tree("roadmap\ntrack core\n  dri @alice, @bob\n  [ ] a\ntrack other\n  [ ] b")?.to_svg();
+    assert!(
+        svg.contains(r#"data-track="core" data-people="@alice @bob">"#),
+        "{svg}"
+    );
+    assert!(!svg.contains(r#"data-track="other" data-people"#));
     Ok(())
 }

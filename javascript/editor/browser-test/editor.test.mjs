@@ -128,6 +128,18 @@ test("an edit syncs; with no server, the page says it's kept in this browser", a
   assert.match(title, /kept in this browser/)
 })
 
+test("names in the text are only coloured, not drawn like the people who are here", async () => {
+  const a = await open("names")
+  await a.until(ready, "the editor to load")
+  await write(a, 0, "roadmap\n@ann\n  avatar gh:ann\n[ ] a\n  dri @ann, @bo\n")
+  await a.until(`document.querySelectorAll(".cm-content .person").length === 3`, "the names coloured")
+  const chip = await a.evaluate(`[...document.querySelectorAll(".cm-content .person")].map((name) => {
+    const style = getComputedStyle(name)
+    return [style.paddingLeft, style.borderLeftWidth].join(" ")
+  }).join(", ")`)
+  assert.equal(chip, "0px 0px, 0px 0px, 0px 0px")
+})
+
 test("Tab indents every selected line, and Shift+Tab outdents them", async () => {
   const a = await open("indent")
   await a.until(ready, "the editor to load")

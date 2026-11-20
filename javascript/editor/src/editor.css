@@ -20,7 +20,8 @@
 #people { display: flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
 #people:empty { display: none; }
 #people ~ #theme { margin-left: 0; }
-.person {
+/* Scoped: the plan text has .person tokens too, which are only coloured */
+#people .person {
   border: 1px solid var(--person);
   border-left-width: 4px;
   border-radius: 4px;
@@ -30,7 +31,7 @@
   font: 12px system-ui, sans-serif;
   white-space: nowrap;
 }
-button.person { cursor: pointer; }
+#people button.person { cursor: pointer; }
 
 /* --- A tab per document ---------------------------------------------------- */
 

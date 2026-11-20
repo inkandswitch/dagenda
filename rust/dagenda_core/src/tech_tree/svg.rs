@@ -12,6 +12,7 @@
 //! | `data-milestone`      | bands, eras       | the milestone's id                                      |
 //! | `data-from`/`data-to` | edges             | the prerequisite's and the dependent's ids              |
 //! | `data-person`         | stickers          | the person's handle, as in `@alice`                     |
+//! | `data-people`         | task nodes, banners | the task's or track's DRIs, space-separated (absent when there are none) |
 //! | `class`               | nodes             | `node task` or `node milestone`; a status; `locked`, `waiting` (under way, but waiting on something), or `available`; `reached` |
 //! | `class`               | a node's parts    | `card` or `gate`, `badge`, and `mark` or `check`; a task in progress adds a `glow` behind its card and a turning `spinner` on its badge |
 //! | `class`               | branches, banners | `track`, `untracked`, or `milestones`; `hue-0` to `hue-7` for a palette colour (teal, indigo, rose, ochre, sage, plum, sky, terracotta), or `colour-rrggbb` for any other |
@@ -31,7 +32,7 @@ use super::{
 };
 use crate::{
     colour::{Colour, Rgb},
-    handle::Handles,
+    handle::{Handle, Handles},
     plan::{Plan, Progress},
     status::Status,
 };
@@ -121,11 +122,12 @@ impl Svg<'_> {
         for banner in &tree.banners {
             writeln!(
                 f,
-                r#"<g class="banner {}{} depth-{}"{}><rect x="{}" y="{}" width="{}" height="{}" rx="8"/><text x="{}" y="{}" text-anchor="middle">{}{}</text></g>"#,
+                r#"<g class="banner {}{} depth-{}"{}{}><rect x="{}" y="{}" width="{}" height="{}" rx="8"/><text x="{}" y="{}" text-anchor="middle">{}{}</text></g>"#,
                 kind_class(&banner.kind),
                 ColourClass(banner.colour),
                 banner.depth,
                 Track(&banner.kind),
+                People(banner.dri.iter().flat_map(Handles::iter).collect()),
                 banner.x,
                 banner.y,
                 banner.width,
@@ -307,9 +309,19 @@ fn task(
     };
     writeln!(
         f,
-        r#"<g class="node task {class}{access}" data-id="{}" data-status="{class}"{}>"#,
+        r#"<g class="node task {class}{access}" data-id="{}" data-status="{class}"{}{}>"#,
         node.id,
-        Era(era)
+        Era(era),
+        People(
+            node.facts
+                .iter()
+                .flatten()
+                .filter_map(|fact| match fact {
+                    Fact::Dri(handle) => Some(handle),
+                    Fact::Est(_) | Fact::Target(_) | Fact::Ref(_) | Fact::Link(_) => None,
+                })
+                .collect()
+        )
     )?;
     writeln!(
         f,
@@ -668,6 +680,26 @@ impl fmt::Display for Route<'_> {
             }
         }
         Ok(())
+    }
+}
+
+/// ` data-people="@alice @bob"` for a task's or a track's DRIs, else
+/// nothing.
+struct People<'a>(Vec<&'a Handle>);
+
+impl fmt::Display for People<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0.is_empty() {
+            return Ok(());
+        }
+        f.write_str(r#" data-people=""#)?;
+        for (index, handle) in self.0.iter().enumerate() {
+            if index > 0 {
+                f.write_str(" ")?;
+            }
+            write!(f, "{handle}")?;
+        }
+        f.write_str("\"")
     }
 }
 

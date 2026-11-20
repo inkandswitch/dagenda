@@ -211,7 +211,7 @@
 <path class="check" d="M100,250 l3,4 l6,-8"/>
 <text class="label" text-anchor="middle"><tspan x="105" y="229">Shipped</tspan></text>
 </g>
-<g class="node task not-started available" data-id="unfinished" data-status="not-started" data-era="empty">
+<g class="node task not-started available" data-id="unfinished" data-status="not-started" data-era="empty" data-people="@bob">
 <title>Unfinished (unfinished): not started
 @bob</title>
 <rect class="card" x="194" y="500" width="150" height="61" rx="10"/>
