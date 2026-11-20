@@ -177,8 +177,8 @@
 <g class="band side"><rect x="0" y="80" width="792" height="338"/><text x="22" y="96">Not on a milestone</text></g>
 <rect class="band reached" data-milestone="empty" x="0" y="418" width="792" height="225"/>
 <g class="banner track hue-0 depth-0" data-track="work"><rect x="16" y="50" width="506" height="24" rx="8"/><text x="269" y="66" text-anchor="middle">Work</text></g>
-<g class="era" data-milestone="stuck"><line x1="16" y1="643" x2="566" y2="643"/><text x="22" y="636">Stuck</text></g>
-<g class="era reached" data-milestone="empty"><line x1="16" y1="418" x2="566" y2="418"/><text x="22" y="411">Empty</text></g>
+<g class="era" data-milestone="stuck"><line class="hit" x1="16" y1="643" x2="566" y2="643" style="stroke-opacity:0;stroke-width:14;stroke-dasharray:none"/><line x1="16" y1="643" x2="566" y2="643"/><text x="22" y="636">Stuck</text></g>
+<g class="era reached" data-milestone="empty"><line class="hit" x1="16" y1="418" x2="566" y2="418" style="stroke-opacity:0;stroke-width:14;stroke-dasharray:none"/><line x1="16" y1="418" x2="566" y2="418"/><text x="22" y="411">Empty</text></g>
 <path class="edge waiting" data-from="unfinished" data-to="shipped" d="M269,500 L269,486 Q269,478 261,478 L113,478 Q105,478 105,470 L105,260"/>
 <path class="edge waiting wanted" data-from="unfinished" data-to="empty" d="M269,500 L269,486 Q269,478 277,478 L645,478 Q653,478 653,470 L653,444"/>
 <path class="edge waiting" data-from="dropped" data-to="waiting" d="M187,725 L187,711 Q187,703 195,703 L529,703 Q537,703 537,695 L537,378 Q537,370 529,370 L277,370 Q269,370 269,362 L269,275"/>

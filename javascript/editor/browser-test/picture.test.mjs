@@ -114,3 +114,79 @@ test("dragging a gate past another reorders the eras", async () => {
   await drag(a, gate, { x: gate.x, y: above.y - 60 })
   await a.until(`${text}.indexOf("milestone second") < ${text}.indexOf("milestone first")`, "First above Second")
 })
+
+test("dragging a milestone's line reorders it, as its gate does", async () => {
+  const a = await open("line")
+  await write(a, "roadmap\n[ ] task a [A]\n[ ] task b [B]\n\nmilestone first [First]\n  a\n\nmilestone second [Second]\n  b\n", "second")
+  const line = await a.evaluate(`(() => {
+    const { x, y } = document.getElementById("picture").shadowRoot.querySelector('.era[data-milestone="first"] line.hit').getBoundingClientRect()
+    return { x: x + 40, y: y + 7 }
+  })()`)
+  const above = await middle(a, '.node[data-id="second"] .gate')
+  await drag(a, line, { x: line.x, y: above.y - 60 })
+  await a.until(`${text}.indexOf("milestone second") < ${text}.indexOf("milestone first")`, "First above Second")
+})
+
+test("a refused drag says why, where it was dropped", async () => {
+  const a = await open("refused")
+  await write(a, "roadmap\n[ ] task a [A]\n\nmilestone first [First]\n  a\n\nmilestone second [Second]\n  first\n", "second")
+  const gate = await middle(a, '.node[data-id="first"] .gate')
+  const above = await middle(a, '.node[data-id="second"] .gate')
+  const drop = { x: gate.x, y: above.y - 60 }
+  await drag(a, gate, drop)
+  const toast = await a.until(
+    `(() => {
+      const toast = document.getElementById("picture").shadowRoot.querySelector(".toast")
+      if (!toast) return null
+      const { x, y, right } = toast.getBoundingClientRect()
+      return { text: toast.textContent, x, y, right, width: document.documentElement.clientWidth }
+    })()`,
+    "the reason",
+  )
+  assert.match(toast.text, /`second` builds on `first`/)
+  assert.ok(Math.abs(toast.y - drop.y) < 60, `near the drop: ${JSON.stringify({ toast, drop })}`)
+  assert.ok(toast.x >= 0 && toast.right <= toast.width, `inside the window: ${JSON.stringify(toast)}`)
+  assert.match(await a.evaluate(text), /milestone first \[First\]\n {2}a\n\nmilestone second/, "and the text is as it was")
+})
+
+/** A point on milestone `id`'s line, near its left end. */
+const onLine = (tab, id) =>
+  tab.evaluate(`(() => {
+    const { x, y } = document.getElementById("picture").shadowRoot.querySelector('.era[data-milestone="${id}"] line.hit').getBoundingClientRect()
+    return { x: x + 40, y: y + 7 }
+  })()`)
+
+test("dragging a milestone's line up past a card brings it in", async () => {
+  const a = await open("bring")
+  await write(a, "roadmap\n[ ] task a [A]\n[ ] task c [C]\n\nmilestone first [First]\n  a\n", "first")
+  const line = await onLine(a, "first")
+  const card = await middle(a, '.node[data-id="c"] .card')
+  await drag(a, line, { x: line.x, y: card.y - 30 })
+  await a.until(`${text}.includes("milestone first [First]\\n  a\\n  c\\n")`, "c in First")
+})
+
+test("dragging a milestone's line down past a card hands it to the era above", async () => {
+  const a = await open("hand")
+  await write(
+    a,
+    "roadmap\n[ ] task a [A]\n[ ] task b [B]\n  needs a\n[ ] task c [C]\n\nmilestone first [First]\n  a\n  b\n\nmilestone second [Second]\n  c\n",
+    "second",
+  )
+  const line = await onLine(a, "first")
+  const b = await middle(a, '.node[data-id="b"] .card')
+  const below = await middle(a, '.node[data-id="a"] .card')
+  await drag(a, line, { x: line.x, y: (b.y + below.y) / 2 })
+  await a.until(`${text}.includes("milestone second [Second]\\n  c\\n  b\\n")`, "b in Second")
+  assert.match(await a.evaluate(text), /milestone first \[First\]\n {2}a\n\n/, "and off First")
+})
+
+test("a milestone's grab area is never drawn", async () => {
+  const a = await open("thin")
+  await write(a, "roadmap\n[x] task a [A]\n\nmilestone first [First]\n  a\n", "first")
+  await a.evaluate(`document.getElementById("picture").setAttribute("theme", "dark")`)
+  const hit = await a.evaluate(`(() => {
+    const hit = document.getElementById("picture").shadowRoot.querySelector('.era[data-milestone="first"] line.hit')
+    return getComputedStyle(hit).strokeOpacity
+  })()`)
+  assert.equal(hit, "0", "a reached era, in the dark")
+})

@@ -85,7 +85,7 @@ The picture is [`<dagenda-view>`](javascript/dagenda-view/), a web component any
 
 ## Edit Together
 
-Both pages edit the picture too: click a card's badge to set its status, drag from a badge onto a card to add a need, drag a card into another milestone's band to re-scope it, or drag a gate to reorder the eras. Each edit lands in the text as the smallest splice, so text and picture stay one.
+Both pages edit the picture too: click a card's badge to set its status, drag from a badge onto a card to add a need, drag a card into another milestone's band to re-scope it, or drag a milestone's line to move its boundary over cards (or past another milestone's, to reorder them). Each edit lands in the text as the smallest splice, so text and picture stay one.
 
 The [collaborative editor](javascript/editor/) is the preview with sync, as in rain. A plan's documents (public, private, …) live in Automerge, synced over [Subduction], and a _workspace_ document lists them: a tab per document, with presence, per-person undo, and offline use, and one picture drawn from all of them. The preview's _Collaborate_ button opens its text there as a new shared plan.
 

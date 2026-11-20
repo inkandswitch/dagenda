@@ -180,8 +180,8 @@
 <g class="banner track hue-0 depth-0" data-track="core"><rect x="16" y="50" width="1042" height="24" rx="8"/><text x="537" y="66" text-anchor="middle">Core<tspan class="dri"> · @alice</tspan></text></g>
 <g class="banner track hue-1 depth-1" data-track="views"><rect x="552" y="80" width="506" height="24" rx="8"/><text x="805" y="96" text-anchor="middle">Views [nested]</text></g>
 <g class="banner untracked depth-0"><rect x="1088" y="50" width="178" height="54" rx="8"/><text x="1177" y="66" text-anchor="middle">Other tasks</text></g>
-<g class="era" data-milestone="itParses"><line x1="16" y1="556" x2="1310" y2="556"/><text x="22" y="549">It parses</text></g>
-<g class="era" data-milestone="firstPicture"><line x1="16" y1="334" x2="1310" y2="334"/><text x="22" y="327">First picture</text></g>
+<g class="era" data-milestone="itParses"><line class="hit" x1="16" y1="556" x2="1310" y2="556" style="stroke-opacity:0;stroke-width:14;stroke-dasharray:none"/><line x1="16" y1="556" x2="1310" y2="556"/><text x="22" y="549">It parses</text></g>
+<g class="era" data-milestone="firstPicture"><line class="hit" x1="16" y1="334" x2="1310" y2="334" style="stroke-opacity:0;stroke-width:14;stroke-dasharray:none"/><line x1="16" y1="334" x2="1310" y2="334"/><text x="22" y="327">First picture</text></g>
 <path class="edge met" data-from="parser" data-to="resolver" d="M105,812 L105,787 Q105,779 113,779 L263,779 Q269,779 269,773 L269,766"/>
 <path class="edge waiting" data-from="resolver" data-to="techTree" d="M269,638 L269,624 Q269,616 277,616 L879,616 Q887,616 887,608 L887,484"/>
 <path class="edge met" data-from="duplicates" data-to="resolver" d="M269,812 L269,766"/>

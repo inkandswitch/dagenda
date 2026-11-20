@@ -15,7 +15,7 @@ It installs the JS dependencies if needed, builds the component's Wasm, and star
 
 ## What it does
 
-- **Edit the picture.** Click a card's badge to set its status, drag from a badge onto a card to add a need, drag a card into another milestone's band to re-scope it, or drag a gate past another to reorder the eras. Each lands in the text of the document it belongs to, as the smallest splice, so it joins your undo and merges with what anyone types meanwhile.
+- **Edit the picture.** Click a card's badge to set its status, drag from a badge onto a card to add a need, drag a card into another milestone's band to re-scope it, or drag a milestone's dashed line (or its gate) to move its boundary over cards, or past another milestone's to reorder them. Each lands in the text of the document it belongs to, as the smallest splice, so it joins your undo and merges with what anyone types meanwhile.
 - **A tab per document.** _+_ adds a document to the plan (a private one, say); double-click a tab to rename it. Everyone sees the same tabs.
 - **One picture from every document.** A private document can `extend` a public task, or `needs` one, and the tree shows it all. Problems say which document they're in (`private:3:7`); clicking one, or a card, opens that document at that line.
 - **Text that doesn't parse** (someone mid-edit) keeps the last good picture up on every replica, with the error in the status line, its line marked, and its tab outlined.

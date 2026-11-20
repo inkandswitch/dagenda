@@ -5,10 +5,12 @@
 // undo and merges with typing). An edit that makes no sense (a loop, a
 // milestone below one it builds on) shows its reason instead.
 //
-//   click a card's badge        a menu of the eight status boxes
-//   drag from a badge to a card  "this needs that"
-//   drag a card into a band      re-scope it to that milestone (the top layer: none)
-//   drag a gate past another     reorder the eras
+//   click a card's badge          a menu of the eight status boxes
+//   drag from a badge to a card    "this needs that"
+//   drag a card into a band        re-scope it to that milestone (the top layer: none)
+//   drag a milestone (its gate or  move its boundary: up past cards brings them in,
+//     its line)                    down past cards hands them to the era above;
+//                                  past another milestone's line, reorder the two
 
 import { addNeed, reorder, rescope, setStatus } from "./pkg/dagenda_wasm.js"
 
@@ -29,7 +31,7 @@ const SLOP = 4
 
 export const STYLE = `
   :host([editable]) svg .node.task { cursor: grab; }
-  :host([editable]) svg .node.milestone { cursor: ns-resize; }
+  :host([editable]) svg :is(.node.milestone, .era) { cursor: ns-resize; }
   :host([editable]) svg .badge { cursor: pointer; }
   :host([editable]) svg :is(.mark, .check) { pointer-events: none; }
   svg .dragging { opacity: 0.8; pointer-events: none; cursor: grabbing; }
@@ -49,9 +51,9 @@ export const STYLE = `
   .menu button[aria-pressed="true"] { font-weight: 650; }
   .menu code { font: 12px ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
   .toast {
-    position: sticky; left: 8px; top: 8px; z-index: 3; width: fit-content; max-width: 80%;
-    margin: 0 0 -32px 8px; padding: 6px 10px; border-radius: 6px;
-    background: #fdeceb; color: #c62f27; font: 13px system-ui, sans-serif;
+    position: absolute; z-index: 3; width: max-content; max-width: 360px;
+    padding: 6px 10px; border-radius: 6px; box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+    background: #fdeceb; color: #c62f27; font: 13px system-ui, sans-serif; pointer-events: none;
   }
   @media (prefers-color-scheme: dark) {
     :host(:not([theme="light"])) .menu { border-color: #3a3834; background: #1f1e1c; color: #ecebe8; }
@@ -95,36 +97,85 @@ export const attachEditing = ({ host, root, canvas, svg, documents }) => {
   /** The band at height `y`: the milestone whose line is the nearest above it, or null on top. */
   const bandAt = (y) => eras().filter((era) => era.y < y).at(-1)?.id ?? null
 
+  /** Task cards whose middles lie between heights `top` and `bottom`, top first. */
+  const cardsBetween = (top, bottom) =>
+    [...(svg()?.querySelectorAll(".node.task") ?? [])]
+      .map((node) => {
+        const card = node.querySelector(".card")
+        const middle = Number(card?.getAttribute("y")) + Number(card?.getAttribute("height")) / 2
+        return { node, id: node.dataset.id, era: node.dataset.era ?? null, middle }
+      })
+      .filter((card) => card.middle > top && card.middle < bottom)
+      .sort((a, b) => a.middle - b.middle)
+
+  /**
+   * What dragging milestone `id`'s line to height `y` does: past another
+   * milestone's line, reorder the two; else move its boundary over the cards
+   * between, up to bring them in, down to hand them to the era above.
+   */
+  const boundary = (id, y) => {
+    const lines = eras()
+    const own = lines.find((era) => era.id === id)
+    if (!own) return { lines }
+    const passedUp = lines.filter((era) => era.id !== id && era.y < own.y && era.y > y)
+    const passedDown = lines.filter((era) => era.id !== id && era.y > own.y && era.y < y)
+    if (passedUp.length > 0) return { lines, reorder: { other: passedUp[0].id, above: true } }
+    if (passedDown.length > 0) return { lines, reorder: { other: passedDown.at(-1).id, above: false } }
+    const above = lines.filter((era) => era.y < own.y).at(-1)?.id ?? null
+    return y < own.y
+      ? { lines, into: cardsBetween(y, own.y) }
+      : { lines, out: cardsBetween(own.y, y).filter((card) => card.era === id), above }
+  }
+
   // --- Making an edit ----------------------------------------------------------
 
-  const say = (message) => {
+  /** Say why, where the gesture ended (the picture may be scrolled anywhere). */
+  const say = (message, { clientX, clientY }) => {
     toast?.remove()
     toast = Object.assign(document.createElement("div"), { className: "toast", textContent: message })
     toast.setAttribute("role", "status")
-    root.insertBefore(toast, canvas)
+    const frame = host.getBoundingClientRect()
+    toast.style.left = `${Math.max(8, clientX - frame.left + host.scrollLeft - 24)}px`
+    toast.style.top = `${clientY - frame.top + host.scrollTop + 16}px`
+    root.append(toast)
+    // Kept inside what's on show (the window, or the pane the picture
+    // scrolls in, less its scrollbar): a drop by the gates is near its edge
+    const box = toast.getBoundingClientRect()
+    let pane = host.parentElement
+    while (pane && !/auto|scroll/.test(getComputedStyle(pane).overflowX)) pane = pane.parentElement
+    const right =
+      Math.min(document.documentElement.clientWidth, pane ? pane.getBoundingClientRect().left + pane.clientWidth : Infinity) - 8
+    if (box.right > right) toast.style.left = `${parseFloat(toast.style.left) - Math.min(box.right - right, box.left - 8)}px`
     const shown = toast
-    setTimeout(() => shown.remove(), 3500)
+    setTimeout(() => shown.remove(), 4000)
   }
 
-  /** Run `make` (a Wasm edit) on the documents drawn, and hand the result to the page. */
-  const edit = (kind, make) => {
+  /**
+   * Run each of `makes` (Wasm edits) in turn on the plan's documents, each on
+   * the text the one before left, and hand the result to the page as one
+   * edit. Any refused say why, and the rest still go.
+   */
+  const edit = (kind, where, ...makes) => {
     const drawn = documents()
-    let made
-    try {
-      made = make(
-        drawn.map((document) => document.name),
-        drawn.map((document) => document.source),
-      )
-    } catch (error) {
-      say(error.message ?? String(error))
-      return
+    const names = drawn.map((document) => document.name)
+    const texts = drawn.map((document) => document.source)
+    const touched = new Set()
+    const refused = []
+    for (const make of makes) {
+      try {
+        for (const made of make(names, texts)) {
+          texts[made.document] = made.text
+          touched.add(made.document)
+          made.free()
+        }
+      } catch (error) {
+        refused.push(error.message ?? String(error))
+      }
     }
-    const edits = made.map((edit) => {
-      const copy = { document: edit.document, source: edit.text, base: drawn[edit.document]?.source ?? "" }
-      edit.free()
-      return copy
-    })
-    if (edits.length > 0) host.dispatchEvent(new CustomEvent("dagenda-edit", { bubbles: true, detail: { kind, edits } }))
+    if (refused.length > 0) say([...new Set(refused)].join("; "), where)
+    if (touched.size === 0) return
+    const edits = [...touched].map((document) => ({ document, source: texts[document], base: drawn[document]?.source ?? "" }))
+    host.dispatchEvent(new CustomEvent("dagenda-edit", { bubbles: true, detail: { kind, edits } }))
   }
 
   // --- The status menu -----------------------------------------------------------
@@ -154,7 +205,7 @@ export const attachEditing = ({ host, root, canvas, svg, documents }) => {
       button.append(label)
       button.addEventListener("click", () => {
         closeMenu()
-        edit("status", (names, texts) => setStatus(names, texts, id, mark))
+        edit("status", { clientX: place.left, clientY: place.bottom }, (names, texts) => setStatus(names, texts, id, mark))
       })
       menu.append(button)
     }
@@ -224,12 +275,14 @@ export const attachEditing = ({ host, root, canvas, svg, documents }) => {
       return
     }
 
-    // A gate moves with its line
+    // A gate moves with its line, and the cards it would move light up
     node.classList.add("dragging")
     node.setAttribute("transform", `translate(0 ${dy})`)
     const line = picture.querySelector(`.era[data-milestone="${CSS.escape(node.dataset.id)}"]`)
     line?.classList.add("dragging")
     line?.setAttribute("transform", `translate(0 ${dy})`)
+    const { into = [], out = [] } = boundary(node.dataset.id, Number(line?.querySelector("line")?.getAttribute("y1")) + dy)
+    for (const card of [...into, ...out]) card.node.classList.add("drop-target")
   }
 
   /** Make the edit a drag asks for. */
@@ -240,7 +293,7 @@ export const attachEditing = ({ host, root, canvas, svg, documents }) => {
 
     if (kind === "badge") {
       const target = nodeAt(e.clientX, e.clientY, node)
-      if (target) edit("need", (names, texts) => addNeed(names, texts, id, target.dataset.id))
+      if (target) edit("need", e, (names, texts) => addNeed(names, texts, id, target.dataset.id))
       return
     }
 
@@ -248,27 +301,42 @@ export const attachEditing = ({ host, root, canvas, svg, documents }) => {
       if (eras().length === 0) return
       const was = node.dataset.era ?? null
       const to = bandAt(here.y)
-      if (to !== was) edit("rescope", (names, texts) => rescope(names, texts, id, was ?? undefined, to ?? undefined))
+      if (to !== was) edit("rescope", e, (names, texts) => rescope(names, texts, id, was ?? undefined, to ?? undefined))
       return
     }
 
-    // Past which gates did it go? The furthest one it passed is where it lands
-    const lines = eras()
-    const own = lines.find((era) => era.id === id)
+    // A milestone's line, moved: past another, reorder; else move the
+    // boundary over the cards it crossed
+    const own = eras().find((era) => era.id === id)
     if (!own) return
-    const y = own.y + (here.y - from.y)
-    const passedUp = lines.filter((era) => era.id !== id && era.y < own.y && era.y > y)
-    const passedDown = lines.filter((era) => era.id !== id && era.y > own.y && era.y < y)
-    const [other, above] =
-      passedUp.length > 0 ? [passedUp[0].id, true] : passedDown.length > 0 ? [passedDown.at(-1).id, false] : [null]
-    if (other) edit("reorder", (names, texts) => reorder(names, texts, id, other, above))
+    const moved = boundary(id, own.y + (here.y - from.y))
+    if (moved.reorder) {
+      const { other, above } = moved.reorder
+      edit("reorder", e, (names, texts) => reorder(names, texts, id, other, above))
+    } else if (moved.into?.length > 0) {
+      // Brought in: this milestone needs them now (a later one still may)
+      edit("rescope", e, ...moved.into.map((card) => (names, texts) => rescope(names, texts, card.id, undefined, id)))
+    } else if (moved.out?.length > 0) {
+      // Handed up: off this milestone, onto the one above (or none)
+      edit(
+        "rescope",
+        e,
+        ...moved.out.map((card) => (names, texts) => rescope(names, texts, card.id, id, moved.above ?? undefined)),
+      )
+    } else if (moved.lines.length < 2) {
+      say("Drag the line past cards to bring them into this milestone, or to hand them to the era above", e)
+    }
   }
 
   // --- Wiring -----------------------------------------------------------------------
 
   canvas.addEventListener("pointerdown", (e) => {
     if (!editable() || e.button !== 0 || e.target.closest?.("a")) return
-    const node = e.target.closest?.(".node")
+    // A milestone's line (or its label) moves it as its gate does
+    const era = e.target.closest?.(".era")
+    const node =
+      e.target.closest?.(".node") ??
+      (era && svg()?.querySelector(`.node.milestone[data-id="${CSS.escape(era.dataset.milestone)}"]`))
     if (!node) return
     const kind = node.classList.contains("milestone")
       ? "gate"

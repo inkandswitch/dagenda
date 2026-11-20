@@ -59,9 +59,9 @@ With `editable`:
 | Click a card's badge | A menu of the eight status boxes; picking one rewrites the task's box |
 | Drag from a badge onto a card | "This needs that": a `needs` in the task's block |
 | Drag a card into a milestone's band | Re-scope it: off the milestone whose band it was in, onto that one's must-haves (the top layer: none) |
-| Drag a gate past another | Reorder the eras: its `milestone` block moves |
+| Drag a milestone (its gate, or its dashed line) | Move its boundary: up past cards brings them in (onto its must-haves); down past cards hands them to the era above (or to no milestone). Past another milestone's line, reorder the two: its `milestone` block moves |
 
-The picture never changes the text itself. It asks the Wasm for the edit and fires `dagenda-edit` with each changed document's new text; the page applies the difference as the smallest splice, so it joins that person's undo and merges with typing (the preview and the editor both do). An edit that makes no sense (a loop, a milestone below one it builds on, two milestones in different documents) shows its reason on the picture instead. There's no keyboard path for the drags yet; the text is.
+The picture never changes the text itself. It asks the Wasm for the edit and fires `dagenda-edit` with each changed document's new text; the page applies the difference as the smallest splice, so it joins that person's undo and merges with typing (the preview and the editor both do). An edit that makes no sense (a loop, a milestone below one it builds on, two milestones in different documents) shows its reason on the picture, where the gesture ended, instead. Cards a milestone drag would move light up while it's held. There's no keyboard path for the drags yet; the text is.
 
 ## Looking around
 

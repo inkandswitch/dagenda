@@ -144,8 +144,9 @@ impl Svg<'_> {
             let reached = if band.reached { " reached" } else { "" };
             writeln!(
                 f,
-                r#"<g class="era{reached}" data-milestone="{}"><line x1="{MARGIN}" y1="{y}" x2="{}" y2="{y}"/><text x="{}" y="{}">{}</text></g>"#,
+                r#"<g class="era{reached}" data-milestone="{}"><line class="hit" x1="{MARGIN}" y1="{y}" x2="{}" y2="{y}" style="stroke-opacity:0;stroke-width:14;stroke-dasharray:none"/><line x1="{MARGIN}" y1="{y}" x2="{}" y2="{y}"/><text x="{}" y="{}">{}</text></g>"#,
                 gate.id,
+                gate.x,
                 gate.x,
                 MARGIN + 6,
                 band.top - 7,

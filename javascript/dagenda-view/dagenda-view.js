@@ -17,7 +17,8 @@
 //
 // With `editable`, the picture can be edited (editing.js): click a badge to
 // set a status, drag from a badge to a card to add a need, drag a card into
-// a milestone's band to re-scope it, and drag a gate to reorder eras. The
+// a milestone's band to re-scope it, and drag a milestone's line (or gate)
+// past cards to move its boundary, or past another milestone's to reorder. The
 // picture never changes the text itself: it fires `dagenda-edit` with the
 // new text, and the page applies it.
 //
