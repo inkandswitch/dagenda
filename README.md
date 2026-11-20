@@ -1,7 +1,7 @@
 # dagenda
 
 > [!WARNING]
-> Early. The notation parses and resolves across documents, `dagenda check` reports what's wrong with a plan, and `dagenda render` draws it as text or as a tech tree. The web views come next.
+> Early. The notation parses and resolves across documents, `dagenda check` reports what's wrong with a plan, `dagenda render` draws it as text or as a tech tree, and the preview draws it in the browser as you type.
 
 Roadmaps as dependency graphs, for the Ink & Switch Department of Data: Automerge, Subduction, Keyhive, and their neighbours. The world should be able to see the milestones and the features that lead to them. The day-to-day tasks, who's on them, and the notes stay with the team.
 
@@ -70,10 +70,20 @@ The tech tree runs left to right: everything a task needs sits in a column to it
 <!-- Regenerate with: BLESS=1 cargo test --test golden -->
 ![A tech tree: a Milestones lane with "It parses" (1 of 2, EOY26) and "First picture" (0 of 2); a Core lane where a done Parser leads to an in-progress Resolver (1 of 2 subtasks); a nested Views lane whose Tech tree waits on Resolver and on It parses, beside an idea, a research task, one that needs attention, a deferred one, and a dropped one; and a lane for a task outside any track](rust/dagenda_core/tests/golden/tour.svg)
 
+## In the Browser
+
+The preview is rain's, for roadmaps: type a plan on one side, and its tech tree redraws on the other. Hover a box to light up everything it needs and everything waiting on it; click one to jump to its line. Text that doesn't parse keeps the last good picture up, with the problem marked. It's single-user, with no sync, and keeps the source in the browser.
+
+```console
+$ nix run .#preview   # http://127.0.0.1:8080, rebuilding the Wasm when Rust changes
+$ nix run .#site      # the preview as a static site in _site/, as GitHub Pages deploys it
+```
+
+The picture is [`<dagenda-view>`](javascript/dagenda-view/), a web component any page can use; everything it draws comes from the Rust core compiled to Wasm (about 180 KB, 75 KB gzipped).
+
 ## Planned
 
 - _Two more views._ A Gantt chart, and a skill tree in the spirit of Final Fantasy X's Sphere Grid.
-- _In the browser._ A preview in rain's style: type on one side, and the picture redraws on the other.
 - _Text and picture in step._ A WYSIWYG editor over the same source: change either and the other follows, as in [rain].
 - _A public site and a collaborative editor._ The site is static. The editor keeps its documents in Automerge, synced over [Subduction].
 - _Links to the work._ GitHub issues and pull requests, resolved by [sans-effort] routines.
@@ -84,7 +94,11 @@ The tech tree runs left to right: everything a task needs sits in a column to it
 ```
 rust/
 ├── dagenda_cli/    the `dagenda` command: check and render
-└── dagenda_core/   the notation, its parser, the plan model, and its views (no_std)
+├── dagenda_core/   the notation, its parser, the plan model, and its views (no_std)
+└── dagenda_wasm/   JS bindings
+javascript/
+├── dagenda-view/   <dagenda-view> web component
+└── preview/        the preview page, and its hot-reloading dev server
 ```
 
 ## Development
@@ -93,7 +107,8 @@ rust/
 $ nix develop                       # toolchain and a command menu
 $ cargo test --workspace
 $ nix run .#dagenda -- check plan.dagenda
-$ nix run .#ci-clippy               # also: ci-bolero, ci-deny, ci-doc, ci-fmt, ci-msrv, ci-mutants, ci-no-std, ci-test, ci-typos
+$ nix run .#preview                 # the preview, with hot reload
+$ nix run .#ci-clippy               # also: ci-bolero, ci-deny, ci-doc, ci-fmt, ci-js, ci-msrv, ci-mutants, ci-no-std, ci-test, ci-typos
 ```
 
 Every CI job is one of these flake apps, so a local run checks exactly what CI does. The goldens in `rust/dagenda_core/tests/golden/` pin everything the core derives from a document; after an intended change, review the diff and re-bless with `BLESS=1 cargo test --test golden`.

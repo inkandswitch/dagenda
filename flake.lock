@@ -56,6 +56,20 @@
         "type": "github"
       }
     },
+    "nixos-unstable": {
+      "locked": {
+        "lastModified": 1794493573,
+        "narHash": "sha256-bTpKv+dMNZ+J9Be4WRsBUAjZiRBBUUZnyW3ffm2nuTU=",
+        "rev": "3fe6b2e95f7304e16d6637199c6ae3b4382cbf89",
+        "type": "tarball",
+        "url": "https://releases.nixos.org/nixos/unstable-small/nixos-26.11pre1118956.3fe6b2e95f73/nixexprs.tar.zst"
+      },
+      "original": {
+        "id": "nixpkgs",
+        "ref": "nixos-unstable-small",
+        "type": "indirect"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1794165970,
@@ -74,6 +88,7 @@
       "inputs": {
         "command-utils": "command-utils",
         "flake-utils": "flake-utils_2",
+        "nixos-unstable": "nixos-unstable",
         "nixpkgs": "nixpkgs",
         "rust-overlay": "rust-overlay"
       }

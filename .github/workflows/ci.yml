@@ -27,6 +27,7 @@ jobs:
           - ci-deny
           - ci-doc
           - ci-fmt
+          - ci-js
           - ci-msrv
           - ci-no-std
           - ci-test

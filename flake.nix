@@ -8,6 +8,7 @@
     };
 
     flake-utils.url = "github:numtide/flake-utils";
+    nixos-unstable.url = "nixpkgs/nixos-unstable-small";
     nixpkgs.url = "nixpkgs/nixos-26.05";
 
     rust-overlay = {
@@ -20,6 +21,7 @@
     self,
     command-utils,
     flake-utils,
+    nixos-unstable,
     nixpkgs,
     rust-overlay,
   } @ inputs:
@@ -28,6 +30,7 @@
         overlays = [(import rust-overlay)];
 
         pkgs = import nixpkgs {inherit system overlays;};
+        unstable = import nixos-unstable {inherit system overlays;};
 
         # Single sources of truth, read from the manifests that own them.
         # rust-overlay keys toolchains by full version (`1.91.0`), while
@@ -71,6 +74,17 @@
           exec "${nightly-rustfmt-unwrapped}/bin/rustfmt" "$@"
         '';
 
+        # Must match the exact `wasm-bindgen` pin in Cargo.toml
+        wasm-bindgen-cli = unstable.wasm-bindgen-cli;
+
+        # Builds the Wasm the web pages load (javascript/dagenda-view/pkg)
+        wasm-pkgs = [
+          wasm-bindgen-cli
+          pkgs.binaryen
+          pkgs.nodejs
+          pkgs.wasm-pack
+        ];
+
         format-pkgs = with pkgs; [
           alejandra
           taplo
@@ -106,7 +120,59 @@
           };
         };
 
+        # Hot-reloading preview: rebuilds the Wasm when Rust sources change and
+        # reloads the page (see javascript/preview/serve.mjs). Run from the
+        # repo root, or anywhere inside `nix develop` (via WORKSPACE_ROOT).
+        preview = pkgs.writeShellApplication {
+          name = "dagenda-preview";
+          runtimeInputs = [rust-toolchain pkgs.stdenv.cc] ++ wasm-pkgs;
+          text = ''
+            root="''${WORKSPACE_ROOT:-$PWD}"
+            if [ ! -f "$root/javascript/preview/serve.mjs" ]; then
+              echo "run this from the dagenda repo root" >&2
+              exit 1
+            fi
+
+            exec node "$root/javascript/preview/serve.mjs"
+          '';
+        };
+
+        # The preview as a static site (for GitHub Pages): a release Wasm
+        # build, the component, and the preview page, with `/` sending you to
+        # the preview. Writes `_site/` (or the directory given).
+        site = pkgs.writeShellApplication {
+          name = "dagenda-site";
+          runtimeInputs = [rust-toolchain pkgs.coreutils pkgs.stdenv.cc] ++ wasm-pkgs;
+          text = ''
+            root="''${WORKSPACE_ROOT:-$PWD}"
+            out="$(realpath -m "''${1:-_site}")"
+            case "$out" in
+              / | "$root" | "$HOME") echo "refusing to replace $out" >&2; exit 1 ;;
+            esac
+            set -x
+            rm -rf "$out"
+            mkdir -p "$out/preview" "$out/dagenda-view"
+            wasm-pack build --release --target web --no-pack \
+              --out-dir "$out/dagenda-view/pkg" "$root/rust/dagenda_wasm"
+            rm -f "$out/dagenda-view/pkg/.gitignore"
+            cp "$root/javascript/dagenda-view/dagenda-view.js" "$out/dagenda-view/"
+            for file in index.html examples.js highlight.js main.js style.css; do
+              cp "$root/javascript/preview/$file" "$out/preview/"
+            done
+            cat > "$out/index.html" <<'HTML'
+            <!doctype html>
+            <meta charset="utf-8">
+            <title>dagenda</title>
+            <meta http-equiv="refresh" content="0; url=preview/">
+            <a href="preview/">Open the dagenda preview</a>
+            HTML
+            touch "$out/.nojekyll"
+          '';
+        };
+
         rust = command-utils.rust.${system};
+        wasm = command-utils.wasm.${system};
+        cmd = command-utils.cmd.${system};
 
         command_menu = command-utils.commands.${system} [
           (rust.build {cargo = pkgs.cargo;})
@@ -118,6 +184,19 @@
           (rust.fmt {cargo = pkgs.cargo;})
           (rust.doc {cargo = pkgs.cargo;})
           (rust.watch {cargo-watch = pkgs.cargo-watch;})
+
+          (wasm.build {wasm-pack = pkgs.wasm-pack;})
+          (wasm.release {
+            wasm-pack = pkgs.wasm-pack;
+            gzip = pkgs.gzip;
+          })
+
+          {
+            commands.preview = cmd "Hot-reloading preview at http://127.0.0.1:8080 (PORT to change)" ''
+              ${pkgs.lib.getExe preview}
+            '';
+            packages = [];
+          }
         ];
 
         # CI checks: each is a standalone `nix run .#ci-<name>` app so hosted
@@ -153,10 +232,22 @@
             cargo clippy --workspace --all-targets --all-features -- -D warnings
             # What a plain dependency builds: default features, library only
             cargo clippy -p dagenda_core -- -D warnings
+            cargo clippy -p dagenda_wasm --target wasm32-unknown-unknown --all-targets -- -D warnings
           '';
 
+          # The Wasm bindings only run in Wasm; ci-js tests them from JavaScript
           ci-test = mkCheck "ci-test" ''
-            cargo test --workspace
+            cargo test --workspace --exclude dagenda_wasm
+          '';
+
+          # Syntax-check every script (there's no JS build step), build the
+          # Wasm the tests load, then run the JS tests
+          ci-js = mkCheckWith wasm-pkgs "ci-js" ''
+            for file in javascript/*/*.js javascript/*/*.mjs; do
+              node --check "$file"
+            done
+            wasm-pack build --dev --target web --out-dir ../../javascript/dagenda-view/pkg rust/dagenda_wasm
+            node --test javascript/*/*.test.mjs
           '';
 
           ci-doc = mkCheck "ci-doc" ''
@@ -230,7 +321,7 @@
             type = "app";
             program = pkgs.lib.getExe drv;
           })
-          (ci-checks // {inherit dagenda;});
+          (ci-checks // {inherit dagenda preview site;});
 
         packages = {
           inherit dagenda;
@@ -248,6 +339,7 @@
 
               pkgs.rust-analyzer
             ]
+            ++ wasm-pkgs
             ++ format-pkgs
             ++ cargo-installs;
 

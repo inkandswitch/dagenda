@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>dagenda Preview</title>
+  <script>
+    // Before first paint, so a chosen theme doesn't flash the other one
+    try {
+      const theme = localStorage.getItem("dagenda-preview:theme");
+      if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+    } catch {}
+  </script>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header>
+    <h1>dagenda</h1>
+    <span class="tagline">roadmaps as dependency graphs · live from <code>dagenda_wasm</code></span>
+    <div id="theme" role="group" aria-label="Colour scheme">
+      <button type="button" data-theme-choice="system">◐ System</button>
+      <button type="button" data-theme-choice="light">☀ Light</button>
+      <button type="button" data-theme-choice="dark">☾ Dark</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="source-pane" aria-label="Source">
+      <div class="toolbar">
+        <h2>Source</h2>
+        <span class="spacer"></span>
+        <button type="button" id="example-basic" title="Replace the source with a small plan">Small plan</button>
+        <button type="button" id="example-tour" title="Replace the source with a plan that uses every form">Tour</button>
+      </div>
+      <div class="editor">
+        <pre id="highlight" aria-hidden="true"></pre>
+        <textarea id="source" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Plan source"></textarea>
+      </div>
+    </section>
+
+    <section id="output-pane" aria-label="Output">
+      <div class="toolbar">
+        <span role="tablist" aria-label="View">
+          <button type="button" role="tab" data-view="tree">Tech tree</button>
+          <button type="button" role="tab" data-view="text">Text</button>
+        </span>
+        <span class="spacer"></span>
+        <span class="zoom" role="group" aria-label="Zoom">
+          <button type="button" id="zoom-out" title="Zoom out (Ctrl/⌘ + wheel)">−</button>
+          <button type="button" id="zoom-level" title="Reset to 100%">100%</button>
+          <button type="button" id="zoom-in" title="Zoom in (Ctrl/⌘ + wheel)">+</button>
+          <button type="button" id="zoom-fit" title="Fit the tree to the pane">Fit</button>
+        </span>
+        <button type="button" id="copy">Copy</button>
+        <button type="button" id="download">Download</button>
+      </div>
+      <div id="status" role="status">loading Wasm…</div>
+      <div id="views">
+        <dagenda-view id="picture" aria-label="Tech tree"></dagenda-view>
+        <pre id="text" hidden aria-label="The plan as text"></pre>
+      </div>
+      <ul id="problems" aria-label="Problems"></ul>
+    </section>
+  </main>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
