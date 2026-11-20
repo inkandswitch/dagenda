@@ -73,7 +73,7 @@
 .dagenda .dropped .label { text-decoration: line-through; }
 .dagenda .gate { fill: #fff8e1; stroke: #c9a227; stroke-width: 2; }
 .dagenda .milestone .label { font-weight: 650; }
-.dagenda .reached .gate { fill: #f3d36b; stroke: #a8841a; }
+.dagenda .reached .gate { fill: #edf6ed; stroke: #5aa362; }
 @media (prefers-color-scheme: dark) {
   .dagenda:not(.light) .canvas { fill: #1a1917; }
   .dagenda:not(.light) text { fill: #ecebe8; }
@@ -119,7 +119,7 @@
   .dagenda:not(.light) .needs-attention .card { fill: #3a1f1f; stroke: #e5615a; }
   .dagenda:not(.light) .available .card, .dagenda:not(.light) .available .badge { stroke: #d6ae3a; }
   .dagenda:not(.light) .gate { fill: #3a3218; stroke: #c9a227; }
-  .dagenda:not(.light) .reached .gate { fill: #8a6d16; }
+  .dagenda:not(.light) .reached .gate { fill: #1f2e20; stroke: #5aa362; }
   .dagenda:not(.light) .edge { stroke: #6f6b63; }
   .dagenda:not(.light) .edge.met { stroke: #5aa362; }
 }
@@ -167,7 +167,7 @@
 .dagenda.dark .needs-attention .card { fill: #3a1f1f; stroke: #e5615a; }
 .dagenda.dark .available .card, .dagenda.dark .available .badge { stroke: #d6ae3a; }
 .dagenda.dark .gate { fill: #3a3218; stroke: #c9a227; }
-.dagenda.dark .reached .gate { fill: #8a6d16; }
+.dagenda.dark .reached .gate { fill: #1f2e20; stroke: #5aa362; }
 .dagenda.dark .edge { stroke: #6f6b63; }
 .dagenda.dark .edge.met { stroke: #5aa362; }
 </style>
