@@ -74,7 +74,7 @@ The tech tree grows upward, like a game's: everything a task needs sits below it
 
 ## In the Browser
 
-The preview is rain's, for roadmaps: type a plan on one side, and its tech tree redraws on the other. Hover a box to light up everything it needs and everything waiting on it; click one to jump to its line. Text that doesn't parse keeps the last good picture up, with the problem marked. It's single-user, with no sync, and keeps the source in the browser.
+The preview is a live editor for roadmaps: type a plan on one side, and its tech tree redraws on the other. Hover a box to light up everything it needs and everything waiting on it; click one to jump to its line. Text that doesn't parse keeps the last good picture up, with the problem marked. It's single-user, with no sync, and keeps the source in the browser.
 
 ```console
 $ nix run .#preview   # http://127.0.0.1:8080, rebuilding the Wasm when Rust changes
@@ -87,7 +87,7 @@ The picture is [`<dagenda-view>`](javascript/dagenda-view/), a web component any
 
 Both pages edit the picture too: click a card's badge to set its status, drag from a badge onto a card to add a need, drag a card into another milestone's band to re-scope it, or drag a milestone's line to move its boundary over cards (or past another milestone's, to reorder them). Each edit lands in the text as the smallest splice, so text and picture stay one.
 
-The [collaborative editor](javascript/editor/) is the preview with sync, as in rain. A plan's documents (public, private, …) live in Automerge, synced over [Subduction], and a _workspace_ document lists them: a tab per document, with presence, per-person undo, and offline use, and one picture drawn from all of them. The preview's _Collaborate_ button opens its text there as a new shared plan.
+The [collaborative editor](javascript/editor/) is the preview with sync. A plan's documents (public, private, …) live in Automerge, synced over [Subduction], and a _workspace_ document lists them: a tab per document, with presence, per-person undo, and offline use, and one picture drawn from all of them. The preview's _Collaborate_ button opens its text there as a new shared plan.
 
 ```console
 $ nix run .#editor    # http://localhost:5173; share the URL it gives you
@@ -134,6 +134,5 @@ Every CI job is one of these flake apps, so a local run checks exactly what CI d
 Licensed under either of [Apache License, Version 2.0](./LICENSE-APACHE) or [MIT license](./LICENSE-MIT) at your option.
 
 [Keyhive]: https://github.com/inkandswitch/keyhive
-[rain]: https://github.com/inkandswitch/rain
 [sans-effort]: https://github.com/inkandswitch/sans-effort
 [Subduction]: https://github.com/inkandswitch/subduction

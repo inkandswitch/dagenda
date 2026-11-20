@@ -1,7 +1,7 @@
 //! Plans that parse and resolve, but don't mean what they seem to.
 //!
-//! These are warnings rather than errors, as in rain: a plan is sometimes
-//! mid-edit, and sometimes shows a problem on purpose.
+//! These are warnings rather than errors: a plan is sometimes mid-edit, and
+//! sometimes shows a problem on purpose.
 
 use super::Location;
 use crate::id::Id;

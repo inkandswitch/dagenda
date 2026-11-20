@@ -1,7 +1,7 @@
 // The collaborative editor's page: a workspace (a plan's documents) synced
 // over Subduction, named in the URL, with who's here, the connection, and
 // whether everything has reached the sync server. Open the same URL in
-// another browser to edit together. As in rain's editor.
+// another browser to edit together.
 
 // Importing the full packages initializes their Wasm; the repo and the
 // Subduction backend import the `slim` builds, which share it

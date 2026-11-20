@@ -3,7 +3,7 @@
 > [!NOTE]
 > Early, on alpha dependencies. Text and picture edits sync between browsers through Subduction, with presence, per-person undo, and offline use.
 
-A collaborative editor for dagenda plans, ported from [rain's](https://github.com/inkandswitch/rain/tree/main/javascript/editor). A plan is several documents (public, private, and later one per commenter), so the editor opens a _workspace_: an Automerge document listing them. Each has a tab, its text in CodeMirror, and one tech tree is drawn from all of them. It shares its page with the single-user [preview](../preview/) (`shell.js`, `highlight.js`, `examples.js`, `style.css`), which stays build-free and dependency-free.
+A collaborative editor for dagenda plans. A plan is several documents (public, private, and later one per commenter), so the editor opens a _workspace_: an Automerge document listing them. Each has a tab, its text in CodeMirror, and one tech tree is drawn from all of them. It shares its page with the single-user [preview](../preview/) (`shell.js`, `highlight.js`, `examples.js`, `style.css`), which stays build-free and dependency-free.
 
 To run it locally:
 
@@ -50,8 +50,6 @@ flowchart LR
 
 ## The stack (all pinned: these are alphas)
 
-The same as rain's editor:
-
 | Package | Version | Role |
 |---|---|---|
 | `@automerge/automerge-repo` | 3.0.0-alpha.2 | Documents, handles (`create`/`find` are async in v3), and `Presence` |
@@ -68,4 +66,4 @@ The same as rain's editor:
 $ nix run .#ci-editor     # builds the site, then drives it in headless Chromium
 ```
 
-The browser tests ([`browser-test/`](browser-test/)) talk to Chromium over the DevTools protocol, with no dependencies, as rain's do. Sync goes through the public Subduction server unless `DAGENDA_SYNC` names another.
+The browser tests ([`browser-test/`](browser-test/)) talk to Chromium over the DevTools protocol, with no dependencies. Sync goes through the public Subduction server unless `DAGENDA_SYNC` names another.

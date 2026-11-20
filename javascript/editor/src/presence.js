@@ -1,8 +1,7 @@
 // Who's here, and where, over each document's ephemeral messages
-// (automerge-repo's Presence, which Subduction carries but never stores), as
-// in rain's editor. A plan is several documents, so it comes in two parts:
-// a roster on the workspace (who's here, and on which tab), and carets on
-// each plan document. Selections travel as Automerge cursors, so a caret
+// (automerge-repo's Presence, which Subduction carries but never stores). A
+// plan is several documents, so it comes in two parts: a roster on the
+// workspace (who's here, and on which tab), and carets on each plan document. Selections travel as Automerge cursors, so a caret
 // stays on its character as edits arrive from anyone.
 
 import { getCursor, getCursorPosition } from "@automerge/automerge"

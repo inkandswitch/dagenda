@@ -1,8 +1,8 @@
 //! Edits made on the picture, as new text for the documents they touch.
 //!
-//! The text is the truth, as in rain: a click or a drag on the tech tree asks
-//! for an edit here, and gets back each changed document's whole new text.
-//! The page applies the difference as the smallest splice, so a picture edit
+//! The text is the truth: a click or a drag on the tech tree asks for an
+//! edit here, and gets back each changed document's whole new text. The
+//! page applies the difference as the smallest splice, so a picture edit
 //! joins that person's undo and merges with what others type. Edits keep the
 //! writer's layout: they swap a status box, add a line in its block's own
 //! indent, or move a block whole. An edit that would make no sense (a loop, a

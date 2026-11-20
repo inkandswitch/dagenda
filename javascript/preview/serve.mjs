@@ -1,4 +1,4 @@
-// Live-reloading dev server for the preview page, as in rain. No dependencies.
+// Live-reloading dev server for the preview page. No dependencies.
 //
 // It serves javascript/ with caching off, injects a script into HTML that
 // reloads on a signal (Server-Sent Events: the signal is one-way, and Node has

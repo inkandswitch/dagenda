@@ -1616,8 +1616,8 @@ fn wrap(text: &str, max: u32) -> Vec<String> {
 }
 
 /// Roughly how wide `text` sets at `size` pixels, for sizing boxes. There
-/// are no font metrics here (the viewer's font draws it), so, as in rain,
-/// characters fall into width classes that hold across common sans-serifs,
+/// are no font metrics here (the viewer's font draws it), so characters
+/// fall into width classes that hold across common sans-serifs,
 /// erring wide so text stays inside its box.
 fn text_width(text: &str, size: u32) -> u32 {
     let hundredths: u32 = text.chars().map(advance).sum();
