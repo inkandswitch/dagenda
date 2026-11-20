@@ -14,6 +14,42 @@ fn error(source: &str) -> String {
 }
 
 #[test]
+fn nice_to_haves_say_what_to_do() {
+    for (source, expected) in [
+        (
+            "roadmap\n[ ] task a\nmilestone m\n  a\n  ---\n  b",
+            "5:3: `---` is now `nice-to-have`: write that, and indent the nice-to-haves under it",
+        ),
+        (
+            "roadmap\n[ ] task a\nmilestone m\n  nice-to-have a",
+            "4:16: list the nice-to-haves on their own lines, indented under `nice-to-have`",
+        ),
+        (
+            "roadmap\n[ ] task a\n[ ] task b\nmilestone m\n  nice-to-have\n    a\n  nice-to-have\n    b",
+            "7:3: a milestone has only one `nice-to-have`; list them all under it",
+        ),
+        (
+            "roadmap\n[ ] task a\nmilestone m\n  a\n  nice-to-have\n    a",
+            "6:5: `a` is already listed in this milestone",
+        ),
+        (
+            "roadmap\nmilestone m\n  nice-to-have\n    target 2026",
+            "4:5: `target` can't go in a milestone's nice-to-haves",
+        ),
+        (
+            "roadmap\nnice-to-have\n  a",
+            "2:1: `nice-to-have` can't go at the top level",
+        ),
+        (
+            "roadmap\n[ ] task nice-to-have",
+            "2:10: `nice-to-have` is a keyword, so it can't be an id",
+        ),
+    ] {
+        assert_eq!(error(source), expected, "{source:?}");
+    }
+}
+
+#[test]
 fn parse_errors_say_what_to_do() {
     for (source, expected) in [
         ("", "1:1: missing header; start with `roadmap`"),

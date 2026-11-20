@@ -400,7 +400,7 @@ pub struct Edge {
     /// What waits on it.
     pub to: usize,
 
-    /// A milestone's nice-to-have, from below its cut line.
+    /// A milestone's nice-to-have.
     pub wanted: bool,
 
     /// Whether the prerequisite is finished.

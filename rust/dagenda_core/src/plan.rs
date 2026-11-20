@@ -433,7 +433,7 @@ pub struct Milestone {
     /// The must-haves: tasks and milestones.
     pub needs: Vec<Located<Id>>,
 
-    /// The nice-to-haves, below the cut line.
+    /// The nice-to-haves, under its `nice-to-have`.
     pub wants: Vec<Located<Id>>,
 
     /// Its `milestone` line.

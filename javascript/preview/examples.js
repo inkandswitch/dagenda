@@ -76,13 +76,13 @@ milestone itParses [It parses]
   target EOY26
   parser
   resolver
-  ---
-  cycles
+  nice-to-have
+    cycles
 
 milestone firstPicture [First picture]
   note Waits on a milestone, through a task that needs it.
   itParses
   techTree
-  ---
-  skillTree
+  nice-to-have
+    skillTree
 `

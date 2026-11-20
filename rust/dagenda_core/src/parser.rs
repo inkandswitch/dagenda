@@ -9,7 +9,8 @@
 //! item      = "title" text NL | track | task | milestone | extend
 //! track     = "track" id [ label ] NL [ INDENT { track | task | dri | note } DEDENT ]
 //! task      = box "task" id [ label ] NL [ INDENT { task | detail } DEDENT ]
-//! milestone = "milestone" id [ label ] NL [ INDENT { id NL | "---" NL | target | note } DEDENT ]
+//! milestone = "milestone" id [ label ] NL [ INDENT { id NL | nice | target | note } DEDENT ]
+//! nice      = "nice-to-have" NL [ INDENT { id NL } DEDENT ]   (at most one per milestone)
 //! extend    = "extend" id NL [ INDENT { task | detail } DEDENT ]
 //! detail    = needs | est | target | dri | pr | issue | link | note
 //! needs     = "needs" id { "," id } NL
@@ -202,7 +203,7 @@ impl<'a> Parser<'a> {
             Head::Member(id) => {
                 return Err(ParseError::new(id.span, ParseErrorKind::BareId(id.node)));
             }
-            head @ (Head::Detail(..) | Head::Cut) => {
+            head @ (Head::Detail(..) | Head::NiceToHave(_)) => {
                 return Err(head.misplaced(line, Place::TopLevel));
             }
         }
@@ -245,7 +246,7 @@ impl<'a> Parser<'a> {
                 head @ (Head::Title(_)
                 | Head::Milestone(_)
                 | Head::Extend(_)
-                | Head::Cut
+                | Head::NiceToHave(_)
                 | Head::Member(_)) => return Err(head.misplaced(child, Place::Track)),
             }
             Ok(())
@@ -308,7 +309,7 @@ impl<'a> Parser<'a> {
                 | Head::Track(_)
                 | Head::Milestone(_)
                 | Head::Extend(_)
-                | Head::Cut
+                | Head::NiceToHave(_)
                 | Head::Member(_)) => return Err(head.misplaced(child, place)),
             }
             Ok(())
@@ -328,31 +329,43 @@ impl<'a> Parser<'a> {
             notes: Vec::new(),
             needs: Vec::new(),
             wants: Vec::new(),
-            cut: None,
+            nice_to_have: None,
         };
 
         self.children(Some(line.indent), |parser, child| {
             match Head::read(child)? {
                 Head::Member(member) => {
-                    let listed = milestone.needs.iter().chain(&milestone.wants);
-                    if listed.clone().any(|listed| listed.node == member.node) {
+                    unlisted(&milestone, &member)?;
+                    milestone.needs.push(member);
+                }
+                Head::NiceToHave(rest) => {
+                    if !rest.is_empty() {
                         return Err(ParseError::new(
-                            member.span,
-                            ParseErrorKind::DuplicateMember(member.node),
+                            rest.span(),
+                            ParseErrorKind::NiceToHaveInline,
                         ));
                     }
-                    let list = if milestone.cut.is_some() {
-                        &mut milestone.wants
-                    } else {
-                        &mut milestone.needs
-                    };
-                    list.push(member);
-                }
-                Head::Cut => {
-                    if milestone.cut.is_some() {
-                        return Err(ParseError::new(child.span(), ParseErrorKind::DuplicateCut));
+                    if milestone.nice_to_have.is_some() {
+                        return Err(ParseError::new(
+                            child.span(),
+                            ParseErrorKind::DuplicateNiceToHave,
+                        ));
                     }
-                    milestone.cut = Some(child.span());
+                    milestone.nice_to_have = Some(child.span());
+                    parser.children(Some(child.indent), |_, member| match Head::read(member)? {
+                        Head::Member(id) => {
+                            unlisted(&milestone, &id)?;
+                            milestone.wants.push(id);
+                            Ok(())
+                        }
+                        head @ (Head::Title(_)
+                        | Head::Track(_)
+                        | Head::Task(..)
+                        | Head::Milestone(_)
+                        | Head::Extend(_)
+                        | Head::Detail(..)
+                        | Head::NiceToHave(_)) => Err(head.misplaced(member, Place::NiceToHave)),
+                    })?;
                 }
                 Head::Detail(key, word, value) => {
                     match parser.detail(Place::Milestone, child, key, word, value)? {
@@ -568,8 +581,8 @@ enum Head<'a> {
     /// The key, the keyword as written, and the value after it.
     Detail(Key, Piece<'a>, Piece<'a>),
 
-    /// `---`
-    Cut,
+    /// `nice-to-have`, and anything after it on the line.
+    NiceToHave(Piece<'a>),
 
     /// A lone id: a milestone member.
     Member(Spanned<Id>),
@@ -589,7 +602,8 @@ impl<'a> Head<'a> {
             "milestone" => Self::Milestone(rest),
             "extend" => Self::Extend(rest),
             "task" => return Err(ParseError::new(word.span(), ParseErrorKind::MissingBox)),
-            "---" if rest.is_empty() => Self::Cut,
+            "nice-to-have" => Self::NiceToHave(rest),
+            "---" => return Err(ParseError::new(word.span(), ParseErrorKind::OldCut)),
             other => {
                 if let Some(key) = Key::from_keyword(other) {
                     Self::Detail(key, word, rest)
@@ -615,7 +629,7 @@ impl<'a> Head<'a> {
             Self::Milestone(_) => "a milestone",
             Self::Extend(_) => "`extend`",
             Self::Detail(key, ..) => key.quoted(),
-            Self::Cut => "a cut line (`---`)",
+            Self::NiceToHave(_) => "`nice-to-have`",
             Self::Member(_) => "a bare id",
         }
     }
@@ -725,6 +739,22 @@ fn label(piece: Piece<'_>) -> Result<Spanned<Text>, ParseError> {
 
     let text = Text::new(trimmed).map_err(|e| ParseError::new(span, e.into()))?;
     Ok(Spanned::new(text, span))
+}
+
+/// Refuse a member already in `milestone`, above or below.
+fn unlisted(milestone: &Milestone, member: &Spanned<Id>) -> Result<(), ParseError> {
+    if milestone
+        .needs
+        .iter()
+        .chain(&milestone.wants)
+        .any(|listed| listed.node == member.node)
+    {
+        return Err(ParseError::new(
+            member.span,
+            ParseErrorKind::DuplicateMember(member.node.clone()),
+        ));
+    }
+    Ok(())
 }
 
 /// `<id>, <id>, …` after `needs`.
@@ -917,6 +947,9 @@ pub enum Place {
 
     /// Under an `extend` line.
     Extend,
+
+    /// Under a milestone's `nice-to-have` line.
+    NiceToHave,
 }
 
 impl Place {
@@ -928,6 +961,7 @@ impl Place {
             Self::Track => "a track",
             Self::Task => "a task",
             Self::Milestone => "a milestone",
+            Self::NiceToHave => "a milestone's nice-to-haves",
             Self::Extend => "an `extend`",
         }
     }
@@ -938,7 +972,7 @@ impl Place {
             Self::Task | Self::Extend => true,
             Self::Track => matches!(key, Key::Dri | Key::Note),
             Self::Milestone => matches!(key, Key::Target | Key::Note),
-            Self::TopLevel => false,
+            Self::TopLevel | Self::NiceToHave => false,
         }
     }
 }
@@ -947,7 +981,7 @@ impl fmt::Display for Place {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::TopLevel => f.write_str("at the top level"),
-            Self::Track | Self::Task | Self::Milestone | Self::Extend => {
+            Self::Track | Self::Task | Self::Milestone | Self::Extend | Self::NiceToHave => {
                 write!(f, "in {}", self.noun())
             }
         }
@@ -1110,9 +1144,17 @@ pub enum ParseErrorKind {
     #[error("`{0}` is already listed in this milestone")]
     DuplicateMember(Id),
 
-    /// A second `---` in one milestone.
-    #[error("a milestone has only one cut line")]
-    DuplicateCut,
+    /// A second `nice-to-have` in one milestone.
+    #[error("a milestone has only one `nice-to-have`; list them all under it")]
+    DuplicateNiceToHave,
+
+    /// Members on the `nice-to-have` line itself.
+    #[error("list the nice-to-haves on their own lines, indented under `nice-to-have`")]
+    NiceToHaveInline,
+
+    /// The old cut line.
+    #[error("`---` is now `nice-to-have`: write that, and indent the nice-to-haves under it")]
+    OldCut,
 
     /// A line in a place the notation doesn't allow it.
     #[error("{what} can't go {place}")]

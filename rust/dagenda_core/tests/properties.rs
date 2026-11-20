@@ -119,9 +119,9 @@ fn picture_edits_change_only_what_they_say() {
                     Ok(edits) => {
                         let edited = after(edits);
                         assert!(
-                            edited.as_ref().is_ok_and(|edited| edited
-                                .milestone(&milestone.id)
-                                .is_some_and(|m| m.needs.iter().any(|member| member.node == *a))),
+                            edited
+                                .as_ref()
+                                .is_ok_and(|edited| waits(edited, &milestone.id, a)),
                             "{edited:?}"
                         );
                     }
@@ -202,7 +202,7 @@ fn build(lines: &[(u8, u8, u8, u8)]) -> String {
             1 => format!("needs {}, {}", pick(&ANY, first), pick(&ANY, second)),
             2 => format!("milestone {}", pick(&MILESTONES, first)),
             3 => pick(&ANY, first).to_owned(),
-            4 => String::from("---"),
+            4 => String::from("nice-to-have"),
             5 => format!("track {}", pick(&TRACKS, first)),
             6 => format!("extend {}", pick(&TASKS, first)),
             7 => String::from("note something"),
@@ -369,6 +369,28 @@ fn assert_routed(tree: &TechTree, edge: &Edge, from: &Node, to: &Node) {
 
 /// What's derived agrees with itself: readiness with statuses and needs,
 /// progress with what's finished, critical paths with what isn't.
+/// Whether `from` needs `target`, directly or through other work.
+fn waits(plan: &Plan, from: &dagenda_core::id::Id, target: &dagenda_core::id::Id) -> bool {
+    let needs = |id: &dagenda_core::id::Id| -> Vec<dagenda_core::id::Id> {
+        plan.task(id)
+            .map(|task| &task.needs)
+            .or_else(|| plan.milestone(id).map(|milestone| &milestone.needs))
+            .map(|needs| needs.iter().map(|need| need.node.clone()).collect())
+            .unwrap_or_default()
+    };
+    let mut seen = std::collections::BTreeSet::new();
+    let mut stack = needs(from);
+    while let Some(next) = stack.pop() {
+        if next == *target {
+            return true;
+        }
+        if seen.insert(next.clone()) {
+            stack.extend(needs(&next));
+        }
+    }
+    false
+}
+
 /// How many distinct tasks are among `ids`.
 fn tasks_among(plan: &Plan, ids: &[dagenda_core::plan::Located<dagenda_core::id::Id>]) -> usize {
     ids.iter()

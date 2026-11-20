@@ -29,6 +29,6 @@ warnings
   13:14: `parent` is done, but it needs `child`, which isn't
   15:14: `parent` is done, but it needs `droppedChild`, which isn't
   17:8: `unfinished` is defined in this document, so put these details on it directly
-  21:3: `dropped` is dropped, so `stuck` can never be reached; take it off the list, or move it below the cut line
-  22:3: `deferred` is deferred but still holds up `stuck`; move it below the cut line if `stuck` can go without it
-  24:1: `empty` has no must-haves above its cut line, so it counts as reached
+  21:3: `dropped` is dropped, so `stuck` can never be reached; take it off the list, or make it a nice-to-have
+  22:3: `deferred` is deferred but still holds up `stuck`; make it a nice-to-have if `stuck` can go without it
+  24:1: `empty` has no must-haves, only nice-to-haves, so it counts as reached

@@ -158,8 +158,8 @@ const ERAS: &str = "roadmap
 milestone first
   target 2026-Q4
   a
-  ---
-  b
+  nice-to-have
+    b
 
 milestone second
   c
@@ -176,7 +176,7 @@ fn rescoping_moves_a_member_between_milestones() -> TestResult {
     )?))
     .map_err(|_| "one edit")?;
     assert!(
-        moved.contains("milestone first\n  target 2026-Q4\n  a\n  c\n  ---\n  b\n"),
+        moved.contains("milestone first\n  target 2026-Q4\n  a\n  c\n  nice-to-have\n    b\n"),
         "{moved}"
     );
     assert!(moved.contains("milestone second\n"), "{moved}");
@@ -190,8 +190,8 @@ fn rescoping_moves_a_member_between_milestones() -> TestResult {
     )?))
     .map_err(|_| "one edit")?;
     assert!(
-        promoted.contains("  a\n  b\n  ---\n\n"),
-        "a nice-to-have becomes a must-have: {promoted}"
+        promoted.contains("  target 2026-Q4\n  a\n  b\n\nmilestone second"),
+        "a nice-to-have becomes a must-have, and the empty block goes: {promoted}"
     );
     Ok(())
 }
@@ -214,6 +214,18 @@ fn rescoping_to_no_milestone_takes_it_off_the_list() -> TestResult {
         Err(String::from(
             "`a` already waits on `m`, so `m` can't need it"
         ))
+    );
+
+    let already = one("roadmap\n[ ] task a\n[ ] task b\n  needs a\nmilestone m\n  b\n");
+    assert!(
+        edit::rescope(&already, &id("a")?, None, Some(&id("m")?))?.is_empty(),
+        "m needs a through b already"
+    );
+
+    let gone = one("roadmap\n[ ] task a\n[ ] task b\n  needs a\nmilestone m\n  a\n");
+    assert!(
+        edit::rescope(&gone, &id("b")?, Some(&id("m")?), None)?.is_empty(),
+        "m doesn't need b at all: nothing to take off"
     );
 
     let through = one("roadmap\n[ ] task a\n[ ] task b\n  needs a\nmilestone m\n  b\n");

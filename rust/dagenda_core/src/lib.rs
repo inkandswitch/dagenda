@@ -21,8 +21,8 @@
 //! milestone repo3 [Repo 3]
 //!   target EOY26
 //!   newRepo
-//!   ---
-//!   docTypes
+//!   nice-to-have
+//!     docTypes
 //! ```
 //!
 //! | Form                          | Meaning                                                                 |
@@ -32,7 +32,7 @@
 //! | `track <id> [<label>]`        | A bucket. Tracks nest                                                   |
 //! | `<box> task <id> [<label>]`   | A unit of work, in the track around it. A task written under another is one it needs |
 //! | `milestone <id> [<label>]`    | A gate, listing the tasks and milestones it needs, one per line         |
-//! | `---`                         | A milestone's cut line: the members below it are nice-to-haves          |
+//! | `nice-to-have`                | In a milestone: the members indented under it are wanted, not required  |
 //! | `extend <id>`                 | Details, and tasks it needs, for a task defined in another document     |
 //! | `needs <id>, <id>, …`         | This can't finish until those do                                        |
 //! | `est <date>`                  | When it's expected to land, as in `2026-11-19`                          |

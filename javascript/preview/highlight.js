@@ -2,7 +2,7 @@
 // them into HTML for a <pre> laid under its (transparent) textarea, and the
 // collaborative editor into CodeMirror decorations. Line for line.
 
-const BLOCKS = new Set(["extend", "milestone", "roadmap", "task", "title", "track"])
+const BLOCKS = new Set(["extend", "milestone", "nice-to-have", "roadmap", "task", "title", "track"])
 const DETAILS = new Set(["dri", "est", "issue", "link", "needs", "note", "pr", "target"])
 
 /** The status class for each box's mark, as the SVG uses. */
@@ -57,7 +57,6 @@ export const highlight = (source, errorLine = null) => {
 /** One line's tokens, after its indent. */
 const colour = (text) => {
   if (text.startsWith("//")) return [token("comment", text)]
-  if (text === "---") return [token("cut", text)]
 
   const parts = []
   let rest = text

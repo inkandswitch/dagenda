@@ -165,14 +165,14 @@ pub struct Milestone {
     /// Notes about it.
     pub notes: Vec<Spanned<Note>>,
 
-    /// The must-haves: the members above the cut line.
+    /// The must-haves: its members.
     pub needs: Vec<Spanned<Id>>,
 
-    /// The nice-to-haves: the members below the cut line.
+    /// The nice-to-haves: the members under its `nice-to-have`.
     pub wants: Vec<Spanned<Id>>,
 
-    /// Where the `---` is, if there is one.
-    pub cut: Option<Span>,
+    /// Where its `nice-to-have` line is, if it has one.
+    pub nice_to_have: Option<Span>,
 }
 
 /// Details, and tasks it needs, for a task defined in another document. Its span

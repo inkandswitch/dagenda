@@ -22,11 +22,11 @@ track sync [Sync]
 milestone repo3 [Repo 3]
   target EOY26
   newRepo
-  ---
-  docTypes
+  nice-to-have
+    docTypes
 ```
 
-The indentation says where each thing lives: a track holds tasks, and a task holds its details. The plan is one graph of what needs what: `needs` lines, by id, and milestone members. A task written under another is shorthand for one that task needs, in the same track, so a big task can be broken down in place. A milestone is reached when everything above its cut line (`---`) is done; what's below is nice to have.
+The indentation says where each thing lives: a track holds tasks, and a task holds its details. The plan is one graph of what needs what: `needs` lines, by id, and milestone members. A task written under another is shorthand for one that task needs, in the same track, so a big task can be broken down in place. A milestone is reached when its members are done; the ones indented under its `nice-to-have` are wanted, not required.
 
 Every task starts with a status box, and only `[x]` counts as finished:
 

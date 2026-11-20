@@ -39,10 +39,11 @@ test("a note block is markdown, comments and all, until the indent comes back", 
   assert.match(html[4], /<span class="detail">needs<\/span>/)
 })
 
-test("comment lines and cut lines", () => {
-  const [comment, cut] = lines(highlight("// hello\n---"))
+test("comment lines, and a milestone's nice-to-haves", () => {
+  const [comment, nice, member] = lines(highlight("// hello\n  nice-to-have\n    cycles"))
   assert.equal(comment, '<span class="comment">// hello</span>')
-  assert.equal(cut, '<span class="cut">---</span>')
+  assert.equal(nice, '  <span class="keyword">nice-to-have</span>')
+  assert.equal(member, '    <span class="id">cycles</span>')
 })
 
 test("marks the error line", () => {

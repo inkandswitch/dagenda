@@ -26,7 +26,7 @@ impl fmt::Display for Warning {
 /// The things worth a second look.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WarningKind {
-    /// A milestone with nothing above its cut line, which is always reached.
+    /// A milestone with no must-haves, which is always reached.
     EmptyMilestone(Id),
 
     /// A dropped must-have: the milestone can never be reached.
@@ -74,15 +74,15 @@ impl fmt::Display for WarningKind {
         match self {
             Self::EmptyMilestone(milestone) => write!(
                 f,
-                "`{milestone}` has no must-haves above its cut line, so it counts as reached"
+                "`{milestone}` has no must-haves, only nice-to-haves, so it counts as reached"
             ),
             Self::DroppedMustHave { milestone, task } => write!(
                 f,
-                "`{task}` is dropped, so `{milestone}` can never be reached; take it off the list, or move it below the cut line"
+                "`{task}` is dropped, so `{milestone}` can never be reached; take it off the list, or make it a nice-to-have"
             ),
             Self::DeferredMustHave { milestone, task } => write!(
                 f,
-                "`{task}` is deferred but still holds up `{milestone}`; move it below the cut line if `{milestone}` can go without it"
+                "`{task}` is deferred but still holds up `{milestone}`; make it a nice-to-have if `{milestone}` can go without it"
             ),
             Self::NeedsDropped { task, need } => write!(
                 f,

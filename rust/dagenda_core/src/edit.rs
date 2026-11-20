@@ -132,9 +132,10 @@ pub fn add_need(
 }
 
 /// Re-scope a task from one milestone to another: take it off `from`'s
-/// list (if it's on it), and put it on `to`'s must-haves (moving it above
-/// the cut line if it's below). `None` for `to` takes it off every era: the
-/// work on no milestone.
+/// list (if it's on it), and put it on `to`'s must-haves (a nice-to-have
+/// there becomes one). `None` for `to` takes it off every era: the
+/// work on no milestone. With no `from`, a task `to` already needs through
+/// other work is left as it is.
 ///
 /// # Errors
 ///
@@ -152,8 +153,9 @@ pub fn rescope(
     }
     let documents = parse(sources)?;
     find_task(&documents, task)?;
-    if let (Some(to), Ok(plan)) = (to, Plan::resolve(&documents))
-        && waits_on(&plan, task, to)
+    let plan = Plan::resolve(&documents).ok();
+    if let (Some(to), Some(plan)) = (to, &plan)
+        && waits_on(plan, task, to)
     {
         return Err(EditError::Loop {
             dependent: to.clone(),
@@ -169,36 +171,42 @@ pub fn rescope(
             .filter(|member| member.node == *task)
             .collect();
         if listed.is_empty() && to.is_none() {
-            return Err(EditError::NeededThrough {
-                task: task.clone(),
-                milestone: from.clone(),
-            });
+            // Not on its list: nothing to take off, unless it still needs
+            // the task through other work, which keeps it in that era
+            return if plan
+                .as_ref()
+                .is_some_and(|plan| !waits_on(plan, from, task))
+            {
+                Ok(Vec::new())
+            } else {
+                Err(EditError::NeededThrough {
+                    task: task.clone(),
+                    milestone: from.clone(),
+                })
+            };
         }
-        splices.extend(
-            listed
-                .into_iter()
-                .map(|member| (document, remove_line(text, member.span.start))),
-        );
+        splices.extend(off_list(text, &milestone.node, task).map(|splice| (document, splice)));
     }
 
     if let Some(to) = to {
         let (document, found) = find_milestone(&documents, to)?;
         let text = text_of(sources, document);
         let milestone = &found.node;
-        if !milestone.needs.iter().any(|member| member.node == *task) {
-            splices.extend(
-                milestone
-                    .wants
-                    .iter()
-                    .filter(|member| member.node == *task)
-                    .map(|member| (document, remove_line(text, member.span.start))),
-            );
-            let (at, indent) = match (milestone.needs.last(), milestone.cut) {
+        // Brought in (from nowhere) to a milestone that needs it already,
+        // through other work: nothing to add
+        let already = from.is_none() && plan.as_ref().is_some_and(|plan| waits_on(plan, to, task));
+        if !already && !milestone.needs.iter().any(|member| member.node == *task) {
+            // A nice-to-have becomes a must-have
+            let wanted = milestone.wants.iter().any(|member| member.node == *task);
+            if wanted {
+                splices.extend(off_list(text, milestone, task).map(|splice| (document, splice)));
+            }
+            let (at, indent) = match (milestone.needs.last(), milestone.nice_to_have) {
                 (Some(last), _) => (
                     next_line(text, last.span.start),
                     indent_of(text, last.span.start),
                 ),
-                (None, Some(cut)) => (line_start(text, cut.start), indent_of(text, cut.start)),
+                (None, Some(nice)) => (line_start(text, nice.start), indent_of(text, nice.start)),
                 (None, None) => (
                     block_end(text, found.span.start),
                     child_indent(text, found.span.start),
@@ -502,7 +510,27 @@ fn task_tree<'a>(task: &'a Spanned<ast::Task>, found: &mut Vec<&'a Spanned<ast::
     }
 }
 
-/// A milestone's members, above and below the cut line.
+/// Take `task` off `milestone`'s lists, and its `nice-to-have` line too if
+/// that leaves it empty.
+fn off_list<'a>(
+    text: &'a str,
+    milestone: &'a ast::Milestone,
+    task: &'a Id,
+) -> impl Iterator<Item = Splice> + 'a {
+    let emptied =
+        !milestone.wants.is_empty() && milestone.wants.iter().all(|member| member.node == *task);
+    members(milestone)
+        .filter(move |member| member.node == *task)
+        .map(move |member| remove_line(text, member.span.start))
+        .chain(
+            milestone
+                .nice_to_have
+                .filter(|_| emptied)
+                .map(|nice| remove_line(text, nice.start)),
+        )
+}
+
+/// A milestone's members: its must-haves, then its nice-to-haves.
 fn members(milestone: &ast::Milestone) -> impl Iterator<Item = &Spanned<Id>> {
     milestone.needs.iter().chain(&milestone.wants)
 }

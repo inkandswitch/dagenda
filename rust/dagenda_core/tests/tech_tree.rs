@@ -94,8 +94,8 @@ fn a_nice_to_have_the_milestone_needs_anyway_has_no_line() -> TestResult {
   needs part
 milestone m
   whole
-  ---
-  part",
+  nice-to-have
+    part",
     )?;
     assert_eq!(
         lines(&tree),
@@ -132,8 +132,8 @@ fn nice_to_haves_are_dashed_and_sit_under_their_milestone() -> TestResult {
   needs later
 milestone m
   a
-  ---
-  muchLater",
+  nice-to-have
+    muchLater",
     )?;
     assert_eq!(
         lines(&tree),
@@ -157,8 +157,8 @@ fn nice_to_haves_sit_in_the_era_that_wants_them() -> TestResult {
   needs groundwork
 milestone first
   must
-  ---
-  polish
+  nice-to-have
+    polish
 milestone second
   must
 [ ] task after
