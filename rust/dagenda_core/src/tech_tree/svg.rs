@@ -12,6 +12,7 @@
 //! | `data-milestone`      | bands, eras       | the milestone's id                                      |
 //! | `data-from`/`data-to` | edges             | the prerequisite's and the dependent's ids              |
 //! | `class`               | nodes             | `node task` or `node milestone`; a status; `locked`, `waiting` (under way, but waiting on something), or `available`; `reached` |
+//! | `class`               | a node's parts    | `card` or `gate`, `badge`, and `mark` or `check`; a task in progress adds a `glow` behind its card and a turning `spinner` on its badge |
 //! | `class`               | branches, banners | `track`, `untracked`, or `milestones`; `hue-0` to `hue-7` for a track's colour |
 //! | `class`               | eras              | `era`, and `reached`                                    |
 //! | `class`               | bands             | `band reached` for a reached era; `band side` for the layer of work on no milestone |
@@ -232,6 +233,11 @@ impl fmt::Display for Svg<'_> {
             r#"<svg xmlns="http://www.w3.org/2000/svg" class="dagenda tech-tree" viewBox="0 0 {width} {height}" width="{width}" height="{height}" font-family="system-ui, sans-serif" font-size="{FONT}">"#
         )?;
         f.write_str(STYLE)?;
+        // The glow behind a task in progress: its outline, blurred
+        writeln!(
+            f,
+            r#"<defs><filter id="dagenda-glow" x="-25%" y="-50%" width="150%" height="200%"><feGaussianBlur stdDeviation="5"/></filter></defs>"#
+        )?;
         writeln!(
             f,
             r#"<rect class="canvas" width="{width}" height="{height}"/>"#
@@ -300,6 +306,16 @@ fn task(
         if locked { ", waiting on something" } else { "" },
         More(node)
     )?;
+    // A task in progress glows, and its badge turns, so it stands apart
+    // from one not started
+    let working = matches!(status, Status::InProgress);
+    if working {
+        writeln!(
+            f,
+            r#"<rect class="glow" x="{}" y="{}" width="{}" height="{}" rx="10" filter="url(#dagenda-glow)"/>"#,
+            node.x, node.y, node.width, node.height
+        )?;
+    }
     writeln!(
         f,
         r#"<rect class="card" x="{}" y="{}" width="{}" height="{}" rx="10"/>"#,
@@ -311,6 +327,12 @@ fn task(
         f,
         r#"<circle class="badge" cx="{middle}" cy="{bottom}" r="{BADGE_RADIUS}"/>"#
     )?;
+    if working {
+        writeln!(
+            f,
+            r#"<circle class="spinner" cx="{middle}" cy="{bottom}" r="{BADGE_RADIUS}" pathLength="100"/>"#
+        )?;
+    }
     match status {
         Status::NotStarted => {}
         // Drawn rather than set in a font, so it looks the same everywhere
@@ -695,6 +717,13 @@ const STYLE: &str = r"<style>
 .dagenda .in-progress .card { stroke: #2f6fd6; stroke-width: 2.5; }
 .dagenda .in-progress .badge { stroke: #2f6fd6; }
 .dagenda .in-progress .mark { fill: #2f6fd6; }
+.dagenda .glow { fill: none; stroke: #2f6fd6; stroke-width: 8; opacity: 0.6; }
+.dagenda .spinner {
+  fill: none; stroke: #2f6fd6; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 22 78;
+  transform-box: fill-box; transform-origin: center; animation: dagenda-spin 1.6s linear infinite;
+}
+@keyframes dagenda-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .dagenda .spinner { animation: none; } }
 .dagenda .needs-attention .card { fill: #fdeeee; stroke: #d33; stroke-width: 2.5; }
 .dagenda .needs-attention .badge { stroke: #d33; }
 .dagenda .needs-attention .mark { fill: #d33; }
@@ -710,6 +739,7 @@ const STYLE: &str = r"<style>
 .dagenda .reached .gate { fill: #edf6ed; stroke: #5aa362; }
 @media (prefers-color-scheme: dark) {
   .dagenda:not(.light) .canvas { fill: #1a1917; }
+  .dagenda:not(.light) :is(.glow, .spinner) { stroke: #5b8ff0; }
   .dagenda:not(.light) text { fill: #ecebe8; }
   .dagenda:not(.light) .branch { fill: #232220; stroke: #302e2a; }
   .dagenda:not(.light) .branch.hue-0, .dagenda:not(.light) .banner.hue-0 rect { fill: #1c2826; stroke: #2b4a45; }
@@ -802,6 +832,7 @@ const STYLE: &str = r"<style>
 .dagenda.dark .available .card, .dagenda.dark .available .badge { stroke: #d6ae3a; }
 .dagenda.dark .gate { fill: #3a3218; stroke: #c9a227; }
 .dagenda.dark .reached .gate { fill: #1f2e20; stroke: #5aa362; }
+.dagenda.dark :is(.glow, .spinner) { stroke: #5b8ff0; }
 .dagenda.dark .edge { stroke: #6f6b63; }
 .dagenda.dark .edge.met { stroke: #5aa362; }
 </style>

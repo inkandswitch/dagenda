@@ -61,6 +61,13 @@
 .dagenda .in-progress .card { stroke: #2f6fd6; stroke-width: 2.5; }
 .dagenda .in-progress .badge { stroke: #2f6fd6; }
 .dagenda .in-progress .mark { fill: #2f6fd6; }
+.dagenda .glow { fill: none; stroke: #2f6fd6; stroke-width: 8; opacity: 0.6; }
+.dagenda .spinner {
+  fill: none; stroke: #2f6fd6; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 22 78;
+  transform-box: fill-box; transform-origin: center; animation: dagenda-spin 1.6s linear infinite;
+}
+@keyframes dagenda-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .dagenda .spinner { animation: none; } }
 .dagenda .needs-attention .card { fill: #fdeeee; stroke: #d33; stroke-width: 2.5; }
 .dagenda .needs-attention .badge { stroke: #d33; }
 .dagenda .needs-attention .mark { fill: #d33; }
@@ -76,6 +83,7 @@
 .dagenda .reached .gate { fill: #edf6ed; stroke: #5aa362; }
 @media (prefers-color-scheme: dark) {
   .dagenda:not(.light) .canvas { fill: #1a1917; }
+  .dagenda:not(.light) :is(.glow, .spinner) { stroke: #5b8ff0; }
   .dagenda:not(.light) text { fill: #ecebe8; }
   .dagenda:not(.light) .branch { fill: #232220; stroke: #302e2a; }
   .dagenda:not(.light) .branch.hue-0, .dagenda:not(.light) .banner.hue-0 rect { fill: #1c2826; stroke: #2b4a45; }
@@ -168,9 +176,11 @@
 .dagenda.dark .available .card, .dagenda.dark .available .badge { stroke: #d6ae3a; }
 .dagenda.dark .gate { fill: #3a3218; stroke: #c9a227; }
 .dagenda.dark .reached .gate { fill: #1f2e20; stroke: #5aa362; }
+.dagenda.dark :is(.glow, .spinner) { stroke: #5b8ff0; }
 .dagenda.dark .edge { stroke: #6f6b63; }
 .dagenda.dark .edge.met { stroke: #5aa362; }
 </style>
+<defs><filter id="dagenda-glow" x="-25%" y="-50%" width="150%" height="200%"><feGaussianBlur stdDeviation="5"/></filter></defs>
 <rect class="canvas" width="1536" height="931"/>
 <text class="title" x="16" y="34">A tour of the notation</text>
 <rect class="branch track hue-0" data-branch="0" data-track="core" x="16" y="110" width="506" height="805" rx="12"/>
@@ -214,8 +224,10 @@ Resolves ids across every document.
 ```
 // Not a comment: this is inside the note.
 ```</title>
+<rect class="glow" x="194" y="638" width="150" height="118" rx="10" filter="url(#dagenda-glow)"/>
 <rect class="card" x="194" y="638" width="150" height="118" rx="10"/>
 <circle class="badge" cx="269" cy="756" r="10"/>
+<circle class="spinner" cx="269" cy="756" r="10" pathLength="100"/>
 <text class="mark" x="269" y="760" text-anchor="middle">-</text>
 <text class="label" text-anchor="middle"><tspan x="269" y="660">Resolver</tspan></text>
 <text class="caption" x="269" y="675" text-anchor="middle" font-size="11">2 of 3 done below</text>

@@ -14,9 +14,9 @@ use thiserror::Error;
 /// ```
 /// use dagenda_core::reference::GithubRef;
 ///
-/// let reference = GithubRef::new("gh:inkandswitch/keyhive#365")?;
-/// assert_eq!(reference.owner(), "inkandswitch");
-/// assert_eq!(reference.repo(), "keyhive");
+/// let reference = GithubRef::new("gh:owner/repo#365")?;
+/// assert_eq!(reference.owner(), "owner");
+/// assert_eq!(reference.repo(), "repo");
 /// assert_eq!(reference.number().get(), 365);
 /// # Ok::<(), dagenda_core::reference::InvalidGithubRef>(())
 /// ```

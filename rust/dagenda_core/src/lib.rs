@@ -8,21 +8,21 @@
 //!
 //! ```text
 //! roadmap
-//! title Department of Data
+//! title Product Roadmap
 //!
 //! track sync [Sync]
-//!   [-] task newRepo [New repo architecture]
-//!     needs fragments
+//!   [-] task engine [New sync engine]
+//!     needs protocol
 //!     dri @alice
 //!     pr gh:owner/repo#123
-//!   [x] task fragments [Fragments]
-//!   [ ] task docTypes [Custom doc types]
+//!   [x] task protocol [Wire protocol]
+//!   [ ] task offline [Offline mode]
 //!
-//! milestone repo3 [Repo 3]
+//! milestone v2 [Version 2]
 //!   target EOY26
-//!   newRepo
+//!   engine
 //!   nice-to-have
-//!     docTypes
+//!     offline
 //! ```
 //!
 //! | Form                          | Meaning                                                                 |
