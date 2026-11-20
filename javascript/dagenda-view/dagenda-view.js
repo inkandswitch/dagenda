@@ -92,6 +92,8 @@ class DagendaView extends HTMLElement {
     })
     this.#canvas.addEventListener("pointerleave", () => this.#focus(null))
     this.#canvas.addEventListener("click", (e) => {
+      // A card's links open their page; they don't select the card
+      if (e.target.closest?.("a")) return
       const node = e.target.closest?.(".node")
       this.select(node && node.dataset.id !== this.#selected ? node.dataset.id : null)
     })

@@ -47,4 +47,4 @@ The notation's indentation is relative, so inline source can be indented to matc
 | `dagenda-render` | After every change of source        | `{ problems, ok }`  |
 | `dagenda-select` | A node was selected, or cleared     | `{ id }`            |
 
-Hover a node to light up everything it needs and everything waiting on it, all the way up and down. Click to select; click again or press Escape to clear. Text that doesn't parse keeps the last good picture up, so the tree doesn't flicker while someone types.
+Hover a node to light up everything it needs and everything waiting on it, all the way up and down. Click to select; click again or press Escape to clear. A card's pull requests, issues, and links open in a new tab, without selecting the card. Text that doesn't parse keeps the last good picture up, so the tree doesn't flicker while someone types.

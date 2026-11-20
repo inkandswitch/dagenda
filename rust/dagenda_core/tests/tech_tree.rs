@@ -1,7 +1,7 @@
 //! The tech tree's layout: which lines it draws, which branches and banners
 //! it makes, where things land, and how lines are routed.
 
-use dagenda_core::tech_tree::{BranchKind, Hue, Shape, TechTree};
+use dagenda_core::tech_tree::{BranchKind, Fact, Hue, Shape, TechTree};
 use testresult::TestResult;
 
 fn tree(source: &str) -> Result<TechTree, dagenda_core::Error> {
@@ -399,6 +399,70 @@ fn a_crowded_row_wraps_onto_two_staggered_lines() -> TestResult {
             );
         }
     }
+    Ok(())
+}
+
+#[test]
+fn cards_say_who_is_on_them_when_and_where_to_read_more() -> TestResult {
+    let tree = tree(
+        "roadmap
+track core [Core]
+  dri @alice
+  [-] task sync [Sync]
+    dri @bob
+    est 2026-11-19
+    pr gh:owner/repo#7
+    link https://github.com/owner/repo/issues/3#issuecomment-9
+    note Ask carol first.
+    [ ] task part
+      dri @carol
+    [ ] task other
+      dri @bob",
+    )?;
+    let card = node(&tree, "sync").ok_or("no sync")?;
+    let facts: Vec<_> = card.facts.iter().flatten().map(Fact::text).collect();
+    assert_eq!(
+        facts,
+        ["@bob", "@carol", "est 2026-11-19", "PR #7", "#3 comment"]
+    );
+    let links: Vec<_> = card.facts.iter().flatten().filter_map(Fact::url).collect();
+    assert_eq!(
+        links,
+        [
+            "https://github.com/owner/repo/pull/7",
+            "https://github.com/owner/repo/issues/3#issuecomment-9"
+        ]
+    );
+    assert_eq!(card.notes.len(), 1);
+
+    let svg =
+        dagenda_core::parse("roadmap\n[ ] task a\n  link https://example.com/a?b=1&c=2 [Spec]\n")?
+            .to_svg();
+    assert!(svg.contains(r#"<a href="https://example.com/a?b=1&amp;c=2" target="_blank">"#));
+
+    let banner = tree.banners.first().ok_or("no banner")?;
+    assert_eq!(
+        banner.dri.as_ref().map(ToString::to_string).as_deref(),
+        Some("@alice")
+    );
+    Ok(())
+}
+
+#[test]
+fn banners_sit_over_their_branches() -> TestResult {
+    let tree = tree(
+        "roadmap
+track sync [Sync]
+  track repo [Repo]
+    [ ] task a",
+    )?;
+    let (sync, repo) = (
+        tree.banners.first().ok_or("no Sync")?,
+        tree.banners.get(1).ok_or("no Repo")?,
+    );
+    let branch = tree.branches.first().ok_or("no branch")?;
+    assert!(sync.y + sync.height <= repo.y, "Sync is over Repo");
+    assert!(repo.y + repo.height <= branch.y, "Repo is over its branch");
     Ok(())
 }
 

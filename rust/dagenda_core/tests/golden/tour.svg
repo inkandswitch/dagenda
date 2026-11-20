@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" class="dagenda tech-tree" viewBox="0 0 1208 814" width="1208" height="814" font-family="system-ui, sans-serif" font-size="13">
+<svg xmlns="http://www.w3.org/2000/svg" class="dagenda tech-tree" viewBox="0 0 1208 906" width="1208" height="906" font-family="system-ui, sans-serif" font-size="13">
 <style>
 .dagenda .canvas { fill: #fff; }
 .dagenda text { fill: #1d1c1a; }
@@ -44,6 +44,12 @@
 .dagenda .badge { fill: #fff; stroke: #8a857c; stroke-width: 1.5; }
 .dagenda .mark { font-family: ui-monospace, monospace; font-size: 11px; font-weight: 700; }
 .dagenda .caption { fill: #6b6760; }
+.dagenda .facts { fill: #6b6760; }
+.dagenda .facts .dri { fill: #4a4640; font-weight: 600; }
+.dagenda .facts .sep { fill: #b4afa6; }
+.dagenda .facts a .fact { fill: #2f6fd6; }
+.dagenda .facts a:hover .fact { text-decoration: underline; }
+.dagenda .banner .dri { text-transform: none; letter-spacing: 0; font-weight: 500; }
 .dagenda .available .card { stroke: #b08a1e; stroke-width: 2; }
 .dagenda .available .badge { stroke: #b08a1e; stroke-width: 2; }
 .dagenda .locked { opacity: 0.55; }
@@ -100,6 +106,10 @@
   .dagenda:not(.light) .era.reached text { fill: #7bc283; }
   .dagenda:not(.light) .banner rect { fill: #2e2c28; }
   .dagenda:not(.light) .banner text, .dagenda:not(.light) .caption { fill: #b4afa6; }
+  .dagenda:not(.light) .facts { fill: #b4afa6; }
+  .dagenda:not(.light) .facts .dri { fill: #ecebe8; }
+  .dagenda:not(.light) .facts .sep { fill: #6f6b63; }
+  .dagenda:not(.light) .facts a .fact { fill: #7aa7f0; }
   .dagenda:not(.light) :is(.card, .badge) { fill: #1f1e1c; }
   .dagenda:not(.light) :is(.not-started, .idea, .deferred, .dropped):not(.available) :is(.card, .badge) { stroke: #5b574f; }
   .dagenda:not(.light) .done .card { fill: #1f2e20; }
@@ -144,6 +154,10 @@
 .dagenda.dark .era.reached text { fill: #7bc283; }
 .dagenda.dark .banner rect { fill: #2e2c28; }
 .dagenda.dark .banner text, .dagenda.dark .caption { fill: #b4afa6; }
+.dagenda.dark .facts { fill: #b4afa6; }
+.dagenda.dark .facts .dri { fill: #ecebe8; }
+.dagenda.dark .facts .sep { fill: #6f6b63; }
+.dagenda.dark .facts a .fact { fill: #7aa7f0; }
 .dagenda.dark :is(.card, .badge) { fill: #1f1e1c; }
 .dagenda.dark :is(.not-started, .idea, .deferred, .dropped):not(.available) :is(.card, .badge) { stroke: #5b574f; }
 .dagenda.dark .done .card { fill: #1f2e20; }
@@ -155,93 +169,113 @@
 .dagenda.dark .edge { stroke: #6f6b63; }
 .dagenda.dark .edge.met { stroke: #5aa362; }
 </style>
-<rect class="canvas" width="1208" height="814"/>
+<rect class="canvas" width="1208" height="906"/>
 <text class="title" x="16" y="34">A tour of the notation</text>
-<rect class="branch track hue-0" data-branch="0" data-track="core" x="16" y="50" width="178" height="688" rx="12"/>
-<rect class="branch track hue-1" data-branch="1" data-track="views" x="224" y="50" width="506" height="688" rx="12"/>
-<rect class="branch untracked" data-branch="2" x="760" y="50" width="178" height="688" rx="12"/>
-<g class="banner track hue-0 depth-0" data-track="core"><rect x="16" y="774" width="714" height="24" rx="8"/><text x="373" y="790" text-anchor="middle">Core</text></g>
-<g class="banner track hue-1 depth-1" data-track="views"><rect x="224" y="744" width="506" height="24" rx="8"/><text x="477" y="760" text-anchor="middle">Views [nested]</text></g>
-<g class="banner untracked depth-0"><rect x="760" y="744" width="178" height="54" rx="8"/><text x="849" y="790" text-anchor="middle">Other tasks</text></g>
-<g class="era" data-milestone="itParses"><line x1="16" y1="471" x2="982" y2="471"/><text x="22" y="464">It parses</text></g>
-<g class="era" data-milestone="firstPicture"><line x1="16" y1="264" x2="982" y2="264"/><text x="22" y="257">First picture</text></g>
-<path class="edge met" data-from="parser" data-to="resolver" d="M105,667 L105,621"/>
-<path class="edge waiting wanted" data-from="skillTree" data-to="firstPicture" d="M395,346 L395,332 Q395,324 403,324 L1061,324 Q1069,324 1069,316 L1069,290"/>
-<path class="edge waiting" data-from="itParses" data-to="techTree" d="M1069,445 L1069,431 Q1069,423 1061,423 L567,423 Q559,423 559,415 L559,399"/>
+<rect class="branch track hue-0" data-branch="0" data-track="core" x="16" y="110" width="178" height="780" rx="12"/>
+<rect class="branch track hue-1" data-branch="1" data-track="views" x="224" y="110" width="506" height="780" rx="12"/>
+<rect class="branch untracked" data-branch="2" x="760" y="110" width="178" height="780" rx="12"/>
+<g class="banner track hue-0 depth-0" data-track="core"><rect x="16" y="50" width="714" height="24" rx="8"/><text x="373" y="66" text-anchor="middle">Core<tspan class="dri"> · @alice</tspan></text></g>
+<g class="banner track hue-1 depth-1" data-track="views"><rect x="224" y="80" width="506" height="24" rx="8"/><text x="477" y="96" text-anchor="middle">Views [nested]</text></g>
+<g class="banner untracked depth-0"><rect x="760" y="50" width="178" height="54" rx="8"/><text x="849" y="66" text-anchor="middle">Other tasks</text></g>
+<g class="era" data-milestone="itParses"><line x1="16" y1="531" x2="982" y2="531"/><text x="22" y="524">It parses</text></g>
+<g class="era" data-milestone="firstPicture"><line x1="16" y1="324" x2="982" y2="324"/><text x="22" y="317">First picture</text></g>
+<path class="edge met" data-from="parser" data-to="resolver" d="M105,787 L105,741"/>
+<path class="edge waiting wanted" data-from="skillTree" data-to="firstPicture" d="M395,406 L395,392 Q395,384 403,384 L1061,384 Q1069,384 1069,376 L1069,350"/>
+<path class="edge waiting" data-from="itParses" data-to="techTree" d="M1069,505 L1069,491 Q1069,483 1061,483 L567,483 Q559,483 559,475 L559,459"/>
 <g class="edge member" data-from="resolver" data-to="itParses"/>
 <g class="edge member" data-from="techTree" data-to="firstPicture"/>
 <g class="node task done" data-id="parser" data-status="done">
-<title>Parser (parser): done</title>
-<rect class="card" x="30" y="667" width="150" height="43" rx="10"/>
-<circle class="badge" cx="105" cy="710" r="10"/>
-<path class="check" d="M100,710 l3,4 l6,-8"/>
-<text class="label" text-anchor="middle"><tspan x="105" y="689">Parser</tspan></text>
+<title>Parser (parser): done
+est 2026-11-19
+PR #1</title>
+<rect class="card" x="30" y="787" width="150" height="75" rx="10"/>
+<circle class="badge" cx="105" cy="862" r="10"/>
+<path class="check" d="M100,862 l3,4 l6,-8"/>
+<text class="label" text-anchor="middle"><tspan x="105" y="809">Parser</tspan></text>
+<text class="facts" x="105" y="829" text-anchor="middle" font-size="11"><tspan class="fact est">est 2026-11-19</tspan></text>
+<text class="facts" x="105" y="843" text-anchor="middle" font-size="11"><a href="https://github.com/owner/repo/pull/1" target="_blank"><tspan class="fact ref">PR #1</tspan></a></text>
 </g>
 <g class="node task in-progress available" data-id="resolver" data-status="in-progress">
-<title>Resolver (resolver): in progress</title>
-<rect class="card" x="30" y="553" width="150" height="58" rx="10"/>
-<circle class="badge" cx="105" cy="611" r="10"/>
-<text class="mark" x="105" y="615" text-anchor="middle">-</text>
-<text class="label" text-anchor="middle"><tspan x="105" y="575">Resolver</tspan></text>
-<text class="caption" x="105" y="590" text-anchor="middle" font-size="11">1 of 2 subtasks</text>
+<title>Resolver (resolver): in progress
+@bob · est 2026-12
+target 2026-Q4 · #2
+#2 comment
+Design doc
+
+Resolves ids across every document.
+
+```
+// Not a comment: this is inside the note.
+```</title>
+<rect class="card" x="30" y="613" width="150" height="118" rx="10"/>
+<circle class="badge" cx="105" cy="731" r="10"/>
+<text class="mark" x="105" y="735" text-anchor="middle">-</text>
+<text class="label" text-anchor="middle"><tspan x="105" y="635">Resolver</tspan></text>
+<text class="caption" x="105" y="650" text-anchor="middle" font-size="11">1 of 2 subtasks</text>
+<text class="facts" x="105" y="670" text-anchor="middle" font-size="11"><tspan class="fact dri">@bob</tspan><tspan class="sep"> · </tspan><tspan class="fact est">est 2026-12</tspan></text>
+<text class="facts" x="105" y="684" text-anchor="middle" font-size="11"><tspan class="fact target">target 2026-Q4</tspan><tspan class="sep"> · </tspan><a href="https://github.com/owner/repo/issues/2" target="_blank"><tspan class="fact ref">#2</tspan></a></text>
+<text class="facts" x="105" y="698" text-anchor="middle" font-size="11"><a href="https://github.com/owner/repo/issues/2#issuecomment-3" target="_blank"><tspan class="fact link">#2 comment</tspan></a></text>
+<text class="facts" x="105" y="712" text-anchor="middle" font-size="11"><a href="https://example.com/resolver-design" target="_blank"><tspan class="fact link">Design doc</tspan></a></text>
 </g>
 <g class="node task not-started locked" data-id="techTree" data-status="not-started">
 <title>Tech tree (techTree): not started, waiting on something</title>
-<rect class="card" x="484" y="346" width="150" height="43" rx="10"/>
-<circle class="badge" cx="559" cy="389" r="10"/>
-<text class="label" text-anchor="middle"><tspan x="559" y="368">Tech tree</tspan></text>
+<rect class="card" x="484" y="406" width="150" height="43" rx="10"/>
+<circle class="badge" cx="559" cy="449" r="10"/>
+<text class="label" text-anchor="middle"><tspan x="559" y="428">Tech tree</tspan></text>
 </g>
 <g class="node task idea available" data-id="skillTree" data-status="idea">
 <title>Skill tree (skillTree): an idea</title>
-<rect class="card" x="320" y="346" width="150" height="43" rx="10"/>
-<circle class="badge" cx="395" cy="389" r="10"/>
-<text class="mark" x="395" y="393" text-anchor="middle">?</text>
-<text class="label" text-anchor="middle"><tspan x="395" y="368">Skill tree</tspan></text>
+<rect class="card" x="320" y="406" width="150" height="43" rx="10"/>
+<circle class="badge" cx="395" cy="449" r="10"/>
+<text class="mark" x="395" y="453" text-anchor="middle">?</text>
+<text class="label" text-anchor="middle"><tspan x="395" y="428">Skill tree</tspan></text>
 </g>
 <g class="node task research available" data-id="layout" data-status="research">
 <title>Layout research (layout): research</title>
-<rect class="card" x="238" y="68" width="150" height="43" rx="10"/>
-<circle class="badge" cx="313" cy="111" r="10"/>
-<text class="mark" x="313" y="115" text-anchor="middle">*</text>
-<text class="label" text-anchor="middle"><tspan x="313" y="90">Layout research</tspan></text>
+<rect class="card" x="238" y="128" width="150" height="43" rx="10"/>
+<circle class="badge" cx="313" cy="171" r="10"/>
+<text class="mark" x="313" y="175" text-anchor="middle">*</text>
+<text class="label" text-anchor="middle"><tspan x="313" y="150">Layout research</tspan></text>
 </g>
 <g class="node task needs-attention available" data-id="fonts" data-status="needs-attention">
 <title>Fonts (fonts): needs attention</title>
-<rect class="card" x="402" y="68" width="150" height="43" rx="10"/>
-<circle class="badge" cx="477" cy="111" r="10"/>
-<text class="mark" x="477" y="115" text-anchor="middle">!</text>
-<text class="label" text-anchor="middle"><tspan x="477" y="90">Fonts</tspan></text>
+<rect class="card" x="402" y="128" width="150" height="43" rx="10"/>
+<circle class="badge" cx="477" cy="171" r="10"/>
+<text class="mark" x="477" y="175" text-anchor="middle">!</text>
+<text class="label" text-anchor="middle"><tspan x="477" y="150">Fonts</tspan></text>
 </g>
 <g class="node task deferred available" data-id="gantt" data-status="deferred">
 <title>Gantt (gantt): deferred</title>
-<rect class="card" x="566" y="68" width="150" height="43" rx="10"/>
-<circle class="badge" cx="641" cy="111" r="10"/>
-<text class="mark" x="641" y="115" text-anchor="middle">&gt;</text>
-<text class="label" text-anchor="middle"><tspan x="641" y="90">Gantt</tspan></text>
+<rect class="card" x="566" y="128" width="150" height="43" rx="10"/>
+<circle class="badge" cx="641" cy="171" r="10"/>
+<text class="mark" x="641" y="175" text-anchor="middle">&gt;</text>
+<text class="label" text-anchor="middle"><tspan x="641" y="150">Gantt</tspan></text>
 </g>
 <g class="node task dropped" data-id="mermaid" data-status="dropped">
 <title>Mermaid export (mermaid): dropped</title>
-<rect class="card" x="320" y="139" width="150" height="43" rx="10"/>
-<circle class="badge" cx="395" cy="182" r="10"/>
-<text class="mark" x="395" y="186" text-anchor="middle">~</text>
-<text class="label" text-anchor="middle"><tspan x="395" y="161">Mermaid export</tspan></text>
+<rect class="card" x="320" y="199" width="150" height="43" rx="10"/>
+<circle class="badge" cx="395" cy="242" r="10"/>
+<text class="mark" x="395" y="246" text-anchor="middle">~</text>
+<text class="label" text-anchor="middle"><tspan x="395" y="221">Mermaid export</tspan></text>
 </g>
 <g class="node task not-started available" data-id="untracked" data-status="not-started">
 <title>A task outside any track (untracked): not started</title>
-<rect class="card" x="774" y="68" width="150" height="60" rx="10"/>
-<circle class="badge" cx="849" cy="128" r="10"/>
-<text class="label" text-anchor="middle"><tspan x="849" y="90">A task outside any</tspan><tspan x="849" y="107">track</tspan></text>
+<rect class="card" x="774" y="128" width="150" height="60" rx="10"/>
+<circle class="badge" cx="849" cy="188" r="10"/>
+<text class="label" text-anchor="middle"><tspan x="849" y="150">A task outside any</tspan><tspan x="849" y="167">track</tspan></text>
 </g>
 <g class="node milestone" data-id="itParses">
 <title>It parses (itParses)</title>
-<polygon class="gate" points="994,445 1144,445 1156,471 1144,497 994,497 982,471"/>
-<text class="label" text-anchor="middle"><tspan x="1069" y="467">It parses</tspan></text>
-<text class="caption" x="1069" y="482" text-anchor="middle" font-size="11">1 of 2 · EOY26</text>
+<polygon class="gate" points="994,505 1144,505 1156,531 1144,557 994,557 982,531"/>
+<text class="label" text-anchor="middle"><tspan x="1069" y="527">It parses</tspan></text>
+<text class="caption" x="1069" y="542" text-anchor="middle" font-size="11">1 of 2 · EOY26</text>
 </g>
 <g class="node milestone" data-id="firstPicture">
-<title>First picture (firstPicture)</title>
-<polygon class="gate" points="994,238 1144,238 1156,264 1144,290 994,290 982,264"/>
-<text class="label" text-anchor="middle"><tspan x="1069" y="260">First picture</tspan></text>
-<text class="caption" x="1069" y="275" text-anchor="middle" font-size="11">0 of 2</text>
+<title>First picture (firstPicture)
+
+Waits on a milestone, through a task that needs it.</title>
+<polygon class="gate" points="994,298 1144,298 1156,324 1144,350 994,350 982,324"/>
+<text class="label" text-anchor="middle"><tspan x="1069" y="320">First picture</tspan></text>
+<text class="caption" x="1069" y="335" text-anchor="middle" font-size="11">0 of 2</text>
 </g>
 </svg>

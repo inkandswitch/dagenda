@@ -13,6 +13,7 @@
 //! | `class`               | nodes             | `node task` or `node milestone`; a status; `locked` or `available`; `reached` |
 //! | `class`               | branches, banners | `track`, `untracked`, or `milestones`; `hue-0` to `hue-7` for a track's colour |
 //! | `class`               | eras              | `era`, and `reached`                                    |
+//! | `class`               | facts             | a `facts` row of `fact` spans: `dri`, `est`, `target`, `ref`, or `link`; the last two inside an `a` to their page |
 //! | `class`               | edges             | `edge`, then `met` or `waiting`, and `wanted`; or `edge member`, an empty `g` for a line the band implies (for scripts that follow the graph) |
 //!
 //! Colours are literal rather than CSS variables, which many non-browser
@@ -20,8 +21,8 @@
 //! page puts a `light` or `dark` class on the `svg` element.
 
 use super::{
-    BADGE_RADIUS, BranchKind, CAPTION, FONT, Hue, LINE, MARGIN, NOTCH, Node, PAD_Y, Point,
-    SMALL_FONT, Shape, TITLE_FONT, TechTree,
+    BADGE_RADIUS, BranchKind, CAPTION, FACT_GAP, FACT_LINE, FONT, Fact, Hue, LINE, MARGIN, NOTCH,
+    Node, PAD_Y, Point, SEPARATOR, SMALL_FONT, Shape, TITLE_FONT, TechTree,
 };
 use crate::{plan::Plan, status::Status};
 use alloc::{
@@ -98,7 +99,7 @@ impl Svg<'_> {
         for banner in &tree.banners {
             writeln!(
                 f,
-                r#"<g class="banner {}{} depth-{}"{}><rect x="{}" y="{}" width="{}" height="{}" rx="8"/><text x="{}" y="{}" text-anchor="middle">{}</text></g>"#,
+                r#"<g class="banner {}{} depth-{}"{}><rect x="{}" y="{}" width="{}" height="{}" rx="8"/><text x="{}" y="{}" text-anchor="middle">{}{}</text></g>"#,
                 kind_class(&banner.kind),
                 Colour(banner.hue),
                 banner.depth,
@@ -108,8 +109,9 @@ impl Svg<'_> {
                 banner.width,
                 banner.height,
                 banner.x + banner.width / 2,
-                banner.y + banner.height - 8,
-                Escaped(&banner.heading)
+                banner.y + 16,
+                Escaped(&banner.heading),
+                Dri(banner.dri.as_ref())
             )?;
         }
         Ok(())
@@ -223,11 +225,12 @@ fn task(f: &mut fmt::Formatter<'_>, node: &Node, status: Status, locked: bool) -
     )?;
     writeln!(
         f,
-        "<title>{} ({}): {}{}</title>",
+        "<title>{} ({}): {}{}{}</title>",
         Escaped(&node.lines.join(" ")),
         node.id,
         status.describe(),
-        if locked { ", waiting on something" } else { "" }
+        if locked { ", waiting on something" } else { "" },
+        More(node)
     )?;
     writeln!(
         f,
@@ -275,9 +278,10 @@ fn milestone(f: &mut fmt::Formatter<'_>, node: &Node, reached: bool) -> fmt::Res
     )?;
     writeln!(
         f,
-        "<title>{} ({})</title>",
+        "<title>{} ({}){}</title>",
         Escaped(&node.lines.join(" ")),
-        node.id
+        node.id,
+        More(node)
     )?;
     let middle = y + height / 2;
     writeln!(
@@ -295,7 +299,7 @@ fn milestone(f: &mut fmt::Formatter<'_>, node: &Node, reached: bool) -> fmt::Res
     f.write_str("</g>\n")
 }
 
-/// A card's label lines and caption, centred.
+/// A card's label lines, caption, and facts, centred.
 fn label(f: &mut fmt::Formatter<'_>, node: &Node) -> fmt::Result {
     let middle = node.middle();
     let mut baseline = node.y + PAD_Y + FONT - 1;
@@ -318,7 +322,76 @@ fn label(f: &mut fmt::Formatter<'_>, node: &Node) -> fmt::Result {
             Escaped(caption)
         )?;
     }
+
+    let lines = u32::try_from(node.lines.len()).unwrap_or(0);
+    let caption = if node.caption.is_some() { CAPTION } else { 0 };
+    let mut baseline = node.y + PAD_Y + lines * LINE + caption + FACT_GAP + FACT_LINE - 3;
+    for row in &node.facts {
+        write!(
+            f,
+            r#"<text class="facts" x="{middle}" y="{baseline}" text-anchor="middle" font-size="{SMALL_FONT}">"#
+        )?;
+        for (index, fact) in row.iter().enumerate() {
+            if index > 0 {
+                write!(f, r#"<tspan class="sep">{SEPARATOR}</tspan>"#)?;
+            }
+            let (class, text) = (fact_class(fact), Escaped(&fact.text()).to_string());
+            match fact.url() {
+                Some(url) => write!(
+                    f,
+                    r#"<a href="{}" target="_blank"><tspan class="fact {class}">{text}</tspan></a>"#,
+                    Escaped(&url)
+                )?,
+                None => write!(f, r#"<tspan class="fact {class}">{text}</tspan>"#)?,
+            }
+        }
+        f.write_str("</text>\n")?;
+        baseline += FACT_LINE;
+    }
     Ok(())
+}
+
+const fn fact_class(fact: &Fact) -> &'static str {
+    match fact {
+        Fact::Dri(_) => "dri",
+        Fact::Est(_) => "est",
+        Fact::Target(_) => "target",
+        Fact::Ref(_) => "ref",
+        Fact::Link(_) => "link",
+    }
+}
+
+/// A tooltip's facts and notes, after its first line.
+struct More<'a>(&'a Node);
+
+impl fmt::Display for More<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for row in &self.0.facts {
+            f.write_str("\n")?;
+            for (index, fact) in row.iter().enumerate() {
+                if index > 0 {
+                    f.write_str(SEPARATOR)?;
+                }
+                Escaped(&fact.text()).fmt(f)?;
+            }
+        }
+        for note in &self.0.notes {
+            write!(f, "\n\n{}", Escaped(note.as_str()))?;
+        }
+        Ok(())
+    }
+}
+
+/// ` · @handle` after a banner's heading, for its track's DRI.
+struct Dri<'a>(Option<&'a crate::handle::Handle>);
+
+impl fmt::Display for Dri<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            Some(dri) => write!(f, r#"<tspan class="dri">{SEPARATOR}{dri}</tspan>"#),
+            None => Ok(()),
+        }
+    }
 }
 
 /// A route's path: straight runs between its corners, each corner rounded,
@@ -483,6 +556,12 @@ const STYLE: &str = r"<style>
 .dagenda .badge { fill: #fff; stroke: #8a857c; stroke-width: 1.5; }
 .dagenda .mark { font-family: ui-monospace, monospace; font-size: 11px; font-weight: 700; }
 .dagenda .caption { fill: #6b6760; }
+.dagenda .facts { fill: #6b6760; }
+.dagenda .facts .dri { fill: #4a4640; font-weight: 600; }
+.dagenda .facts .sep { fill: #b4afa6; }
+.dagenda .facts a .fact { fill: #2f6fd6; }
+.dagenda .facts a:hover .fact { text-decoration: underline; }
+.dagenda .banner .dri { text-transform: none; letter-spacing: 0; font-weight: 500; }
 .dagenda .available .card { stroke: #b08a1e; stroke-width: 2; }
 .dagenda .available .badge { stroke: #b08a1e; stroke-width: 2; }
 .dagenda .locked { opacity: 0.55; }
@@ -539,6 +618,10 @@ const STYLE: &str = r"<style>
   .dagenda:not(.light) .era.reached text { fill: #7bc283; }
   .dagenda:not(.light) .banner rect { fill: #2e2c28; }
   .dagenda:not(.light) .banner text, .dagenda:not(.light) .caption { fill: #b4afa6; }
+  .dagenda:not(.light) .facts { fill: #b4afa6; }
+  .dagenda:not(.light) .facts .dri { fill: #ecebe8; }
+  .dagenda:not(.light) .facts .sep { fill: #6f6b63; }
+  .dagenda:not(.light) .facts a .fact { fill: #7aa7f0; }
   .dagenda:not(.light) :is(.card, .badge) { fill: #1f1e1c; }
   .dagenda:not(.light) :is(.not-started, .idea, .deferred, .dropped):not(.available) :is(.card, .badge) { stroke: #5b574f; }
   .dagenda:not(.light) .done .card { fill: #1f2e20; }
@@ -583,6 +666,10 @@ const STYLE: &str = r"<style>
 .dagenda.dark .era.reached text { fill: #7bc283; }
 .dagenda.dark .banner rect { fill: #2e2c28; }
 .dagenda.dark .banner text, .dagenda.dark .caption { fill: #b4afa6; }
+.dagenda.dark .facts { fill: #b4afa6; }
+.dagenda.dark .facts .dri { fill: #ecebe8; }
+.dagenda.dark .facts .sep { fill: #6f6b63; }
+.dagenda.dark .facts a .fact { fill: #7aa7f0; }
 .dagenda.dark :is(.card, .badge) { fill: #1f1e1c; }
 .dagenda.dark :is(.not-started, .idea, .deferred, .dropped):not(.available) :is(.card, .badge) { stroke: #5b574f; }
 .dagenda.dark .done .card { fill: #1f2e20; }

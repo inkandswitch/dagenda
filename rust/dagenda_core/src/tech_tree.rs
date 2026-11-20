@@ -3,9 +3,11 @@
 //!
 //! Each row is a tier: one more than the deepest thing in it waits on, so
 //! the roots are at the bottom and everything sits above what it builds on.
-//! Each track is a branch, a column panel growing up from its banner, with
-//! nested tracks' branches over their parent's banner. Subtasks fold into
-//! their top-level task, which shows how many of them are done.
+//! Each track is a branch, a column panel under its banner, with nested
+//! tracks' banners stacked under their parent's. Subtasks fold into their
+//! top-level task, which shows how many of them are done. A card also says
+//! who's on it, when it's expected, and links to its issues, pull requests,
+//! and anything else written about it.
 //!
 //! Milestones are eras: each is a dashed line across the whole tree, with
 //! its gate (label and progress) at the right end. Work sits in the band
@@ -47,15 +49,17 @@ pub mod svg;
 
 use crate::{
     date::Date,
+    handle::Handle,
     id::Id,
-    plan::{Count, DocumentId, Plan, Progress, Readiness},
+    plan::{Count, DocumentId, Plan, Progress, Readiness, Task},
+    reference::{Link, Ref},
     status::Status,
-    text::Text,
+    text::{Note, Text},
 };
 use alloc::{
     collections::{BTreeMap, VecDeque},
     format,
-    string::String,
+    string::{String, ToString},
     vec,
     vec::Vec,
 };
@@ -76,7 +80,7 @@ pub struct TechTree {
     /// outside any track, then the column the milestones' gates sit in.
     pub branches: Vec<Branch>,
 
-    /// The headings under the branches, one per track (spanning its nested
+    /// The headings over the branches, one per track (spanning its nested
     /// tracks' branches too), and one for tasks outside any track.
     pub banners: Vec<Banner>,
 
@@ -181,7 +185,7 @@ pub enum BranchKind {
     Milestones,
 }
 
-/// A heading under one or more branches.
+/// A heading over one or more branches.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Banner {
     /// What it heads.
@@ -190,11 +194,13 @@ pub struct Banner {
     /// Its text: the track's label, or its id.
     pub heading: String,
 
+    /// The track's DRI.
+    pub dri: Option<Handle>,
+
     /// Its track's colour.
     pub hue: Option<Hue>,
 
-    /// How deeply its track is nested: banners stack, outermost at the
-    /// bottom, like the trunk a branch grows from.
+    /// How deeply its track is nested: banners stack, outermost at the top.
     pub depth: usize,
 
     /// Its left edge.
@@ -242,6 +248,13 @@ pub struct Node {
     /// A smaller line under the label: subtasks done, or a milestone's
     /// progress and target.
     pub caption: Option<String>,
+
+    /// What it says under that, a row at a time: who's on it, when it's
+    /// expected, and its links.
+    pub facts: Vec<Vec<Fact>>,
+
+    /// Its notes, for a tooltip.
+    pub notes: Vec<Note>,
 
     /// Its branch, an index into [`TechTree::branches`].
     pub branch: usize,
@@ -304,6 +317,49 @@ pub enum Shape {
         /// When it should be reached.
         target: Option<Date>,
     },
+}
+
+/// Something a card says about its task, under the label.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Fact {
+    /// Someone on it: the task's DRI, or a subtask's.
+    Dri(Handle),
+
+    /// When it's expected to land.
+    Est(Date),
+
+    /// When it should land.
+    Target(Date),
+
+    /// An issue or pull request.
+    Ref(Ref),
+
+    /// Any other page about it.
+    Link(Link),
+}
+
+impl Fact {
+    /// What the card says: `@alice`, `est 2026-11-19`, `PR #7`, and so on.
+    #[must_use]
+    pub fn text(&self) -> String {
+        match self {
+            Self::Dri(dri) => dri.to_string(),
+            Self::Est(date) => format!("est {date}"),
+            Self::Target(date) => format!("target {date}"),
+            Self::Ref(reference) => reference.short(),
+            Self::Link(link) => link.name(),
+        }
+    }
+
+    /// Where it goes when clicked, if anywhere.
+    #[must_use]
+    pub fn url(&self) -> Option<String> {
+        match self {
+            Self::Ref(reference) => Some(reference.url()),
+            Self::Link(link) => Some(String::from(link.url.as_str())),
+            Self::Dri(_) | Self::Est(_) | Self::Target(_) => None,
+        }
+    }
 }
 
 /// A line from a prerequisite up to what waits on it.
@@ -375,6 +431,12 @@ const PAD_X: u32 = 12;
 const PAD_Y: u32 = 10;
 const LINE: u32 = 17;
 const CAPTION: u32 = 15;
+const FACT_LINE: u32 = 14;
+const FACT_GAP: u32 = 4;
+
+/// Between facts on a row, and before a banner's DRI: non-breaking spaces,
+/// so no renderer collapses them at the edge of a `tspan`.
+const SEPARATOR: &str = "\u{a0}·\u{a0}";
 const BADGE_RADIUS: u32 = 10;
 
 /// How far a milestone's pointed ends stick out.
@@ -417,7 +479,9 @@ fn nodes(plan: &Plan) -> (Vec<Node>, BTreeMap<Id, usize>) {
             subtasks: subtasks(plan, &task.id),
             locked: matches!(plan.readiness(&task.id), Some(Readiness::Blocked(_))),
         };
-        nodes.push(node(&task.id, task.label.as_ref(), shape));
+        let mut card = node(&task.id, task.label.as_ref(), shape, facts(plan, task));
+        card.notes = task.notes.iter().map(|note| note.node.clone()).collect();
+        nodes.push(card);
     }
 
     for milestone in plan.milestones() {
@@ -430,7 +494,13 @@ fn nodes(plan: &Plan) -> (Vec<Node>, BTreeMap<Id, usize>) {
             progress,
             target: milestone.target.as_ref().map(|target| target.node),
         };
-        nodes.push(node(&milestone.id, milestone.label.as_ref(), shape));
+        let mut gate = node(&milestone.id, milestone.label.as_ref(), shape, Vec::new());
+        gate.notes = milestone
+            .notes
+            .iter()
+            .map(|note| note.node.clone())
+            .collect();
+        nodes.push(gate);
     }
 
     for task in plan.tasks().iter().filter(|task| task.parent.is_some()) {
@@ -443,7 +513,7 @@ fn nodes(plan: &Plan) -> (Vec<Node>, BTreeMap<Id, usize>) {
 }
 
 /// A card, sized to its text, not yet placed.
-fn node(id: &Id, label: Option<&Text>, shape: Shape) -> Node {
+fn node(id: &Id, label: Option<&Text>, shape: Shape, facts: Vec<Fact>) -> Node {
     let lines = wrap(label.map_or(id.as_str(), Text::as_str), CARD - PAD_X * 2);
     let caption = match &shape {
         Shape::Task { subtasks, .. } if subtasks.total > 0 => {
@@ -471,9 +541,23 @@ fn node(id: &Id, label: Option<&Text>, shape: Shape) -> Node {
     let caption_width = caption
         .as_ref()
         .map_or(0, |caption| text_width(caption, SMALL_FONT));
-    let inner = (text.max(caption_width) + PAD_X * 2).max(CARD);
+    let widest_fact = facts
+        .iter()
+        .map(|fact| text_width(&fact.text(), SMALL_FONT))
+        .max()
+        .unwrap_or(0);
+    let inner = (text.max(caption_width).max(widest_fact) + PAD_X * 2).max(CARD);
+    let facts = fact_rows(facts, inner - PAD_X * 2);
     let rows = u32::try_from(lines.len()).unwrap_or(u32::MAX);
     let caption_height = if caption.is_some() { CAPTION } else { 0 };
+    let fact_height = if facts.is_empty() {
+        0
+    } else {
+        FACT_GAP
+            + u32::try_from(facts.len())
+                .unwrap_or(u32::MAX)
+                .saturating_mul(FACT_LINE)
+    };
     let (width, bottom) = match shape {
         Shape::Task { .. } => (inner, BADGE_RADIUS + 6),
         Shape::Milestone { .. } => (inner + NOTCH * 2, PAD_Y),
@@ -484,13 +568,70 @@ fn node(id: &Id, label: Option<&Text>, shape: Shape) -> Node {
         shape,
         lines,
         caption,
+        facts,
+        notes: Vec::new(),
         branch: 0,
         row: 0,
         x: 0,
         y: 0,
         width,
-        height: PAD_Y + rows.saturating_mul(LINE) + caption_height + bottom,
+        height: PAD_Y + rows.saturating_mul(LINE) + caption_height + fact_height + bottom,
     }
+}
+
+/// What a task's card says about it: everyone on it (its DRI, then its
+/// subtasks'), when it's expected and should land, and its links.
+fn facts(plan: &Plan, task: &Task) -> Vec<Fact> {
+    let mut people: Vec<Handle> = Vec::new();
+    let mut stack: Vec<&Task> = vec![task];
+    let mut seen = 0;
+    while let Some(task) = stack.pop() {
+        seen += 1;
+        if seen > plan.tasks().len() {
+            break;
+        }
+        if let Some(dri) = &task.dri
+            && !people.contains(&dri.node)
+        {
+            people.push(dri.node.clone());
+        }
+        stack.extend(task.subtasks.iter().rev().filter_map(|id| plan.task(id)));
+    }
+
+    people
+        .into_iter()
+        .map(Fact::Dri)
+        .chain(task.est.as_ref().map(|est| Fact::Est(est.node)))
+        .chain(task.target.as_ref().map(|target| Fact::Target(target.node)))
+        .chain(
+            task.refs
+                .iter()
+                .map(|reference| Fact::Ref(reference.node.clone())),
+        )
+        .chain(task.links.iter().map(|link| Fact::Link(link.node.clone())))
+        .collect()
+}
+
+/// Facts in rows no wider than `max` pixels at [`SMALL_FONT`], with
+/// [`SEPARATOR`] between them. A fact wider than `max` gets a row of its own.
+fn fact_rows(facts: Vec<Fact>, max: u32) -> Vec<Vec<Fact>> {
+    let separator = text_width(SEPARATOR, SMALL_FONT);
+    let mut rows: Vec<Vec<Fact>> = Vec::new();
+    let mut width = 0;
+    for fact in facts {
+        let fact_width = text_width(&fact.text(), SMALL_FONT);
+        match rows.last_mut() {
+            Some(row) if width + separator + fact_width <= max => {
+                width += separator + fact_width;
+                row.push(fact);
+            }
+            Some(_) | None => {
+                width = fact_width;
+                rows.push(vec![fact]);
+            }
+        }
+    }
+    rows
 }
 
 /// How many of a task's subtasks, at any depth, are done.
@@ -969,6 +1110,7 @@ fn without_back_edges(successors: &[Vec<usize>]) -> Vec<Vec<usize>> {
 struct BannerSpec {
     kind: BranchKind,
     heading: String,
+    dri: Option<Handle>,
     hue: Option<Hue>,
     depth: usize,
     first: usize,
@@ -1034,6 +1176,7 @@ fn branches(plan: &Plan, nodes: &[Node]) -> (Vec<BranchKind>, Vec<BannerSpec>, V
         banners.push(BannerSpec {
             kind: BranchKind::Track(track.id.clone()),
             heading: String::from(track.label.as_ref().map_or(track.id.as_str(), Text::as_str)),
+            dri: track.dri.as_ref().map(|dri| dri.node.clone()),
             hue: Some(Hue::nth(steps - 1)),
             depth,
             first,
@@ -1055,6 +1198,7 @@ fn branches(plan: &Plan, nodes: &[Node]) -> (Vec<BranchKind>, Vec<BannerSpec>, V
         banners.push(BannerSpec {
             kind: BranchKind::Untracked,
             heading: String::from("Other tasks"),
+            dri: None,
             hue: None,
             depth: 0,
             first: kinds.len(),
@@ -1216,8 +1360,15 @@ fn place(
     let (mut inner, heights) = measure(nodes, &cells, kinds.len(), tiers.gates.len());
     fit_banners(&mut inner, banners);
 
-    // The highest row is at the top: time goes up
-    let panel_top = top;
+    // Banners first, stacked outermost at the top; then the rows, the
+    // highest at the top: time goes up
+    let depth = banners
+        .iter()
+        .map(|banner| banner.depth)
+        .max()
+        .map_or(0, |max| max + 1);
+    let banner_top = top;
+    let panel_top = top + u32::try_from(depth).unwrap_or(0).saturating_mul(BANNER);
     let mut rows = vec![(0, 0); heights.len()];
     let mut y = panel_top + PANEL_TOP;
     for (row, height) in heights.iter().enumerate().rev() {
@@ -1252,16 +1403,11 @@ fn place(
     }
 
     put(nodes, &cells, &branches, &rows);
-    let depth = banners
-        .iter()
-        .map(|banner| banner.depth)
-        .max()
-        .map_or(0, |max| max + 1);
-    let banners = place_banners(banners, &branches, panel_bottom, depth);
+    let banners = place_banners(banners, &branches, banner_top, panel_top);
     let mut frame = Frame {
         // Room for the gutter beyond the last branch, where lines can climb
         width: x + MARGIN / 2,
-        height: panel_bottom + u32::try_from(depth).unwrap_or(0).saturating_mul(BANNER) + MARGIN,
+        height: panel_bottom + MARGIN,
         branches,
         banners,
         bands: Vec::new(),
@@ -1342,7 +1488,7 @@ fn fit_banners(inner: &mut [u32], banners: &[BannerSpec]) {
             .map(|inner| inner + PANEL_SIDE * 2)
             .sum();
         let gutters = u32::try_from(spec.last.saturating_sub(spec.first)).unwrap_or(0) * GUTTER;
-        let wanted = heading_width(&spec.heading) + BANNER_PAD * 2;
+        let wanted = heading_width(&spec.heading, spec.dri.as_ref()) + BANNER_PAD * 2;
         if let Some(last) = inner.get_mut(spec.last) {
             *last += wanted.saturating_sub(panels + gutters);
         }
@@ -1350,11 +1496,14 @@ fn fit_banners(inner: &mut [u32], banners: &[BannerSpec]) {
 }
 
 /// Roughly how wide a banner's heading sets: in capitals, with 0.06em
-/// between letters.
-fn heading_width(heading: &str) -> u32 {
+/// between letters, then the DRI as written.
+fn heading_width(heading: &str, dri: Option<&Handle>) -> u32 {
     let capitals = heading.to_uppercase();
     let letters = u32::try_from(capitals.chars().count()).unwrap_or(u32::MAX);
-    text_width(&capitals, BANNER_FONT) + letters.saturating_mul(BANNER_FONT * 6).div_ceil(100)
+    let dri = dri.map_or(0, |dri| {
+        text_width(&format!("{SEPARATOR}{dri}"), BANNER_FONT)
+    });
+    text_width(&capitals, BANNER_FONT) + letters.saturating_mul(BANNER_FONT * 6).div_ceil(100) + dri
 }
 
 /// How many cards share a line in a cell of `count`: [`PER_ROW`], or more,
@@ -1422,36 +1571,33 @@ fn put(nodes: &mut [Node], cells: &Cells, branches: &[Branch], rows: &[(u32, u32
     }
 }
 
-/// Each banner under its branches, stacked by depth with the outermost at
-/// the bottom; a banner with no nested banners over it reaches up to its
-/// branches.
+/// Each banner over its branches, stacked by depth with the outermost at
+/// the top, from `banner_top`; a banner with no nested banners under it
+/// reaches down to its branches at `panel_top`.
 fn place_banners(
     specs: &[BannerSpec],
     branches: &[Branch],
-    panel_bottom: u32,
-    depth: usize,
+    banner_top: u32,
+    panel_top: u32,
 ) -> Vec<Banner> {
     specs
         .iter()
         .filter_map(|spec| {
             let first = branches.get(spec.first)?;
             let last = branches.get(spec.last)?;
-            let level = u32::try_from(depth.saturating_sub(spec.depth + 1)).unwrap_or(0);
-            let slot_top = panel_bottom + level.saturating_mul(BANNER);
-            let y = if spec.reaches {
-                panel_bottom + BANNER_GAP
-            } else {
-                slot_top + BANNER_GAP
-            };
+            let level = u32::try_from(spec.depth).unwrap_or(0);
+            let y = banner_top + level.saturating_mul(BANNER);
+            let bottom = if spec.reaches { panel_top } else { y + BANNER };
             Some(Banner {
                 kind: spec.kind.clone(),
                 heading: spec.heading.clone(),
+                dri: spec.dri.clone(),
                 hue: spec.hue,
                 depth: spec.depth,
                 x: first.x,
                 y,
                 width: last.x + last.width - first.x,
-                height: (slot_top + BANNER).saturating_sub(y),
+                height: bottom.saturating_sub(y + BANNER_GAP),
             })
         })
         .collect()
