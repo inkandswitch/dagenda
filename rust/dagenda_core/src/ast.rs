@@ -6,6 +6,7 @@
 //! track inside a task, has no representation here.
 
 use crate::{
+    colour::Colour,
     date::Date,
     handle::Handle,
     id::Id,
@@ -85,6 +86,9 @@ pub struct Track {
 
     /// The person responsible for it.
     pub dri: Option<Spanned<Handle>>,
+
+    /// Its colour in the picture, if it sets one.
+    pub colour: Option<Spanned<Colour>>,
 
     /// Notes about it.
     pub notes: Vec<Spanned<Note>>,

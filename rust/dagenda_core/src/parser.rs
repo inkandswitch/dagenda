@@ -33,6 +33,7 @@
 
 use crate::{
     ast::{Details, Document, Extend, Item, Milestone, Task, Track, TrackChild},
+    colour::{Colour, InvalidColour},
     date::{Date, InvalidDate},
     errors::Errors,
     handle::{Handle, InvalidHandle},
@@ -268,6 +269,7 @@ impl<'a> Parser<'a> {
             id,
             label,
             dri: None,
+            colour: None,
             notes: Vec::new(),
             children: Vec::new(),
         };
@@ -285,6 +287,9 @@ impl<'a> Parser<'a> {
                 Head::Detail(key, word, value) => {
                     match parser.detail(Place::Track, child, key, word, value)? {
                         Detail::Dri(dri) => set_once(&mut track.dri, dri, key, Place::Track)?,
+                        Detail::Colour(colour) => {
+                            set_once(&mut track.colour, colour, key, Place::Track)?;
+                        }
                         Detail::Note(note) => track.notes.push(note),
                         Detail::Needs(_)
                         | Detail::Est(_)
@@ -429,7 +434,8 @@ impl<'a> Parser<'a> {
                         | Detail::Est(_)
                         | Detail::Dri(_)
                         | Detail::Ref(_)
-                        | Detail::Link(_) => {
+                        | Detail::Link(_)
+                        | Detail::Colour(_) => {
                             return Err(misplaced(key.quoted(), word.span(), Place::Milestone));
                         }
                     }
@@ -468,7 +474,8 @@ impl<'a> Parser<'a> {
                 | Key::Dri
                 | Key::Pr
                 | Key::Issue
-                | Key::Link => Err(ParseError::new(
+                | Key::Link
+                | Key::Colour => Err(ParseError::new(
                     word.span(),
                     ParseErrorKind::MissingValue(key.keyword()),
                 )),
@@ -484,6 +491,7 @@ impl<'a> Parser<'a> {
             Key::Issue => Detail::Ref(reference(RefKind::Issue, value)?),
             Key::Link => Detail::Link(link(value)?),
             Key::Note => Detail::Note(parse_value(value, Note::new)?),
+            Key::Colour => Detail::Colour(parse_value(value, Colour::new)?),
         })
     }
 
@@ -887,6 +895,7 @@ enum Detail {
     Ref(Spanned<Ref>),
     Link(Spanned<Link>),
     Note(Spanned<Note>),
+    Colour(Spanned<Colour>),
 }
 
 /// The keyword that starts a detail line.
@@ -900,6 +909,7 @@ enum Key {
     Issue,
     Link,
     Note,
+    Colour,
 }
 
 impl Key {
@@ -913,6 +923,8 @@ impl Key {
             "issue" => Some(Self::Issue),
             "link" => Some(Self::Link),
             "note" => Some(Self::Note),
+            // Either spelling: people will type both
+            "colour" | "color" => Some(Self::Colour),
             _ => None,
         }
     }
@@ -927,6 +939,7 @@ impl Key {
             Self::Issue => "issue",
             Self::Link => "link",
             Self::Note => "note",
+            Self::Colour => "colour",
         }
     }
 
@@ -940,6 +953,7 @@ impl Key {
             Self::Issue => "`issue`",
             Self::Link => "`link`",
             Self::Note => "`note`",
+            Self::Colour => "`colour`",
         }
     }
 }
@@ -954,6 +968,9 @@ fn add(details: &mut Details, detail: Detail, place: Place) -> Result<(), ParseE
         Detail::Ref(reference) => details.refs.push(reference),
         Detail::Link(link) => details.links.push(link),
         Detail::Note(note) => details.notes.push(note),
+        Detail::Colour(colour) => {
+            return Err(misplaced(Key::Colour.quoted(), colour.span, place));
+        }
     }
     Ok(())
 }
@@ -1021,8 +1038,8 @@ impl Place {
     /// Whether a detail line with `key` can go here.
     const fn allows(self, key: Key) -> bool {
         match self {
-            Self::Task | Self::Extend => true,
-            Self::Track => matches!(key, Key::Dri | Key::Note),
+            Self::Task | Self::Extend => !matches!(key, Key::Colour),
+            Self::Track => matches!(key, Key::Dri | Key::Note | Key::Colour),
             Self::Milestone => matches!(key, Key::Target | Key::Note),
             Self::TopLevel | Self::NiceToHave => false,
         }
@@ -1157,6 +1174,10 @@ pub enum ParseErrorKind {
     /// A `link` that isn't a web address.
     #[error(transparent)]
     Url(#[from] InvalidUrl),
+
+    /// A `colour` that isn't one.
+    #[error(transparent)]
+    Colour(#[from] InvalidColour),
 
     /// A one-line note that's empty.
     #[error(transparent)]

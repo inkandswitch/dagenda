@@ -5,6 +5,7 @@ mod common;
 use bolero::check;
 use dagenda_core::{
     check::Source,
+    colour::{Colour, Named, Rgb},
     date::Date,
     edit::{self, Edit, EditError},
     plan::{Plan, Readiness},
@@ -40,6 +41,35 @@ fn plans_are_consistent() {
                 Err(error) => assert_errors_in_bounds(&error, &source),
             }
         });
+}
+
+/// Any `#rrggbb`, in any case, reads back as the same colour, and prints in
+/// lowercase; every palette name reads back as itself.
+#[test]
+fn colours_round_trip() {
+    check!()
+        .with_type::<([u8; 3], bool)>()
+        .for_each(|&([red, green, blue], upper)| {
+            let written = format!("#{red:02x}{green:02x}{blue:02x}");
+            let written = if upper {
+                written.to_uppercase()
+            } else {
+                written
+            };
+            let colour = Colour::new(&written);
+            assert_eq!(
+                colour,
+                Ok(Colour::Rgb(Rgb::new(red, green, blue))),
+                "{written}"
+            );
+            assert_eq!(
+                colour.map(|colour| colour.to_string()),
+                Ok(written.to_lowercase())
+            );
+        });
+    for named in Named::ALL {
+        assert_eq!(Colour::new(named.name()), Ok(Colour::Named(named)));
+    }
 }
 
 /// Well-formed plans (a DAG of up to 14 tasks over nested tracks, under up

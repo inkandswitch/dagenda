@@ -190,3 +190,51 @@ test("a milestone's grab area is never drawn", async () => {
   })()`)
   assert.equal(hit, "0", "a reached era, in the dark")
 })
+
+/** A plan big enough to scroll when zoomed in: four tracks of chained tasks. */
+const BIG = [
+  "roadmap",
+  ...["a", "b", "c", "d"].flatMap((track) => [
+    `track ${track}`,
+    ...[0, 1, 2, 3, 4, 5].flatMap((n) => [`  [ ] task ${track}${n}`, ...(n > 0 ? [`    needs ${track}${n - 1}`] : [])]),
+  ]),
+].join("\n")
+
+test("zooming with the wheel keeps the card under the pointer still", async () => {
+  const a = await open("zoom")
+  await write(a, BIG, "d5")
+  const card = '.node[data-id="c3"] .card'
+  const point = await middle(a, card)
+  await a.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: point.x, y: point.y })
+  for (let step = 0; step < 6; step++) {
+    // Ctrl + wheel, as a pinch on a trackpad sends
+    await a.send("Input.dispatchMouseEvent", { type: "mouseWheel", x: point.x, y: point.y, deltaX: 0, deltaY: -120, modifiers: 2 })
+  }
+  await a.until(`Number(document.getElementById("picture").getAttribute("zoom")) > 1.5`, "zoomed in")
+  await sleep(100)
+  const after = await middle(a, card)
+  assert.ok(Math.abs(after.x - point.x) < 3 && Math.abs(after.y - point.y) < 3, `c3 stayed under the pointer: ${JSON.stringify({ point, after })}`)
+})
+
+test("zooming with the buttons keeps the middle of the view still", async () => {
+  const a = await open("zoom-buttons")
+  await write(a, BIG, "d5")
+  // The view's middle, as fractions of the picture, before and after
+  const centre = `(() => {
+    const picture = document.getElementById("picture")
+    const view = picture.getBoundingClientRect()
+    const svg = picture.shadowRoot.querySelector("svg").getBoundingClientRect()
+    return { across: (view.x + picture.clientWidth / 2 - svg.x) / svg.width, down: (view.y + picture.clientHeight / 2 - svg.y) / svg.height }
+  })()`
+  await a.evaluate(`document.getElementById("zoom-in").click()`)
+  await a.evaluate(`document.getElementById("zoom-in").click()`)
+  await sleep(100)
+  const before = await a.evaluate(centre)
+  await a.evaluate(`document.getElementById("zoom-in").click()`)
+  await sleep(100)
+  const after = await a.evaluate(centre)
+  assert.ok(
+    Math.abs(after.across - before.across) < 0.01 && Math.abs(after.down - before.down) < 0.01,
+    `the same point stays in the middle: ${JSON.stringify({ before, after })}`,
+  )
+})

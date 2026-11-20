@@ -15,6 +15,7 @@ pub mod warning;
 
 use crate::{
     ast::Document,
+    colour::Colour,
     date::Date,
     errors::Errors,
     handle::Handle,
@@ -367,6 +368,9 @@ pub struct Track {
 
     /// The person responsible for it.
     pub dri: Option<Located<Handle>>,
+
+    /// Its colour in the picture, if it sets one.
+    pub colour: Option<Located<Colour>>,
 
     /// Notes about it.
     pub notes: Vec<Located<Note>>,

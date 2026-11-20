@@ -3,7 +3,7 @@
 // collaborative editor into CodeMirror decorations. Line for line.
 
 const BLOCKS = new Set(["extend", "milestone", "nice-to-have", "roadmap", "task", "title", "track"])
-const DETAILS = new Set(["dri", "est", "issue", "link", "needs", "note", "pr", "target"])
+const DETAILS = new Set(["color", "colour", "dri", "est", "issue", "link", "needs", "note", "pr", "target"])
 
 /** The status class for each box's mark, as the SVG uses. */
 export const STATUS = {

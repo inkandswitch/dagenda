@@ -13,7 +13,7 @@
 //! | `data-from`/`data-to` | edges             | the prerequisite's and the dependent's ids              |
 //! | `class`               | nodes             | `node task` or `node milestone`; a status; `locked`, `waiting` (under way, but waiting on something), or `available`; `reached` |
 //! | `class`               | a node's parts    | `card` or `gate`, `badge`, and `mark` or `check`; a task in progress adds a `glow` behind its card and a turning `spinner` on its badge |
-//! | `class`               | branches, banners | `track`, `untracked`, or `milestones`; `hue-0` to `hue-7` for a track's colour |
+//! | `class`               | branches, banners | `track`, `untracked`, or `milestones`; `hue-0` to `hue-7` for a palette colour (teal, indigo, rose, ochre, sage, plum, sky, terracotta), or `colour-rrggbb` for any other |
 //! | `class`               | eras              | `era`, and `reached`                                    |
 //! | `class`               | bands             | `band reached` for a reached era; `band side` for the layer of work on no milestone |
 //! | `class`               | facts             | a `facts` row of `fact` spans: `dri`, `est`, `target`, `ref`, or `link`; the last two inside an `a` to their page |
@@ -24,10 +24,11 @@
 //! page puts a `light` or `dark` class on the `svg` element.
 
 use super::{
-    BADGE_RADIUS, BranchKind, CAPTION, FACT_GAP, FACT_LINE, FONT, Fact, Hue, LINE, MARGIN, NOTCH,
-    Node, PAD_Y, Point, SEPARATOR, SMALL_FONT, Shape, TITLE_FONT, TechTree,
+    BADGE_RADIUS, BranchKind, CAPTION, FACT_GAP, FACT_LINE, FONT, Fact, LINE, MARGIN, NOTCH, Node,
+    PAD_Y, Point, SEPARATOR, SMALL_FONT, Shape, TITLE_FONT, TechTree,
 };
 use crate::{
+    colour::{Colour, Rgb},
     plan::{Plan, Progress},
     status::Status,
 };
@@ -78,7 +79,7 @@ impl Svg<'_> {
                 f,
                 r#"<rect class="branch {}{}" data-branch="{index}"{} x="{}" y="{}" width="{}" height="{}" rx="12"/>"#,
                 kind_class(&branch.kind),
-                Colour(branch.hue),
+                ColourClass(branch.colour),
                 Track(&branch.kind),
                 branch.x,
                 branch.y,
@@ -118,7 +119,7 @@ impl Svg<'_> {
                 f,
                 r#"<g class="banner {}{} depth-{}"{}><rect x="{}" y="{}" width="{}" height="{}" rx="8"/><text x="{}" y="{}" text-anchor="middle">{}{}</text></g>"#,
                 kind_class(&banner.kind),
-                Colour(banner.hue),
+                ColourClass(banner.colour),
                 banner.depth,
                 Track(&banner.kind),
                 banner.x,
@@ -233,6 +234,7 @@ impl fmt::Display for Svg<'_> {
             r#"<svg xmlns="http://www.w3.org/2000/svg" class="dagenda tech-tree" viewBox="0 0 {width} {height}" width="{width}" height="{height}" font-family="system-ui, sans-serif" font-size="{FONT}">"#
         )?;
         f.write_str(STYLE)?;
+        write!(f, "{}", CustomColours(tree))?;
         // The glow behind a task in progress: its outline, blurred
         writeln!(
             f,
@@ -589,15 +591,99 @@ impl fmt::Display for Era<'_> {
     }
 }
 
-/// ` hue-n` for a track's colour, else nothing.
-struct Colour(Option<Hue>);
+/// ` hue-n` for a palette colour, ` colour-rrggbb` for any other, or
+/// nothing.
+struct ColourClass(Option<Colour>);
 
-impl fmt::Display for Colour {
+impl fmt::Display for ColourClass {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {
-            Some(hue) => write!(f, " hue-{}", hue.index()),
+            Some(Colour::Named(named)) => write!(f, " hue-{}", named.index()),
+            Some(Colour::Rgb(rgb)) => write!(f, " colour-{}", Hex(rgb)),
             None => Ok(()),
         }
+    }
+}
+
+/// A colour's six hex digits, without the `#`: for a class name.
+struct Hex(Rgb);
+
+impl fmt::Display for Hex {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let [red, green, blue] = self.0.channels();
+        write!(f, "{red:02x}{green:02x}{blue:02x}")
+    }
+}
+
+/// The style for tracks coloured `#rrggbb`: tints derived from each, for
+/// light and dark themes, the way the palette's are tuned (pale fills and a
+/// dark heading on a light page; deep fills and a pale heading on a dark
+/// one). Nothing if every track uses the palette.
+struct CustomColours<'a>(&'a TechTree);
+
+impl CustomColours<'_> {
+    fn rules(f: &mut fmt::Formatter<'_>, scope: &str, rgb: Rgb, dark: bool) -> fmt::Result {
+        const WHITE: Rgb = Rgb::new(0xff, 0xff, 0xff);
+        const BLACK: Rgb = Rgb::new(0, 0, 0);
+        const CANVAS: Rgb = Rgb::new(0x1a, 0x19, 0x17);
+        let (fill, edge, heading) = if dark {
+            (
+                rgb.mix(CANVAS, 880),
+                rgb.mix(CANVAS, 620),
+                rgb.mix(WHITE, 600),
+            )
+        } else {
+            (
+                rgb.mix(WHITE, 900),
+                rgb.mix(WHITE, 700),
+                rgb.mix(BLACK, 450),
+            )
+        };
+        let class = Hex(rgb);
+        writeln!(
+            f,
+            "{scope} .branch.colour-{class}, {scope} .banner.colour-{class} rect {{ fill: {fill}; stroke: {edge}; }}"
+        )?;
+        writeln!(f, "{scope} .banner.colour-{class} rect {{ fill: {edge}; }}")?;
+        writeln!(
+            f,
+            "{scope} .banner.colour-{class} text {{ fill: {heading}; }}"
+        )
+    }
+}
+
+impl fmt::Display for CustomColours<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut colours: Vec<Rgb> = self
+            .0
+            .branches
+            .iter()
+            .map(|branch| branch.colour)
+            .chain(self.0.banners.iter().map(|banner| banner.colour))
+            .filter_map(|colour| match colour? {
+                Colour::Rgb(rgb) => Some(rgb),
+                Colour::Named(_) => None,
+            })
+            .collect();
+        colours.sort_unstable_by_key(|rgb| rgb.channels());
+        colours.dedup();
+        if colours.is_empty() {
+            return Ok(());
+        }
+
+        writeln!(f, "<style>")?;
+        for &rgb in &colours {
+            Self::rules(f, ".dagenda", rgb, false)?;
+        }
+        writeln!(f, "@media (prefers-color-scheme: dark) {{")?;
+        for &rgb in &colours {
+            Self::rules(f, ".dagenda:not(.light)", rgb, true)?;
+        }
+        writeln!(f, "}}")?;
+        for &rgb in &colours {
+            Self::rules(f, ".dagenda.dark", rgb, true)?;
+        }
+        writeln!(f, "</style>")
     }
 }
 

@@ -98,6 +98,35 @@ fn a_loop_waits_until_every_id_resolves() {
 }
 
 #[test]
+fn track_colours_say_what_to_do() {
+    for (source, expected) in [
+        (
+            "roadmap\ntrack t\n  colour red",
+            "3:10: there's no colour `red`; use teal, indigo, rose, ochre, sage, plum, sky, or terracotta, or a hex colour like `#2a9d8f`",
+        ),
+        (
+            "roadmap\ntrack t\n  colour #12345",
+            "3:10: a hex colour is `#` and six hex digits, as in `#2a9d8f`",
+        ),
+        (
+            "roadmap\n[ ] task a\n  colour teal",
+            "3:3: `colour` can't go in a task",
+        ),
+        (
+            "roadmap\ntrack t\n  colour teal\n  color sky",
+            "4:9: a track can only have one `colour`",
+        ),
+        (
+            "roadmap\ntrack t\n  colour",
+            "3:3: expected a value after `colour`",
+        ),
+        ("roadmap\ntrack t\n  color Teal", "parsed"),
+    ] {
+        assert_eq!(error(source), expected, "{source:?}");
+    }
+}
+
+#[test]
 fn nice_to_haves_say_what_to_do() {
     for (source, expected) in [
         (

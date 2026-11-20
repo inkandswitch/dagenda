@@ -102,6 +102,7 @@ impl<'d> Builder<'d> {
             label: ast.label.as_ref().map(|label| label.node.clone()),
             parent: parent.cloned(),
             dri: ast.dri.as_ref().map(|dri| locate(document, dri)),
+            colour: ast.colour.as_ref().map(|colour| locate(document, colour)),
             notes: ast
                 .notes
                 .iter()

@@ -49,10 +49,11 @@ mod route;
 pub mod svg;
 
 use crate::{
+    colour::{Colour, Named},
     date::Date,
     handle::Handle,
     id::Id,
-    plan::{Count, DocumentId, Plan, Progress, Readiness, Task},
+    plan::{Count, DocumentId, Plan, Progress, Readiness, Task, Track},
     reference::{Link, Ref},
     status::Status,
     text::{Note, Text},
@@ -182,8 +183,9 @@ pub struct Branch {
     /// Whose cards it holds.
     pub kind: BranchKind,
 
-    /// Its track's colour.
-    pub hue: Option<Hue>,
+    /// Its track's colour: the one it sets, or the next free one in the
+    /// palette, in the order tracks are written.
+    pub colour: Option<Colour>,
 
     /// Its left edge.
     pub x: u32,
@@ -223,8 +225,9 @@ pub struct Banner {
     /// The track's DRI.
     pub dri: Option<Handle>,
 
-    /// Its track's colour.
-    pub hue: Option<Hue>,
+    /// Its track's colour: the one it sets, or the next free one in the
+    /// palette, in the order tracks are written.
+    pub colour: Option<Colour>,
 
     /// How deeply its track is nested: banners stack, outermost at the top.
     pub depth: usize,
@@ -413,29 +416,6 @@ pub struct Edge {
     /// The corners of its path, from the top of the prerequisite to the
     /// bottom of what waits on it, each turn a right angle.
     pub route: Vec<Point>,
-}
-
-/// A track's colour: one of [`Hue::COUNT`], given out in the order tracks
-/// are written (depth first), so tracks next to each other differ. Only
-/// the picture's style says what each looks like.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Hue(u8);
-
-impl Hue {
-    /// How many colours there are before they repeat.
-    pub const COUNT: u8 = 8;
-
-    /// The `index`th track's colour.
-    #[must_use]
-    pub fn nth(index: usize) -> Self {
-        Self(u8::try_from(index % usize::from(Self::COUNT)).unwrap_or(0))
-    }
-
-    /// Which of the colours it is, below [`Hue::COUNT`].
-    #[must_use]
-    pub const fn index(self) -> u8 {
-        self.0
-    }
 }
 
 /// A point on the canvas.
@@ -1050,11 +1030,53 @@ struct BannerSpec {
     kind: BranchKind,
     heading: String,
     dri: Option<Handle>,
-    hue: Option<Hue>,
+    colour: Option<Colour>,
     depth: usize,
     first: usize,
     last: usize,
     reaches: bool,
+}
+
+/// Each track's colour: the one it sets, or the next in the palette,
+/// skipping any another track claims by name (all of them, if every one is
+/// claimed).
+struct Palette {
+    free: Vec<Named>,
+    given: usize,
+}
+
+impl Palette {
+    fn new(plan: &Plan) -> Self {
+        let claimed: Vec<Named> = plan
+            .tracks()
+            .iter()
+            .filter_map(|track| match track.colour.as_ref()?.node {
+                Colour::Named(named) => Some(named),
+                Colour::Rgb(_) => None,
+            })
+            .collect();
+        let free: Vec<Named> = Named::ALL
+            .into_iter()
+            .filter(|named| !claimed.contains(named))
+            .collect();
+        Self {
+            free: if free.is_empty() {
+                Named::ALL.to_vec()
+            } else {
+                free
+            },
+            given: 0,
+        }
+    }
+
+    fn colour(&mut self, track: &Track) -> Colour {
+        if let Some(colour) = &track.colour {
+            return colour.node;
+        }
+        let next = self.free.get(self.given % self.free.len()).copied();
+        self.given += 1;
+        Colour::Named(next.unwrap_or(Named::Teal))
+    }
 }
 
 /// The branches, left to right, the banners under them, and each node's
@@ -1079,6 +1101,7 @@ fn branches(plan: &Plan, nodes: &[Node]) -> (Vec<BranchKind>, Vec<BannerSpec>, V
     // Banners close once their nested tracks are done: (banner, depth)
     let mut open: Vec<(usize, usize)> = Vec::new();
     let mut steps = 0;
+    let mut palette = Palette::new(plan);
     while let Some((track, depth)) = stack.pop() {
         steps += 1;
         if steps > plan.tracks().len() {
@@ -1116,7 +1139,7 @@ fn branches(plan: &Plan, nodes: &[Node]) -> (Vec<BranchKind>, Vec<BannerSpec>, V
             kind: BranchKind::Track(track.id.clone()),
             heading: String::from(track.label.as_ref().map_or(track.id.as_str(), Text::as_str)),
             dri: track.dri.as_ref().map(|dri| dri.node.clone()),
-            hue: Some(Hue::nth(steps - 1)),
+            colour: Some(palette.colour(track)),
             depth,
             first,
             last: kinds.len().saturating_sub(1).max(first),
@@ -1138,7 +1161,7 @@ fn branches(plan: &Plan, nodes: &[Node]) -> (Vec<BranchKind>, Vec<BannerSpec>, V
             kind: BranchKind::Untracked,
             heading: String::from("Other tasks"),
             dri: None,
-            hue: None,
+            colour: None,
             depth: 0,
             first: kinds.len(),
             last: kinds.len(),
@@ -1332,13 +1355,13 @@ fn place(
     let mut x = MARGIN;
     for (index, (kind, inner)) in kinds.into_iter().zip(&inner).enumerate() {
         let width = inner + PANEL_SIDE * 2;
-        let hue = banners
+        let colour = banners
             .iter()
             .find(|banner| banner.kind == kind)
-            .and_then(|banner| banner.hue);
+            .and_then(|banner| banner.colour);
         branches.push(Branch {
             kind,
-            hue,
+            colour,
             x,
             y: panel_top,
             width,
@@ -1575,7 +1598,7 @@ fn place_banners(
                 kind: spec.kind.clone(),
                 heading: spec.heading.clone(),
                 dri: spec.dri.clone(),
-                hue: spec.hue,
+                colour: spec.colour,
                 depth: spec.depth,
                 x: first.x,
                 y,

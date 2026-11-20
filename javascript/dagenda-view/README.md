@@ -32,7 +32,7 @@ The notation's indentation is relative, so inline source can be indented to matc
 |-----------|-------------------------------------------------------------|
 | `src`     | Load the source from a URL                                  |
 | `theme`   | `light` or `dark`, overriding the system colour scheme      |
-| `zoom`    | Scale factor, such as `1.5`                                 |
+| `zoom`    | Scale factor, such as `1.5`; a change keeps the point under the pointer still (or, with the pointer elsewhere, the middle of the view) |
 | `editable` | Let the picture edit the plan (below)                      |
 
 | Property   | Meaning                                                                 |

@@ -85,6 +85,8 @@ class DagendaView extends HTMLElement {
   // reaches everything upstream and downstream.
   #up = new Map()
   #down = new Map()
+  // Where the pointer is over the picture, in client coordinates, or null
+  #pointer = null
 
   constructor() {
     super()
@@ -97,6 +99,15 @@ class DagendaView extends HTMLElement {
       if (node) this.#focus(node.dataset.id)
     })
     this.#canvas.addEventListener("pointerleave", () => this.#focus(null))
+    // Zoom keeps the point under the pointer still, so track where it is
+    const track = (e) => {
+      this.#pointer = { x: e.clientX, y: e.clientY }
+    }
+    this.addEventListener("pointerenter", track)
+    this.addEventListener("pointermove", track)
+    this.addEventListener("pointerleave", () => {
+      this.#pointer = null
+    })
     this.#canvas.addEventListener("click", (e) => {
       // A card's links open their page; they don't select the card
       if (e.target.closest?.("a")) return
@@ -123,9 +134,32 @@ class DagendaView extends HTMLElement {
     if (text.trim()) this.source = text
   }
 
-  attributeChangedCallback(name) {
+  attributeChangedCallback(name, before, after) {
     if (name === "src") this.#load()
+    else if (name === "zoom" && before !== after) this.#zoom()
     else this.#style()
+  }
+
+  /**
+   * Resize to the new zoom, keeping one point of the picture still: the one
+   * under the pointer if it's over the picture (a wheel or a pinch), else
+   * the middle of what's showing (the page's zoom buttons).
+   */
+  #zoom() {
+    const svg = this.#svg
+    if (!svg || !this.isConnected) return this.#style()
+    const view = this.getBoundingClientRect()
+    const anchor = this.#pointer ?? { x: view.left + this.clientWidth / 2, y: view.top + this.clientHeight / 2 }
+    const before = svg.getBoundingClientRect()
+    if (before.width === 0 || before.height === 0) return this.#style()
+    // Where the anchor is across the picture, as fractions of its size
+    const across = (anchor.x - before.left) / before.width
+    const down = (anchor.y - before.top) / before.height
+
+    this.#style()
+    const after = svg.getBoundingClientRect()
+    this.scrollLeft += after.left + across * after.width - anchor.x
+    this.scrollTop += after.top + down * after.height - anchor.y
   }
 
   /** The plan's source text, for a plan of one document. Setting it redraws. */

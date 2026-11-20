@@ -1,7 +1,10 @@
 //! The tech tree's layout: which lines it draws, which branches and banners
 //! it makes, where things land, and how lines are routed.
 
-use dagenda_core::tech_tree::{BranchKind, Fact, Hue, Shape, TechTree};
+use dagenda_core::{
+    colour::{Colour, Named, Rgb},
+    tech_tree::{BranchKind, Fact, Shape, TechTree},
+};
 use testresult::TestResult;
 
 fn tree(source: &str) -> Result<TechTree, dagenda_core::Error> {
@@ -369,11 +372,14 @@ milestone m
         ]
     );
 
-    let hue = |hue: Option<Hue>| hue.map(Hue::index);
+    let hue = |colour: Option<Colour>| match colour {
+        Some(Colour::Named(named)) => Some(named.index()),
+        Some(Colour::Rgb(_)) | None => None,
+    };
     assert_eq!(
         tree.branches
             .iter()
-            .map(|branch| hue(branch.hue))
+            .map(|branch| hue(branch.colour))
             .collect::<Vec<_>>(),
         [Some(1), Some(2), Some(3), None, None],
         "each track its own colour, in the order written"
@@ -381,7 +387,7 @@ milestone m
     assert_eq!(
         tree.banners
             .iter()
-            .map(|banner| hue(banner.hue))
+            .map(|banner| hue(banner.colour))
             .collect::<Vec<_>>(),
         [Some(0), Some(1), Some(2), Some(3), None]
     );
@@ -567,6 +573,54 @@ milestone firstPicture
             }
         }
     }
+    Ok(())
+}
+
+/// A track can set its colour, by the palette's name or as `#rrggbb`; the
+/// rest take the palette in order, skipping any colour a track claimed.
+#[test]
+fn tracks_take_the_colour_they_set() -> TestResult {
+    let tree = tree(
+        "roadmap
+track a
+  colour plum
+  [ ] task one
+track b
+  [ ] task two
+track c
+  color #2A9D8F
+  [ ] task three
+track d
+  [ ] task four",
+    )?;
+    let colours: Vec<Option<Colour>> = tree.banners.iter().map(|banner| banner.colour).collect();
+    assert_eq!(
+        colours,
+        [
+            Some(Colour::Named(Named::Plum)),
+            Some(Colour::Named(Named::Teal)),
+            Some(Colour::Rgb(Rgb::new(0x2a, 0x9d, 0x8f))),
+            Some(Colour::Named(Named::Indigo)),
+        ]
+    );
+
+    let svg = tree.to_svg();
+    assert!(
+        svg.contains(r#"class="banner track hue-5 "#),
+        "plum is the palette's sixth"
+    );
+    assert!(
+        svg.contains(r#"class="branch track colour-2a9d8f""#),
+        "{svg}"
+    );
+    assert!(
+        svg.contains(".dagenda .branch.colour-2a9d8f, .dagenda .banner.colour-2a9d8f rect { fill: #eaf5f4; stroke: #bfe2dd; }"),
+        "light tints derived from the colour"
+    );
+    assert!(
+        svg.contains(".dagenda.dark .banner.colour-2a9d8f text { fill: #aad8d2; }"),
+        "and dark ones"
+    );
     Ok(())
 }
 

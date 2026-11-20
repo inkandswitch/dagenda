@@ -62,6 +62,7 @@ track core [Core]
     [ ] task cycles [Cycles]
 
   track views [Views \\[nested\\]]
+      colour plum
       [ ] task techTree [Tech tree]
           needs resolver, itParses
       [?] task skillTree [Skill tree]
