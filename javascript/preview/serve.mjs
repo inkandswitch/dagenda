@@ -13,6 +13,10 @@
 // A "change" only counts if the file's mtime moved, since some platforms
 // (Linux inotify) report metadata-only changes too.
 //
+// `/collab/` goes to the collaborative editor's own dev server (`nix run
+// .#editor`, on EDITOR_PORT, default 5173), as the deployed site has it next
+// to the preview; the browser carries the `#source=…` hash across.
+//
 // Usage: node javascript/preview/serve.mjs   (env: PORT, default 8080)
 
 import { spawn } from "node:child_process"
@@ -168,6 +172,12 @@ const server = HTTP.createServer((request, response) => {
 
   if (url === "/") {
     response.writeHead(302, { ...NO_CACHE, Location: "/preview/" }).end()
+    return
+  }
+
+  if (url === "/collab/" || url === "/collab") {
+    const editor = `http://localhost:${process.env.EDITOR_PORT ?? 5173}/`
+    response.writeHead(302, { ...NO_CACHE, Location: editor }).end()
     return
   }
 

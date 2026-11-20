@@ -2,7 +2,7 @@
 
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { highlight } from "./highlight.js"
+import { highlight, tokens } from "./highlight.js"
 
 const lines = (html) => html.replace(/\n$/, "").split("\n")
 
@@ -53,4 +53,15 @@ test("marks the error line", () => {
 
 test("flags an unknown box", () => {
   assert.match(highlight("[q] task x"), /<span class="box unknown">\[q\]<\/span>/)
+})
+
+test("tokens rebuild each line, and there's one array per line", () => {
+  const source = "roadmap\n  [x] task parser [Parser]\n    needs a, b\n  note\n    // markdown\n"
+  const lines = tokens(source)
+  assert.equal(lines.length, source.split("\n").length)
+  assert.deepEqual(
+    lines.map((line) => line.map((part) => part.text).join("")),
+    source.split("\n"),
+  )
+  assert.deepEqual(lines[1].find((part) => part.text === "[x]"), { kind: "box done", text: "[x]" })
 })

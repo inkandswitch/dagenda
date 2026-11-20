@@ -1,0 +1,44 @@
+/* The editor's own additions to the preview's page (../../preview/style.css) */
+
+/* --- Header: the connection, sync, the link to share, and who's here ---- */
+
+#connection { white-space: nowrap; font-size: 13px; color: var(--muted); }
+#connection.connected { color: var(--ok); }
+#sync { white-space: nowrap; font-size: 12px; color: var(--muted); }
+#sync.synced { color: var(--ok); }
+#sync.offline { color: var(--error); }
+#share {
+  min-width: 0;
+  flex: 0 1 28ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font: 12px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  user-select: all;
+}
+#people { display: flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
+#people:empty { display: none; }
+#people ~ #theme { margin-left: 0; }
+.person {
+  border: 1px solid var(--person);
+  border-left-width: 4px;
+  border-radius: 4px;
+  padding: 1px 6px;
+  background: transparent;
+  color: var(--fg);
+  font: 12px system-ui, sans-serif;
+  white-space: nowrap;
+}
+button.person { cursor: pointer; }
+
+/* --- A tab per document ---------------------------------------------------- */
+
+#tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+#tabs button { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+#tabs button.has-error { border-color: var(--error); }
+
+/* --- The text, in CodeMirror ----------------------------------------------- */
+
+#code { display: flex; flex-direction: column; background: var(--panel); }
+#code .cm-editor { flex: 1; min-height: 0; }

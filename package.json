@@ -1,0 +1,7 @@
+{
+  "name": "dagenda",
+  "private": true,
+  "description": "JS packages for dagenda roadmaps; the Rust crates live alongside",
+  "type": "module",
+  "packageManager": "pnpm@11.27.0"
+}

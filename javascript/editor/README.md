@@ -1,0 +1,70 @@
+# `@inkandswitch/dagenda-editor`
+
+> [!NOTE]
+> Early, on alpha dependencies. Text edits sync between browsers through Subduction, with presence, per-person undo, and offline use. Picture edits (status clicks first) are next.
+
+A collaborative editor for dagenda plans, ported from [rain's](https://github.com/inkandswitch/rain/tree/main/javascript/editor). A plan is several documents (public, private, and later one per commenter), so the editor opens a _workspace_: an Automerge document listing them. Each has a tab, its text in CodeMirror, and one tech tree is drawn from all of them. It shares its page with the single-user [preview](../preview/) (`shell.js`, `highlight.js`, `examples.js`, `style.css`), which stays build-free and dependency-free.
+
+To run it locally:
+
+```console
+$ nix run .#editor        # from the repo root: http://localhost:5173 (PORT=… to change)
+```
+
+It installs the JS dependencies if needed, builds the component's Wasm, and starts Vite. Open the page, then open its URL (with the `#automerge:…` it adds) in another browser. `?sync=wss://…` picks a different Subduction server. `#source=…` (URL-encoded text) starts a new workspace with that text, which is how the preview's _Collaborate_ button hands its plan over; `nix run .#preview` sends `/collab/` here (`EDITOR_PORT`).
+
+## What it does
+
+- **A tab per document.** _+_ adds a document to the plan (a private one, say); double-click a tab to rename it. Everyone sees the same tabs.
+- **One picture from every document.** A private document can `extend` a public task, or `needs` one, and the tree shows it all. Problems say which document they're in (`private:3:7`); clicking one, or a card, opens that document at that line.
+- **Text that doesn't parse** (someone mid-edit) keeps the last good picture up on every replica, with the error in the status line, its line marked, and its tab outlined.
+- **Presence.** Each person has a name like `silly-teal-otter`, listed in the header with the tab they're on, and a caret and selection in that colour in each document. Click your own name to change it.
+- **Undo is per person.** Undo covers your own typing and the examples you load, never someone else's edits.
+- **Sync status.** _synced_ once the server holds everything this tab has, for the workspace and every document in it; _syncing…_ on the way; _not synced_ offline, with where the changes are kept.
+- **Offline.** One tab per browser keeps documents in IndexedDB, under the browser's own identity. Other tabs sync live, in memory. A document not on the server yet is looked for until it turns up.
+
+## How it fits together
+
+```mermaid
+flowchart LR
+    workspace[("workspace<br/>{ documents: [{ name, url }] }")]
+    plan[("plan<br/>{ source }")]
+    private[("private<br/>{ source }")]
+    tabs["a CodeMirror tab<br/>per document"]
+    picture["&lt;dagenda-view&gt;<br/>.documents"]
+    peers["other peers"]
+
+    workspace -->|lists| plan
+    workspace -->|lists| private
+    plan <-->|automerge-codemirror| tabs
+    private <-->|automerge-codemirror| tabs
+    plan -->|redraw on every change| picture
+    private -->|redraw on every change| picture
+    workspace <-->|"Subduction: changes,<br/>and presence (ephemeral)"| peers
+```
+
+- **Documents are text.** The picture is always derived from the documents' `source`. A concurrent edit can't corrupt a structure: at worst, the merged text doesn't parse, and the picture keeps its last good state.
+- **One document per unit of access.** Until Keyhive, a private document is one whose URL isn't linked from anything public. The workspace links them all, so it's the team's, not the public's.
+- **Undo is CodeMirror's history, kept to this person.** Remote changes arrive without a user event and stay out of it.
+
+## The stack (all pinned: these are alphas)
+
+The same as rain's editor:
+
+| Package | Version | Role |
+|---|---|---|
+| `@automerge/automerge-repo` | 3.0.0-alpha.2 | Documents, handles (`create`/`find` are async in v3), and `Presence` |
+| `@automerge/automerge-repo-subduction` | 3.0.0-alpha.2 | The `SubductionBackend` passed to `new Repo({ backend })` |
+| `…-subduction-network-websocket` | 3.0.0-alpha.2 | Connection to the sync server (default `wss://subduction.sync.inkandswitch.com`) |
+| `…-subduction-storage-indexeddb` | 3.0.0-alpha.2 | Local storage, so documents work offline |
+| `@automerge/subduction` | 0.27.0 | `createWebCryptoSigner()`: a stable peer identity per browser |
+| `@automerge/automerge` | 3.5.0 | Importing it initializes the Wasm the `slim` imports share; cursors for presence |
+| `@automerge/automerge-codemirror` | 0.2.0 | Keeps a CodeMirror view and a document's `source` in step |
+
+## Tests
+
+```console
+$ nix run .#ci-editor     # builds the site, then drives it in headless Chromium
+```
+
+The browser tests ([`browser-test/`](browser-test/)) talk to Chromium over the DevTools protocol, with no dependencies, as rain's do. Sync goes through the public Subduction server unless `DAGENDA_SYNC` names another.

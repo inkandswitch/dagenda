@@ -1,7 +1,7 @@
 # dagenda
 
 > [!WARNING]
-> Early. The notation parses and resolves across documents, `dagenda check` reports what's wrong with a plan, `dagenda render` draws it as text or as a tech tree, and the preview draws it in the browser as you type.
+> Early. The notation parses and resolves across documents, `dagenda check` reports what's wrong with a plan, `dagenda render` draws it as text or as a tech tree, the preview draws it in the browser as you type, and the collaborative editor lets a team edit a plan's documents together.
 
 Roadmaps as dependency graphs, for the Ink & Switch Department of Data: Automerge, Subduction, Keyhive, and their neighbours. The world should be able to see the milestones and the features that lead to them. The day-to-day tasks, who's on them, and the notes stay with the team.
 
@@ -83,11 +83,21 @@ $ nix run .#site      # the preview as a static site in _site/, as GitHub Pages 
 
 The picture is [`<dagenda-view>`](javascript/dagenda-view/), a web component any page can use; everything it draws comes from the Rust core compiled to Wasm (about 180 KB, 75 KB gzipped).
 
+## Edit Together
+
+The [collaborative editor](javascript/editor/) is the preview with sync, as in rain. A plan's documents (public, private, …) live in Automerge, synced over [Subduction], and a _workspace_ document lists them: a tab per document, with presence, per-person undo, and offline use, and one picture drawn from all of them. The preview's _Collaborate_ button opens its text there as a new shared plan.
+
+```console
+$ nix run .#editor    # http://localhost:5173; share the URL it gives you
+```
+
+Until Keyhive, a private document is one whose URL isn't linked from anything public.
+
 ## Planned
 
 - _Two more views._ A Gantt chart, and a skill tree in the spirit of Final Fantasy X's Sphere Grid.
-- _Text and picture in step._ A WYSIWYG editor over the same source: change either and the other follows, as in [rain].
-- _A public site and a collaborative editor._ The site is static. The editor keeps its documents in Automerge, synced over [Subduction].
+- _Text and picture in step._ Edits made on the picture (status clicks first) become text splices, as in [rain].
+- _A public site._ Static, built from the plan files in the repo and from snapshots of public Automerge documents.
 - _Links to the work._ GitHub issues and pull requests, resolved by [sans-effort] routines.
 - _Access control with [Keyhive]_, later.
 
@@ -100,7 +110,8 @@ rust/
 └── dagenda_wasm/   JS bindings
 javascript/
 ├── dagenda-view/   <dagenda-view> web component
-└── preview/        the preview page, and its hot-reloading dev server
+├── editor/         the collaborative editor (Vite, CodeMirror, automerge-repo over Subduction)
+└── preview/        the preview page, its page shell (shared with the editor), and its hot-reloading dev server
 ```
 
 ## Development
@@ -110,7 +121,8 @@ $ nix develop                       # toolchain and a command menu
 $ cargo test --workspace
 $ nix run .#dagenda -- check plan.dagenda
 $ nix run .#preview                 # the preview, with hot reload
-$ nix run .#ci-clippy               # also: ci-bolero, ci-deny, ci-doc, ci-fmt, ci-js, ci-msrv, ci-mutants, ci-no-std, ci-test, ci-typos
+$ nix run .#editor                  # the collaborative editor, with Vite
+$ nix run .#ci-clippy               # also: ci-bolero, ci-deny, ci-doc, ci-editor, ci-fmt, ci-js, ci-msrv, ci-mutants, ci-no-std, ci-test, ci-typos
 ```
 
 Every CI job is one of these flake apps, so a local run checks exactly what CI does. The goldens in `rust/dagenda_core/tests/golden/` pin everything the core derives from a document; after an intended change, review the diff and re-bless with `BLESS=1 cargo test --test golden`.

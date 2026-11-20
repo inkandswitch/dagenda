@@ -87,7 +87,8 @@ body {
   font: 14px/1.4 system-ui, sans-serif;
 }
 
-button {
+button,
+a.button {
   padding: 3px 9px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -98,7 +99,11 @@ button {
   cursor: pointer;
 }
 
-button:hover {
+a.button {
+  text-decoration: none;
+}
+
+:is(button, a.button):hover {
   border-color: var(--muted);
 }
 
@@ -220,22 +225,22 @@ section {
   color: transparent;
 }
 
-#highlight .keyword { color: var(--keyword); font-weight: 600; }
-#highlight .id { color: var(--id); }
-#highlight .label { color: var(--label); }
-#highlight .detail { color: var(--detail); }
-#highlight :is(.value, .person, .ref) { color: var(--value); }
-#highlight .comment { color: var(--comment); font-style: italic; }
-#highlight .markdown { color: var(--markdown); }
-#highlight .cut { color: var(--muted); }
-#highlight .box { font-weight: 700; }
-#highlight .box.done { color: var(--ok); }
-#highlight .box.in-progress { color: var(--accent); }
-#highlight .box.needs-attention { color: var(--error); }
-#highlight .box.research { color: var(--keyword); }
-#highlight .box:is(.deferred, .dropped, .idea) { color: var(--muted); }
-#highlight .box.unknown { color: var(--error); text-decoration: wavy underline; }
-#highlight .error-line { background: var(--error-bg); }
+:is(#highlight, .cm-content) .keyword { color: var(--keyword); font-weight: 600; }
+:is(#highlight, .cm-content) .id { color: var(--id); }
+:is(#highlight, .cm-content) .label { color: var(--label); }
+:is(#highlight, .cm-content) .detail { color: var(--detail); }
+:is(#highlight, .cm-content) :is(.value, .person, .ref) { color: var(--value); }
+:is(#highlight, .cm-content) .comment { color: var(--comment); font-style: italic; }
+:is(#highlight, .cm-content) .markdown { color: var(--markdown); }
+:is(#highlight, .cm-content) .cut { color: var(--muted); }
+:is(#highlight, .cm-content) .box { font-weight: 700; }
+:is(#highlight, .cm-content) .box.done { color: var(--ok); }
+:is(#highlight, .cm-content) .box.in-progress { color: var(--accent); }
+:is(#highlight, .cm-content) .box.needs-attention { color: var(--error); }
+:is(#highlight, .cm-content) .box.research { color: var(--keyword); }
+:is(#highlight, .cm-content) .box:is(.deferred, .dropped, .idea) { color: var(--muted); }
+:is(#highlight, .cm-content) .box.unknown { color: var(--error); text-decoration: wavy underline; }
+:is(#highlight, .cm-content) .error-line { background: var(--error-bg); }
 
 /* --- Output ------------------------------------------------------------- */
 

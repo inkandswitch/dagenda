@@ -26,6 +26,7 @@ jobs:
           - ci-clippy
           - ci-deny
           - ci-doc
+          - ci-editor
           - ci-fmt
           - ci-js
           - ci-msrv

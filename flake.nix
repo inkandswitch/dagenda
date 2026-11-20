@@ -85,6 +85,9 @@
           pkgs.wasm-pack
         ];
 
+        # The collaborative editor's JS dependencies (javascript/editor)
+        js-pkgs = [pkgs.nodejs pkgs.pnpm];
+
         format-pkgs = with pkgs; [
           alejandra
           taplo
@@ -137,12 +140,37 @@
           '';
         };
 
+        # The collaborative editor's dev server (javascript/editor): installs
+        # its dependencies if needed, builds the component's Wasm, then serves
+        # it with Vite at http://localhost:5173 (PORT to change). The
+        # preview's Collaborate button reaches it through `nix run .#preview`
+        # (EDITOR_PORT there). Run from the repo root, or anywhere inside
+        # `nix develop`.
+        editor = pkgs.writeShellApplication {
+          name = "dagenda-editor";
+          runtimeInputs = [rust-toolchain pkgs.stdenv.cc] ++ wasm-pkgs ++ js-pkgs;
+          text = ''
+            root="''${WORKSPACE_ROOT:-$PWD}"
+            if [ ! -f "$root/javascript/editor/index.html" ]; then
+              echo "run this from the dagenda repo root" >&2
+              exit 1
+            fi
+            cd "$root"
+            [ -d javascript/editor/node_modules ] || pnpm install --frozen-lockfile
+            wasm-pack build --dev --target web --out-dir ../../javascript/dagenda-view/pkg rust/dagenda_wasm
+            cd javascript/editor
+            # Through node, not the .bin shim: its #!/bin/sh is not everywhere
+            exec node node_modules/vite/bin/vite.js --port "''${PORT:-5173}" --strictPort
+          '';
+        };
+
         # The preview as a static site (for GitHub Pages): a release Wasm
         # build, the component, and the preview page, with `/` sending you to
-        # the preview. Writes `_site/` (or the directory given).
+        # the preview, plus the collaborative editor at `collab/`. Writes
+        # `_site/` (or the directory given).
         site = pkgs.writeShellApplication {
           name = "dagenda-site";
-          runtimeInputs = [rust-toolchain pkgs.coreutils pkgs.stdenv.cc] ++ wasm-pkgs;
+          runtimeInputs = [rust-toolchain pkgs.coreutils pkgs.stdenv.cc] ++ wasm-pkgs ++ js-pkgs;
           text = ''
             root="''${WORKSPACE_ROOT:-$PWD}"
             out="$(realpath -m "''${1:-_site}")"
@@ -156,9 +184,15 @@
               --out-dir "$out/dagenda-view/pkg" "$root/rust/dagenda_wasm"
             rm -f "$out/dagenda-view/pkg/.gitignore"
             cp "$root/javascript/dagenda-view/dagenda-view.js" "$out/dagenda-view/"
-            for file in index.html examples.js highlight.js main.js style.css; do
+            for file in index.html examples.js highlight.js main.js shell.js style.css; do
               cp "$root/javascript/preview/$file" "$out/preview/"
             done
+            # The editor bundles the component, so it takes the same release
+            # build. A relative base serves it from any path (/dagenda/collab/)
+            rm -rf "$root/javascript/dagenda-view/pkg"
+            cp -r "$out/dagenda-view/pkg" "$root/javascript/dagenda-view/"
+            (cd "$root" && pnpm install --frozen-lockfile)
+            (cd "$root/javascript/editor" && node node_modules/vite/bin/vite.js build --base ./ --outDir "$out/collab" --emptyOutDir)
             cat > "$out/index.html" <<'HTML'
             <!doctype html>
             <meta charset="utf-8">
@@ -194,6 +228,13 @@
           {
             commands.preview = cmd "Hot-reloading preview at http://127.0.0.1:8080 (PORT to change)" ''
               ${pkgs.lib.getExe preview}
+            '';
+            packages = [];
+          }
+
+          {
+            commands.editor = cmd "Collaborative editor at http://localhost:5173 (PORT to change)" ''
+              ${pkgs.lib.getExe editor}
             '';
             packages = [];
           }
@@ -248,6 +289,16 @@
             done
             wasm-pack build --dev --target web --out-dir ../../javascript/dagenda-view/pkg rust/dagenda_wasm
             node --test javascript/*/*.test.mjs
+          '';
+
+          # The collaborative editor, built, in headless Chromium. Sync goes
+          # through the public Subduction server (DAGENDA_SYNC for another)
+          ci-editor = mkCheckWith (wasm-pkgs ++ js-pkgs ++ [pkgs.chromium]) "ci-editor" ''
+            wasm-pack build --dev --target web --out-dir ../../javascript/dagenda-view/pkg rust/dagenda_wasm
+            pnpm install --frozen-lockfile
+            # Through node, not the .bin shim: its #!/bin/sh is not everywhere
+            (cd javascript/editor && node node_modules/vite/bin/vite.js build)
+            CHROMIUM=chromium node --test --test-concurrency=1 javascript/editor/browser-test/*.test.mjs
           '';
 
           ci-doc = mkCheck "ci-doc" ''
@@ -321,7 +372,7 @@
             type = "app";
             program = pkgs.lib.getExe drv;
           })
-          (ci-checks // {inherit dagenda preview site;});
+          (ci-checks // {inherit dagenda editor preview site;});
 
         packages = {
           inherit dagenda;
@@ -340,6 +391,7 @@
               pkgs.rust-analyzer
             ]
             ++ wasm-pkgs
+            ++ js-pkgs
             ++ format-pkgs
             ++ cargo-installs;
 

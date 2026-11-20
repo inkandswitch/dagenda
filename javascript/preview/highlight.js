@@ -1,5 +1,6 @@
-// Syntax colouring for the dagenda notation: HTML for a <pre> laid under the
-// (transparent) textarea, line for line.
+// Syntax colouring for the dagenda notation, as tokens: the preview turns
+// them into HTML for a <pre> laid under its (transparent) textarea, and the
+// collaborative editor into CodeMirror decorations. Line for line.
 
 const BLOCKS = new Set(["extend", "milestone", "roadmap", "task", "title", "track"])
 const DETAILS = new Set(["dri", "est", "issue", "link", "needs", "note", "pr", "target"])
@@ -17,74 +18,84 @@ export const STATUS = {
 }
 
 const escape = (text) => text.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c])
-const span = (kind, text) => (text ? `<span class="${kind}">${escape(text)}</span>` : "")
+const token = (kind, text) => ({ kind, text })
 
 /**
- * Colour `source`, marking `errorLine` (1-based) if given. The result has
- * exactly as many lines as `source`, plus a final newline so a <pre> is as
- * tall as the textarea.
+ * Each line of `source` as tokens, `{ kind, text }`: `kind` is a class list
+ * (`"keyword"`, `"box done"`), or `""` for plain text. One array per line, so
+ * there are exactly as many as `source` has lines, and each line's texts
+ * join back into it.
  */
-export const highlight = (source, errorLine = null) => {
+export const tokens = (source) => {
   // Inside a `note` block, everything indented further than the `note` is
   // markdown, comments and all
   let noteIndent = null
-  const lines = source.split("\n").map((line, index) => {
+  return source.split("\n").map((line) => {
     const text = line.trimStart()
-    const indent = line.slice(0, line.length - text.length)
-    let html
-    if (noteIndent !== null && (text === "" || indent.length > noteIndent)) {
-      html = escape(indent) + span("markdown", text)
-    } else {
-      noteIndent = /^note\s*$/.test(text) ? indent.length : null
-      html = escape(indent) + colour(text)
+    const indent = token("", line.slice(0, line.length - text.length))
+    if (noteIndent !== null && (text === "" || indent.text.length > noteIndent)) {
+      return [indent, token("markdown", text)].filter((part) => part.text)
     }
+    noteIndent = /^note\s*$/.test(text) ? indent.text.length : null
+    return [indent, ...colour(text)].filter((part) => part.text)
+  })
+}
+
+/**
+ * Colour `source` as HTML, marking `errorLine` (1-based) if given. The result
+ * has exactly as many lines as `source`, plus a final newline so a <pre> is
+ * as tall as the textarea.
+ */
+export const highlight = (source, errorLine = null) => {
+  const lines = tokens(source).map((line, index) => {
+    const html = line.map(({ kind, text }) => (kind ? `<span class="${kind}">${escape(text)}</span>` : escape(text))).join("")
     return index + 1 === errorLine ? `<span class="error-line">${html}</span>` : html
   })
   return `${lines.join("\n")}\n`
 }
 
-/** One line's text, after its indent. */
+/** One line's tokens, after its indent. */
 const colour = (text) => {
-  if (text.startsWith("//")) return span("comment", text)
-  if (text === "---") return span("cut", text)
+  if (text.startsWith("//")) return [token("comment", text)]
+  if (text === "---") return [token("cut", text)]
 
-  let html = ""
+  const parts = []
   let rest = text
   const box = /^\[(.)\](\s*)/u.exec(rest)
   if (box) {
-    html += span(`box ${STATUS[box[1]] ?? "unknown"}`, `[${box[1]}]`) + box[2]
+    parts.push(token(`box ${STATUS[box[1]] ?? "unknown"}`, `[${box[1]}]`), token("", box[2]))
     rest = rest.slice(box[0].length)
   }
 
   const [, word = "", gap = "", after = ""] = /^(\S*)(\s*)(.*)$/su.exec(rest) ?? []
   if (BLOCKS.has(word)) {
-    html += span("keyword", word) + gap
-    if (word === "title") return html + span("label", after)
+    parts.push(token("keyword", word), token("", gap))
+    if (word === "title") return [...parts, token("label", after)]
     const [, id = "", space = "", label = ""] = /^([^\s[]*)(\s*)(.*)$/su.exec(after) ?? []
-    return html + span("id", id) + space + span("label", label)
+    return [...parts, token("id", id), token("", space), token("label", label)]
   }
 
   if (DETAILS.has(word)) {
-    html += span("detail", word) + gap
+    parts.push(token("detail", word), token("", gap))
     switch (word) {
       case "needs":
-        return html + after.split(/(,\s*)/).map((part, i) => (i % 2 ? escape(part) : span("id", part))).join("")
+        return [...parts, ...after.split(/(,\s*)/).map((part, i) => token(i % 2 ? "" : "id", part))]
       case "note":
-        return html + span("markdown", after)
+        return [...parts, token("markdown", after)]
       case "dri":
-        return html + span("person", after)
+        return [...parts, token("person", after)]
       case "pr":
       case "issue":
-        return html + span("ref", after)
+        return [...parts, token("ref", after)]
       case "link": {
         const [, url = "", space = "", label = ""] = /^(\S*)(\s*)(.*)$/su.exec(after) ?? []
-        return html + span("ref", url) + escape(space) + span("label", label)
+        return [...parts, token("ref", url), token("", space), token("label", label)]
       }
       default:
-        return html + span("value", after)
+        return [...parts, token("value", after)]
     }
   }
 
   // A lone id: a milestone member
-  return html + span("id", word) + escape(gap + after)
+  return [...parts, token("id", word), token("", gap + after)]
 }

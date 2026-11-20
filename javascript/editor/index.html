@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>dagenda Editor</title>
+  <script>
+    // Before first paint, so a chosen theme doesn't flash the other one.
+    // Per viewer: the theme isn't part of the shared documents
+    try {
+      const theme = localStorage.getItem("dagenda-editor:theme");
+      if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+    } catch {}
+  </script>
+</head>
+<body>
+  <header>
+    <h1>dagenda</h1>
+    <span id="connection">connecting…</span>
+    <span id="sync"></span>
+    <a id="share" href="" title="Share this link to edit together"></a>
+    <span id="people" aria-label="Who's here"></span>
+    <div id="theme" role="group" aria-label="Colour scheme">
+      <button type="button" data-theme-choice="system">◐ System</button>
+      <button type="button" data-theme-choice="light">☀ Light</button>
+      <button type="button" data-theme-choice="dark">☾ Dark</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="source-pane" aria-label="Source">
+      <div class="toolbar">
+        <span id="tabs" role="tablist" aria-label="The plan's documents"></span>
+        <button type="button" id="add-document" title="Add a document to the plan, such as a private one">+</button>
+        <span class="spacer"></span>
+        <button type="button" id="undo" title="Undo your last edit" aria-label="Undo" disabled>↶</button>
+        <button type="button" id="redo" title="Redo" aria-label="Redo" disabled>↷</button>
+        <button type="button" id="example-basic" title="Replace this document with a small plan, for everyone">Small plan</button>
+        <button type="button" id="example-tour" title="Replace this document with a plan that uses every form, for everyone">Tour</button>
+      </div>
+      <div class="editor" id="code" aria-label="Plan source"></div>
+    </section>
+
+    <section id="output-pane" aria-label="Output">
+      <div class="toolbar">
+        <span role="tablist" aria-label="View">
+          <button type="button" role="tab" data-view="tree">Tech tree</button>
+          <button type="button" role="tab" data-view="text">Text</button>
+        </span>
+        <span class="spacer"></span>
+        <span class="zoom" role="group" aria-label="Zoom">
+          <button type="button" id="zoom-out" title="Zoom out (Ctrl/⌘ + wheel)">−</button>
+          <button type="button" id="zoom-level" title="Reset to 100%">100%</button>
+          <button type="button" id="zoom-in" title="Zoom in (Ctrl/⌘ + wheel)">+</button>
+          <button type="button" id="zoom-fit" title="Fit the tree to the pane">Fit</button>
+        </span>
+        <button type="button" id="copy">Copy</button>
+        <button type="button" id="download">Download</button>
+      </div>
+      <div id="status" role="status">loading Wasm…</div>
+      <div id="views">
+        <dagenda-view id="picture" aria-label="Tech tree"></dagenda-view>
+        <pre id="text" hidden aria-label="The plan as text"></pre>
+      </div>
+      <ul id="problems" aria-label="Problems"></ul>
+    </section>
+  </main>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
