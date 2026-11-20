@@ -164,6 +164,25 @@
           '';
         };
 
+        # A shared plan from the command line (javascript/editor/cli/collab.mjs):
+        # `pull`, `push`, `status`, or `new`, each on a directory holding one
+        # workspace, so any tool can edit its documents as files. Installs the
+        # editor's dependencies if needed. Run from the repo root, or anywhere
+        # inside `nix develop`; directories are relative to where you run it.
+        collab = pkgs.writeShellApplication {
+          name = "dagenda-collab";
+          runtimeInputs = js-pkgs;
+          text = ''
+            root="''${WORKSPACE_ROOT:-$PWD}"
+            if [ ! -f "$root/javascript/editor/cli/collab.mjs" ]; then
+              echo "run this from the dagenda repo root" >&2
+              exit 1
+            fi
+            [ -d "$root/javascript/editor/node_modules" ] || (cd "$root" && pnpm install --frozen-lockfile >&2)
+            exec node "$root/javascript/editor/cli/collab.mjs" "$@"
+          '';
+        };
+
         # The preview as a static site (for GitHub Pages): a release Wasm
         # build, the component, and the preview page, with `/` sending you to
         # the preview, plus the collaborative editor at `collab/`. Writes
@@ -372,7 +391,7 @@
             type = "app";
             program = pkgs.lib.getExe drv;
           })
-          (ci-checks // {inherit dagenda editor preview site;});
+          (ci-checks // {inherit collab dagenda editor preview site;});
 
         packages = {
           inherit dagenda;

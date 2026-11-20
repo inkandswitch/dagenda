@@ -109,7 +109,18 @@ The [collaborative editor](javascript/editor/) is the preview with sync. A plan'
 $ nix run .#editor    # http://localhost:5173; share the URL it gives you
 ```
 
+A shared plan can be edited from the command line too, as files, alongside the people in the editor. `pull` writes each document to `<name>.dagenda`; `push` merges your edits with whatever was typed since, instead of overwriting it:
+
+```console
+$ nix run .#collab -- pull plan/ automerge:…   # the first time; the URL is kept in plan/workspace.url
+$ nix run .#collab -- status plan/             # what has edits to push, or to pull
+$ nix run .#collab -- push plan/
+$ nix run .#collab -- new plan/                # a new workspace from the .dagenda files there
+```
+
 Until Keyhive, a private document is one whose URL isn't linked from anything public.
+
+Agents get a [skill](.agents/skills/dagenda/SKILL.md) for all of this: the notation, checking and rendering, and editing a shared plan safely.
 
 ## Planned
 
@@ -128,7 +139,7 @@ rust/
 └── dagenda_wasm/   JS bindings
 javascript/
 ├── dagenda-view/   <dagenda-view> web component
-├── editor/         the collaborative editor (Vite, CodeMirror, automerge-repo over Subduction)
+├── editor/         the collaborative editor (Vite, CodeMirror, automerge-repo over Subduction), and `cli/collab.mjs`
 └── preview/        the preview page, its page shell (shared with the editor), and its hot-reloading dev server
 ```
 
@@ -140,6 +151,7 @@ $ cargo test --workspace
 $ nix run .#dagenda -- check plan.dagenda
 $ nix run .#preview                 # the preview, with hot reload
 $ nix run .#editor                  # the collaborative editor, with Vite
+$ nix run .#collab -- pull <dir>     # a shared plan as files (also push, status, new)
 $ nix run .#ci-clippy               # also: ci-bolero, ci-deny, ci-doc, ci-editor, ci-fmt, ci-js, ci-msrv, ci-mutants, ci-no-std, ci-test, ci-typos
 ```
 

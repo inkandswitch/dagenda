@@ -14,8 +14,13 @@ target/
 **/pkg/
 **/pkg-node/
 
-# Local agent/session artifacts
-.claude/
+# Local agent/session artifacts. The repo's agent skills live in .agents/skills/,
+# for every agent; .claude/skills links there for Claude Code (the `!` lines
+# override global ignores of both directories)
+!.agents/
+!.claude/
+.claude/*
+!.claude/skills
 .ignore/
 CLAUDE.md
 
