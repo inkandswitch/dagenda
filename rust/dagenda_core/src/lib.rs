@@ -114,6 +114,7 @@ pub mod ast;
 pub mod check;
 pub mod date;
 pub mod edit;
+pub mod errors;
 pub mod handle;
 pub mod id;
 pub mod outline;
@@ -125,8 +126,8 @@ pub mod status;
 pub mod tech_tree;
 pub mod text;
 
-use parser::ParseError;
-use plan::{Plan, ResolveError};
+use parser::ParseErrors;
+use plan::{Plan, ResolveErrors};
 use span::Span;
 use thiserror::Error;
 
@@ -145,11 +146,11 @@ pub fn parse(source: &str) -> Result<Plan, Error> {
 pub enum Error {
     /// Malformed source text.
     #[error(transparent)]
-    Parse(#[from] ParseError),
+    Parse(#[from] ParseErrors),
 
     /// Well-formed text that doesn't resolve.
     #[error(transparent)]
-    Resolve(#[from] ResolveError),
+    Resolve(#[from] ResolveErrors),
 }
 
 impl Error {
@@ -157,8 +158,8 @@ impl Error {
     #[must_use]
     pub const fn span(&self) -> Span {
         match self {
-            Self::Parse(e) => e.span(),
-            Self::Resolve(e) => e.location().span,
+            Self::Parse(e) => e.first().span(),
+            Self::Resolve(e) => e.first().location().span,
         }
     }
 }

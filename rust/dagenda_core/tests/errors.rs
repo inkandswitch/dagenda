@@ -13,6 +13,90 @@ fn error(source: &str) -> String {
     }
 }
 
+/// `line:column: message` for every error in `source`, in order.
+fn errors(source: &str) -> Vec<String> {
+    let at = |span: dagenda_core::span::Span, message: String| {
+        let (line, column) = span.line_col(source);
+        format!("{line}:{column}: {message}")
+    };
+    match dagenda_core::parse(source) {
+        Ok(_) => Vec::new(),
+        Err(dagenda_core::Error::Parse(errors)) => {
+            errors.iter().map(|e| at(e.span(), e.to_string())).collect()
+        }
+        Err(dagenda_core::Error::Resolve(errors)) => errors
+            .iter()
+            .map(|e| at(e.location().span, e.to_string()))
+            .collect(),
+    }
+}
+
+/// One run says everything that's wrong: the first mistake in each
+/// top-level block (the rest of a broken block is skipped, so one mistake
+/// doesn't set off others).
+#[test]
+fn every_malformed_block_is_reported_at_once() {
+    let source = "roadmap
+track a
+  [q] task x
+  [?] task fine
+track b
+\t[ ] task y
+[ ] task z
+  est 2w
+  dri nobody
+milestone m
+  z";
+    assert_eq!(
+        errors(source),
+        [
+            "3:3: unknown status box `[q]`; use `[ ]`, `[>]`, `[x]`, `[-]`, `[?]`, `[!]`, `[*]`, or `[~]`",
+            "6:1: indent with spaces, not tabs",
+            "8:7: expected a date like `2026-11-19` or `2026-Q4`; a duration doesn't say when it lands",
+        ]
+    );
+}
+
+/// Every id that doesn't resolve is reported, in source order, along with
+/// duplicates and references to the wrong kind of thing.
+#[test]
+fn every_resolve_error_is_reported_at_once() {
+    let source = "roadmap
+track t
+[ ] task a
+  needs ghost
+[ ] task b
+  needs t, phantom
+[ ] task a
+milestone m
+  spectre";
+    assert_eq!(
+        errors(source),
+        [
+            "4:9: nothing in the plan is called `ghost`",
+            "6:9: `t` is a track, but `needs` points at tasks and milestones",
+            "6:12: nothing in the plan is called `phantom`",
+            "7:10: `a` is defined more than once",
+            "9:3: nothing in the plan is called `spectre`",
+        ]
+    );
+}
+
+/// A loop is only reported once everything else resolves, so a typo can't
+/// pass for one.
+#[test]
+fn a_loop_waits_until_every_id_resolves() {
+    let looped = "roadmap\n[ ] task a\n  needs b\n[ ] task b\n  needs a, ghost";
+    assert_eq!(
+        errors(looped),
+        ["5:12: nothing in the plan is called `ghost`"]
+    );
+    assert_eq!(
+        errors(&looped.replace(", ghost", "")),
+        ["3:9: these need each other, so none can finish: `a` → `b` → `a`"]
+    );
+}
+
 #[test]
 fn nice_to_haves_say_what_to_do() {
     for (source, expected) in [

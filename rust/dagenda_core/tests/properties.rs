@@ -23,7 +23,7 @@ fn never_panics_and_spans_are_in_bounds() {
         .with_type::<String>()
         .for_each(|source| match dagenda_core::parse(source) {
             Ok(plan) => assert_consistent(&plan, source),
-            Err(error) => assert_in_bounds(error.span(), source),
+            Err(error) => assert_errors_in_bounds(&error, source),
         });
 }
 
@@ -37,7 +37,7 @@ fn plans_are_consistent() {
             let source = build(lines);
             match dagenda_core::parse(&source) {
                 Ok(plan) => assert_consistent(&plan, &source),
-                Err(error) => assert_in_bounds(error.span(), &source),
+                Err(error) => assert_errors_in_bounds(&error, &source),
             }
         });
 }
@@ -313,6 +313,27 @@ fn reindent(source: &str, factor: usize) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+/// Every error lies within the source, in order.
+fn assert_errors_in_bounds(error: &dagenda_core::Error, source: &str) {
+    let spans: Vec<Span> = match error {
+        dagenda_core::Error::Parse(errors) => errors
+            .iter()
+            .map(dagenda_core::parser::ParseError::span)
+            .collect(),
+        dagenda_core::Error::Resolve(errors) => errors.iter().map(|e| e.location().span).collect(),
+    };
+    for span in &spans {
+        assert_in_bounds(*span, source);
+    }
+    assert!(
+        spans.windows(2).all(|pair| match pair {
+            [a, b] => a.start <= b.start,
+            _ => true,
+        }),
+        "errors out of order: {spans:?}"
+    );
 }
 
 fn assert_in_bounds(span: Span, source: &str) {

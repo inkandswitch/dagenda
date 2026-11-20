@@ -34,6 +34,7 @@
 use crate::{
     ast::{Details, Document, Extend, Item, Milestone, Task, Track, TrackChild},
     date::{Date, InvalidDate},
+    errors::Errors,
     handle::{Handle, InvalidHandle},
     id::{Id, InvalidId},
     reference::{GithubRef, InvalidGithubRef, InvalidUrl, Link, Ref, RefKind, Url},
@@ -42,7 +43,7 @@ use crate::{
     text::{EmptyNote, InvalidText, Note, Text},
 };
 use alloc::{string::String, vec::Vec};
-use core::{fmt, iter};
+use core::{cmp::Ordering, fmt, iter};
 use thiserror::Error;
 
 /// Parse source text into a [`Document`].
@@ -52,23 +53,58 @@ use thiserror::Error;
 ///
 /// let document = parser::document("roadmap\ntrack core [Core]\n  [x] task parser\n")?;
 /// assert_eq!(document.items.len(), 1);
-/// # Ok::<(), parser::ParseError>(())
+/// # Ok::<(), parser::ParseErrors>(())
 /// ```
 ///
 /// # Errors
 ///
-/// Returns a [`ParseError`] pointing at the first malformed line.
-pub fn document(source: &str) -> Result<Document, ParseError> {
+/// Returns every [`ParseError`]: the first in each top-level block that's
+/// malformed (the rest of that block is skipped), or just the header's.
+pub fn document(source: &str) -> Result<Document, ParseErrors> {
     let mut parser = Parser::new(source);
-    parser.header()?;
+    parser.header().map_err(Errors::one)?;
 
     let mut document = Document {
         title: None,
         items: Vec::new(),
     };
-    parser.children(None, |parser, line| parser.item(line, &mut document))?;
-    Ok(document)
+    // Top-level blocks don't depend on each other, so an error in one skips
+    // only the rest of that block, and the next is read as usual
+    let mut errors = Vec::new();
+    let mut top = None;
+    loop {
+        let line = match parser.peek() {
+            Ok(Some(line)) => line,
+            Ok(None) => break,
+            Err(error) => {
+                errors.push(error);
+                parser.skip(parser.next, top);
+                continue;
+            }
+        };
+        let at = parser.next;
+        let indent = *top.get_or_insert(line.indent);
+        let read = match line.indent.cmp(&indent) {
+            Ordering::Greater => Err(ParseError::new(
+                line.span(),
+                ParseErrorKind::UnexpectedIndent,
+            )),
+            Ordering::Less => Err(ParseError::new(line.span(), ParseErrorKind::Misaligned)),
+            Ordering::Equal => {
+                parser.bump();
+                parser.item(line, &mut document)
+            }
+        };
+        if let Err(error) = read {
+            errors.push(error);
+            parser.skip(at, top);
+        }
+    }
+    Errors::new(errors).map_or(Ok(document), Err)
 }
+
+/// Every error in a document that doesn't parse.
+pub type ParseErrors = Errors<ParseError>;
 
 /// The parser's place in the source.
 #[derive(Debug)]
@@ -119,6 +155,22 @@ impl<'a> Parser<'a> {
     /// Consume the line [`Self::peek`] returned.
     const fn bump(&mut self) {
         self.next += 1;
+    }
+
+    /// After an error on the line at `at`: skip it, and the rest of its
+    /// block, to the next line at the top level's indent (`top`), where
+    /// reading can pick up again.
+    fn skip(&mut self, at: usize, top: Option<usize>) {
+        self.next = self.next.max(at + 1);
+        while let Some(&(start, raw)) = self.lines.get(self.next) {
+            if let Ok(Some(line)) = Line::read(start, raw)
+                && top.is_none_or(|top| line.indent <= top)
+                && !line.text.starts_with("//")
+            {
+                break;
+            }
+            self.next += 1;
+        }
     }
 
     fn header(&mut self) -> Result<(), ParseError> {

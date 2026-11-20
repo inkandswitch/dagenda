@@ -58,6 +58,28 @@ fn a_duplicate_says_where_the_first_one_is() {
 }
 
 #[test]
+fn every_resolve_error_is_reported_in_its_document() {
+    let problems = report(&[
+        source(
+            "public.dagenda",
+            "roadmap\n[ ] task a\n  needs x\n  dri @alice\n",
+        ),
+        source(
+            "private.dagenda",
+            "roadmap\nextend a\n  dri @bob\nextend ghost\n  dri @carol\n",
+        ),
+    ]);
+    assert_eq!(
+        problems,
+        [
+            "public.dagenda:3:9: error: nothing in the plan is called `x`",
+            "private.dagenda:3:7: error: `dri` is already set for `a`; each detail has one owner (first at public.dagenda:4:7)",
+            "private.dagenda:4:8: error: nothing in the plan is called `ghost`",
+        ]
+    );
+}
+
+#[test]
 fn warnings_come_with_the_plan() {
     let (plan, problems) = check(&[source(
         "w.dagenda",

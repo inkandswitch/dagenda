@@ -26,9 +26,10 @@ pub struct Source {
 
 /// Check documents as one plan, so they can refer to each other's ids.
 ///
-/// Every document that doesn't parse is reported. If they all parse, the
-/// plan is resolved: its first resolve error is reported, or else every
-/// warning, along with the plan.
+/// Every error in every document that doesn't parse is reported (the first
+/// in each malformed top-level block). If they all parse, the plan is
+/// resolved: every resolve error is reported, or else every warning, along
+/// with the plan.
 ///
 /// ```
 /// use dagenda_core::check::{Source, check};
@@ -48,13 +49,15 @@ pub fn check(sources: &[Source]) -> (Option<Plan>, Vec<Problem>) {
     for (index, source) in sources.iter().enumerate() {
         match parser::document(&source.text) {
             Ok(document) => documents.push(document),
-            Err(error) => problems.push(Problem::new(
-                index,
-                source,
-                error.span(),
-                Severity::Error,
-                error.to_string(),
-            )),
+            Err(errors) => problems.extend(errors.iter().map(|error| {
+                Problem::new(
+                    index,
+                    source,
+                    error.span(),
+                    Severity::Error,
+                    error.to_string(),
+                )
+            })),
         }
     }
     if !problems.is_empty() {
@@ -68,25 +71,22 @@ pub fn check(sources: &[Source]) -> (Option<Plan>, Vec<Problem>) {
             }));
             (Some(plan), problems)
         }
-        Err(error) => {
-            let mut message = error.to_string();
-            if let Some(first) = first_location(error.kind())
-                && let Some(source) = sources.get(first.document.index())
-            {
-                // Name the document only when it's another one
-                let (line, column) = first.span.line_col(&source.text);
-                message = if first.document == error.location().document {
-                    format!("{message} (first at {line}:{column})")
-                } else {
-                    format!("{message} (first at {}:{line}:{column})", source.name)
-                };
-            }
-            problems.extend(Problem::at(
-                sources,
-                error.location(),
-                Severity::Error,
-                message,
-            ));
+        Err(errors) => {
+            problems.extend(errors.iter().filter_map(|error| {
+                let mut message = error.to_string();
+                if let Some(first) = first_location(error.kind())
+                    && let Some(source) = sources.get(first.document.index())
+                {
+                    // Name the document only when it's another one
+                    let (line, column) = first.span.line_col(&source.text);
+                    message = if first.document == error.location().document {
+                        format!("{message} (first at {line}:{column})")
+                    } else {
+                        format!("{message} (first at {}:{line}:{column})", source.name)
+                    };
+                }
+                Problem::at(sources, error.location(), Severity::Error, message)
+            }));
             (None, problems)
         }
     }

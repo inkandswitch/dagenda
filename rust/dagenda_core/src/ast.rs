@@ -37,7 +37,7 @@ impl Document {
     /// )?;
     /// let ids: Vec<&str> = document.definitions().iter().map(|(id, _)| id.as_str()).collect();
     /// assert_eq!(ids, ["core", "parser", "lexer"]);
-    /// # Ok::<(), dagenda_core::parser::ParseError>(())
+    /// # Ok::<(), dagenda_core::parser::ParseErrors>(())
     /// ```
     #[must_use]
     pub fn definitions(&self) -> Vec<(&Id, Span)> {

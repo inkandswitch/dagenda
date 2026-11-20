@@ -107,7 +107,9 @@ fn an_id_defined_in_two_documents_points_at_both() -> TestResult {
         parser::document(PUBLIC)?,
         parser::document("roadmap\n[ ] task fragments\n")?,
     ];
-    let error = Plan::resolve(&documents).err().ok_or("resolved")?;
+    let errors = Plan::resolve(&documents).err().ok_or("resolved")?;
+    assert_eq!(errors.len().get(), 1);
+    let error = errors.first();
     assert_eq!(error.location().document, DocumentId::new(1));
     let ResolveErrorKind::Duplicate { first, .. } = error.kind() else {
         return Err(format!("expected a duplicate, got {error}").into());
@@ -123,7 +125,8 @@ fn two_documents_cant_both_set_a_detail() -> TestResult {
         parser::document(PRIVATE)?,
         parser::document("roadmap\nextend signatures\n  dri @bob\n")?,
     ];
-    let error = Plan::resolve(&documents).err().ok_or("resolved")?;
+    let errors = Plan::resolve(&documents).err().ok_or("resolved")?;
+    let error = errors.first();
     assert_eq!(
         error.to_string(),
         "`dri` is already set for `signatures`; each detail has one owner"

@@ -1,12 +1,17 @@
 //! Resolution, in passes: define every id, merge `extend`s, check references,
 //! order the work, then derive what's finished and what to warn about.
+//!
+//! The first three passes keep going past an error, collecting every one,
+//! so a plan's mistakes are all reported at once. Ordering only runs on a
+//! plan without them: a loop is only worth reporting once every id it
+//! passes through is known.
 
 use super::{
     DocumentId, Entry, Link, Located, Location, Milestone, Node, NodeKind, Plan, ResolveError,
     ResolveErrorKind, Site, Task, Track, flat,
     warning::{Warning, WarningKind},
 };
-use crate::{ast, id::Id, span::Spanned, status::Status, text::Text};
+use crate::{ast, errors::Errors, id::Id, span::Spanned, status::Status, text::Text};
 use alloc::{
     collections::{BTreeMap, VecDeque},
     vec,
@@ -30,37 +35,47 @@ pub(super) struct Builder<'d> {
     under: Vec<(Id, Id)>,
 
     warnings: Vec<Warning>,
+
+    /// Everything wrong so far.
+    errors: Vec<ResolveError>,
 }
 
 impl<'d> Builder<'d> {
     /// Define everything in one document.
-    pub(super) fn document(
-        &mut self,
-        document: DocumentId,
-        ast: &'d ast::Document,
-    ) -> Result<(), ResolveError> {
+    pub(super) fn document(&mut self, document: DocumentId, ast: &'d ast::Document) {
         self.titles
             .push(ast.title.as_ref().map(|title| locate(document, title)));
 
         for item in &ast.items {
             match item {
-                ast::Item::Track(track) => self.track(document, track, None)?,
-                ast::Item::Task(task) => self.task(document, task, None, None)?,
-                ast::Item::Milestone(milestone) => self.milestone(document, milestone)?,
+                ast::Item::Track(track) => self.track(document, track, None),
+                ast::Item::Task(task) => self.task(document, task, None, None),
+                ast::Item::Milestone(milestone) => self.milestone(document, milestone),
                 ast::Item::Extend(extend) => {
                     for under in &extend.node.under {
-                        self.task(document, under, None, Some(&extend.node.id.node))?;
+                        self.task(document, under, None, Some(&extend.node.id.node));
                     }
                     self.extends.push((document, extend));
                 }
             }
         }
-        Ok(())
     }
 
-    fn define(&mut self, id: &Spanned<Id>, at: Location, node: Node) -> Result<(), ResolveError> {
+    /// Everything wrong with the plan, in source order, if anything is.
+    pub(super) fn failed(&mut self) -> Option<Errors<ResolveError>> {
+        let mut errors = core::mem::take(&mut self.errors);
+        errors.sort_by_key(|error| {
+            let at = error.location();
+            (at.document.index(), at.span.start)
+        });
+        Errors::new(errors)
+    }
+
+    /// Index `id`. A second definition is an error, and stays out of the
+    /// index, but is still built, so what's wrong inside it is found too.
+    fn define(&mut self, id: &Spanned<Id>, at: Location, node: Node) {
         if let Some(first) = self.index.get(&id.node) {
-            return Err(ResolveError::new(
+            self.errors.push(ResolveError::new(
                 Location {
                     document: at.document,
                     span: id.span,
@@ -70,23 +85,18 @@ impl<'d> Builder<'d> {
                     first: first.at,
                 },
             ));
+            return;
         }
         self.index.insert(id.node.clone(), Entry { node, at });
-        Ok(())
     }
 
-    fn track(
-        &mut self,
-        document: DocumentId,
-        track: &'d Spanned<ast::Track>,
-        parent: Option<&Id>,
-    ) -> Result<(), ResolveError> {
+    fn track(&mut self, document: DocumentId, track: &'d Spanned<ast::Track>, parent: Option<&Id>) {
         let ast = &track.node;
         let defined = Location {
             document,
             span: track.span,
         };
-        self.define(&ast.id, defined, Node::Track(self.tracks.len()))?;
+        self.define(&ast.id, defined, Node::Track(self.tracks.len()));
         self.tracks.push(Track {
             id: ast.id.node.clone(),
             label: ast.label.as_ref().map(|label| label.node.clone()),
@@ -103,14 +113,13 @@ impl<'d> Builder<'d> {
         for child in &ast.children {
             match child {
                 ast::TrackChild::Track(nested) => {
-                    self.track(document, nested, Some(&ast.id.node))?;
+                    self.track(document, nested, Some(&ast.id.node));
                 }
                 ast::TrackChild::Task(task) => {
-                    self.task(document, task, Some(&ast.id.node), None)?;
+                    self.task(document, task, Some(&ast.id.node), None);
                 }
             }
         }
-        Ok(())
     }
 
     fn task(
@@ -119,14 +128,14 @@ impl<'d> Builder<'d> {
         task: &'d Spanned<ast::Task>,
         track: Option<&Id>,
         outer: Option<&Id>,
-    ) -> Result<(), ResolveError> {
+    ) {
         let ast = &task.node;
         let details = &ast.details;
         let defined = Location {
             document,
             span: task.span,
         };
-        self.define(&ast.id, defined, Node::Task(self.tasks.len()))?;
+        self.define(&ast.id, defined, Node::Task(self.tasks.len()));
         if let (None, Some(outer)) = (track, outer) {
             self.under.push((ast.id.node.clone(), outer.clone()));
         }
@@ -166,22 +175,17 @@ impl<'d> Builder<'d> {
         });
 
         for under in &ast.under {
-            self.task(document, under, track, Some(&ast.id.node))?;
+            self.task(document, under, track, Some(&ast.id.node));
         }
-        Ok(())
     }
 
-    fn milestone(
-        &mut self,
-        document: DocumentId,
-        milestone: &'d Spanned<ast::Milestone>,
-    ) -> Result<(), ResolveError> {
+    fn milestone(&mut self, document: DocumentId, milestone: &'d Spanned<ast::Milestone>) {
         let ast = &milestone.node;
         let defined = Location {
             document,
             span: milestone.span,
         };
-        self.define(&ast.id, defined, Node::Milestone(self.milestones.len()))?;
+        self.define(&ast.id, defined, Node::Milestone(self.milestones.len()));
         self.milestones.push(Milestone {
             id: ast.id.node.clone(),
             label: ast.label.as_ref().map(|label| label.node.clone()),
@@ -203,11 +207,10 @@ impl<'d> Builder<'d> {
                 .collect(),
             defined,
         });
-        Ok(())
     }
 
     /// Merge every `extend` into the task it names.
-    pub(super) fn extends(&mut self) -> Result<(), ResolveError> {
+    pub(super) fn extends(&mut self) {
         for (document, extend) in core::mem::take(&mut self.extends) {
             let ast = &extend.node;
             let here = Location {
@@ -218,7 +221,7 @@ impl<'d> Builder<'d> {
             let index = match self.index.get(&ast.id.node).map(|entry| entry.node) {
                 Some(Node::Task(index)) => index,
                 Some(node @ (Node::Track(_) | Node::Milestone(_))) => {
-                    return Err(ResolveError::new(
+                    self.errors.push(ResolveError::new(
                         here,
                         ResolveErrorKind::WrongKind {
                             id: ast.id.node.clone(),
@@ -226,12 +229,14 @@ impl<'d> Builder<'d> {
                             site: Site::Extend,
                         },
                     ));
+                    continue;
                 }
                 None => {
-                    return Err(ResolveError::new(
+                    self.errors.push(ResolveError::new(
                         here,
                         ResolveErrorKind::Unknown(ast.id.node.clone()),
                     ));
+                    continue;
                 }
             };
 
@@ -244,7 +249,7 @@ impl<'d> Builder<'d> {
                     kind: WarningKind::ExtendSameDocument(ast.id.node.clone()),
                 });
             }
-            merge(task, document, &ast.details)?;
+            merge(task, document, &ast.details, &mut self.errors);
             task.needs.extend(
                 ast.under
                     .iter()
@@ -252,7 +257,6 @@ impl<'d> Builder<'d> {
             );
         }
         self.inherit_tracks();
-        Ok(())
     }
 
     /// Give each task written under an `extend` the track of the task it's
@@ -296,18 +300,19 @@ impl<'d> Builder<'d> {
 
     /// Check that every `needs` and milestone member names a task or a
     /// milestone.
-    pub(super) fn references(&self) -> Result<(), ResolveError> {
-        for task in &self.tasks {
-            for need in &task.needs {
-                self.check(need, Site::Needs)?;
-            }
-        }
-        for milestone in &self.milestones {
-            for member in milestone.needs.iter().chain(&milestone.wants) {
-                self.check(member, Site::Member)?;
-            }
-        }
-        Ok(())
+    pub(super) fn references(&mut self) {
+        let needs = self
+            .tasks
+            .iter()
+            .flat_map(|task| &task.needs)
+            .map(|need| self.check(need, Site::Needs));
+        let members = self
+            .milestones
+            .iter()
+            .flat_map(|milestone| milestone.needs.iter().chain(&milestone.wants))
+            .map(|member| self.check(member, Site::Member));
+        let wrong: Vec<ResolveError> = needs.chain(members).filter_map(Result::err).collect();
+        self.errors.extend(wrong);
     }
 
     fn check(&self, reference: &Located<Id>, site: Site) -> Result<(), ResolveError> {
@@ -582,11 +587,13 @@ pub(super) struct Edge {
 }
 
 /// Merge an `extend`'s details into its task.
+/// A detail another document already set is an error, added to `errors`.
 fn merge(
     task: &mut Task,
     document: DocumentId,
     details: &ast::Details,
-) -> Result<(), ResolveError> {
+    errors: &mut Vec<ResolveError>,
+) {
     task.needs
         .extend(details.needs.iter().map(|need| locate(document, need)));
     task.refs
@@ -595,28 +602,36 @@ fn merge(
         .extend(details.links.iter().map(|link| locate(document, link)));
     task.notes
         .extend(details.notes.iter().map(|note| locate(document, note)));
-    set_once(
-        &mut task.est,
-        details.est.as_ref(),
-        "est",
-        &task.id,
-        document,
-    )?;
-    set_once(
-        &mut task.target,
-        details.target.as_ref(),
-        "target",
-        &task.id,
-        document,
-    )?;
-    set_once(
-        &mut task.dri,
-        details.dri.as_ref(),
-        "dri",
-        &task.id,
-        document,
-    )?;
-    Ok(())
+    errors.extend(
+        set_once(
+            &mut task.est,
+            details.est.as_ref(),
+            "est",
+            &task.id,
+            document,
+        )
+        .err(),
+    );
+    errors.extend(
+        set_once(
+            &mut task.target,
+            details.target.as_ref(),
+            "target",
+            &task.id,
+            document,
+        )
+        .err(),
+    );
+    errors.extend(
+        set_once(
+            &mut task.dri,
+            details.dri.as_ref(),
+            "dri",
+            &task.id,
+            document,
+        )
+        .err(),
+    );
 }
 
 /// Fill a detail that only one document can set.

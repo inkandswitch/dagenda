@@ -16,6 +16,7 @@ pub mod warning;
 use crate::{
     ast::Document,
     date::Date,
+    errors::Errors,
     handle::Handle,
     id::Id,
     reference::{self, Ref},
@@ -76,19 +77,23 @@ impl Plan {
     ///
     /// # Errors
     ///
-    /// Returns a [`ResolveError`] for the first id defined twice, reference
-    /// to nothing (or to the wrong kind of thing), detail set by two
-    /// documents, or set of tasks and milestones that need each other.
-    pub fn resolve(documents: &[Document]) -> Result<Self, ResolveError> {
+    /// Returns every [`ResolveError`] it finds, in source order: each id
+    /// defined twice, reference to nothing (or to the wrong kind of thing),
+    /// and detail set by two documents. Only once there are none, a set of
+    /// tasks and milestones that need each other.
+    pub fn resolve(documents: &[Document]) -> Result<Self, ResolveErrors> {
         let mut builder = Builder::default();
         for (index, document) in documents.iter().enumerate() {
-            builder.document(DocumentId(index), document)?;
+            builder.document(DocumentId(index), document);
         }
-        builder.extends()?;
-        builder.references()?;
+        builder.extends();
+        builder.references();
+        if let Some(errors) = builder.failed() {
+            return Err(errors);
+        }
 
         let graph = builder.graph();
-        let order = builder.order(&graph)?;
+        let order = builder.order(&graph).map_err(Errors::one)?;
         Ok(builder.finish(&graph, &order))
     }
 
@@ -619,7 +624,10 @@ impl fmt::Display for Loop<'_> {
     }
 }
 
-/// Documents that don't resolve.
+/// Everything wrong with documents that don't resolve.
+pub type ResolveErrors = Errors<ResolveError>;
+
+/// One way documents don't resolve.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[error("{kind}")]
 pub struct ResolveError {
