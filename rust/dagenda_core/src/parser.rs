@@ -8,7 +8,7 @@
 //! document  = "roadmap" NL { item }
 //! item      = "title" text NL | track | task | milestone | extend
 //! track     = "track" id [ label ] NL [ INDENT { track | task | dri | note } DEDENT ]
-//! task      = box "task" id [ label ] NL [ INDENT { task | detail } DEDENT ]
+//! task      = box id [ label ] NL [ INDENT { task | detail } DEDENT ]
 //! milestone = "milestone" id [ label ] NL [ INDENT { id NL | nice | target | note } DEDENT ]
 //! nice      = "nice-to-have" NL [ INDENT { id NL } DEDENT ]   (at most one per milestone)
 //! extend    = "extend" id NL [ INDENT { task | detail } DEDENT ]
@@ -52,7 +52,7 @@ use thiserror::Error;
 /// ```
 /// use dagenda_core::parser;
 ///
-/// let document = parser::document("roadmap\ntrack core [Core]\n  [x] task parser\n")?;
+/// let document = parser::document("roadmap\ntrack core [Core]\n  [x] parser\n")?;
 /// assert_eq!(document.items.len(), 1);
 /// # Ok::<(), parser::ParseErrors>(())
 /// ```
@@ -699,7 +699,7 @@ impl<'a> Head<'a> {
     }
 }
 
-/// `<box> task <rest>`
+/// `<box> <id> [<label>]`: a task is its status box and its id.
 fn task_head(piece: Piece<'_>) -> Result<Head<'_>, ParseError> {
     let mut chars = piece.text.chars();
     let (Some('['), Some(mark), Some(']')) = (chars.next(), chars.next(), chars.next()) else {
@@ -713,14 +713,15 @@ fn task_head(piece: Piece<'_>) -> Result<Head<'_>, ParseError> {
     let status = Status::from_mark(mark)
         .ok_or_else(|| ParseError::new(status_box.span(), ParseErrorKind::UnknownStatus(mark)))?;
 
-    let (word, rest) = rest.split_word();
-    if word.text != "task" {
-        let at = if word.is_empty() {
-            Span::at(status_box.span().end)
-        } else {
-            word.span()
-        };
-        return Err(ParseError::new(at, ParseErrorKind::ExpectedTask));
+    let (word, _) = rest.split_word();
+    if word.text == "task" {
+        return Err(ParseError::new(word.span(), ParseErrorKind::OldTask));
+    }
+    if rest.is_empty() || rest.text.starts_with('[') {
+        return Err(ParseError::new(
+            Span::at(status_box.span().end),
+            ParseErrorKind::MissingTaskId,
+        ));
     }
 
     Ok(Head::Task(Spanned::new(status, status_box.span()), rest))
@@ -1110,8 +1111,14 @@ pub enum ParseErrorKind {
     Misaligned,
 
     /// `task` without a status box.
-    #[error("a task starts with a status box, as in `[ ] task …`")]
+    #[error("a task is a status box and an id, as in `[ ] parser`")]
     MissingBox,
+
+    /// `task` after a status box, as tasks were once written.
+    #[error(
+        "`task` is no longer written: a task is just its status box and id, as in `[ ] parser`"
+    )]
+    OldTask,
 
     /// A `[` that doesn't open a three-character box.
     #[error("expected a status box, like `[ ]`")]
@@ -1123,9 +1130,9 @@ pub enum ParseErrorKind {
     )]
     UnknownStatus(char),
 
-    /// A status box followed by something other than `task`.
-    #[error("expected `task` after the status box")]
-    ExpectedTask,
+    /// A status box with no id after it.
+    #[error("expected an id after the status box, as in `[ ] parser`")]
+    MissingTaskId,
 
     /// A block keyword with no id after it.
     #[error("expected an id after `{0}`")]
@@ -1245,7 +1252,7 @@ pub enum ParseErrorKind {
 
     /// A line that starts with an unknown word.
     #[error(
-        "unknown line starting `{0}`; expected `track`, `[ ] task`, `milestone`, `extend`, or a detail like `needs`"
+        "unknown line starting `{0}`; expected `track`, a task (`[ ] id`), `milestone`, `extend`, or a detail like `needs`"
     )]
     UnknownLine(String),
 }

@@ -9,16 +9,16 @@ title A small plan
 // click one to jump to its line.
 
 track core [Core]
-  [x] task parser [Parser]
-  [-] task resolver [Resolver]
+  [x] parser [Parser]
+  [-] resolver [Resolver]
     needs parser
-  [ ] task views [Views]
+  [ ] views [Views]
     needs resolver
 
 track web [Web]
-  [ ] task wasm [Wasm bindings]
+  [ ] wasm [Wasm bindings]
     needs resolver
-  [ ] task preview [Preview page]
+  [ ] preview [Preview page]
     needs wasm, views
 
 milestone firstLook [A first look]
@@ -40,11 +40,11 @@ track core [Core]
   dri @alice
   note The track's own note.
 
-  [x] task parser [Parser]
+  [x] parser [Parser]
     pr gh:owner/repo#1
     est 2026-11-19
 
-  [-] task resolver [Resolver]
+  [-] resolver [Resolver]
     needs parser
     issue gh:owner/repo#2
     link https://github.com/owner/repo/issues/2#issuecomment-3
@@ -57,21 +57,21 @@ track core [Core]
       \`\`\`
       // Not a comment: this is inside the note.
       \`\`\`
-    [x] task duplicates [Duplicate ids]
+    [x] duplicates [Duplicate ids]
       dri @bob
-    [ ] task cycles [Cycles]
+    [ ] cycles [Cycles]
 
   track views [Views \\[nested\\]]
       colour plum
-      [ ] task techTree [Tech tree]
+      [ ] techTree [Tech tree]
           needs resolver, itParses
-      [?] task skillTree [Skill tree]
-      [*] task layout [Layout research]
-      [!] task fonts [Fonts]
-      [>] task gantt [Gantt]
-      [~] task mermaid [Mermaid export]
+      [?] skillTree [Skill tree]
+      [*] layout [Layout research]
+      [!] fonts [Fonts]
+      [>] gantt [Gantt]
+      [~] mermaid [Mermaid export]
 
-[ ] task untracked [A task outside any track]
+[ ] untracked [A task outside any track]
 
 milestone itParses [It parses]
   target EOY26

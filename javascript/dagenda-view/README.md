@@ -18,8 +18,8 @@ npm run build  # wasm-pack → pkg/ (needs wasm-pack and the pinned wasm-bindgen
 
 <dagenda-view><script type="text/dagenda">
   roadmap
-  [x] task parser [Parser]
-  [ ] task resolver [Resolver]
+  [x] parser [Parser]
+  [ ] resolver [Resolver]
     needs parser
 </script></dagenda-view>
 

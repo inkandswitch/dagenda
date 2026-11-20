@@ -69,17 +69,17 @@ const drag = async (tab, from, to) => {
 
 test("clicking a badge sets the status from a menu", async () => {
   const a = await open("status")
-  await write(a, "roadmap\n[ ] task a [A]\n[ ] task b [B]\n  needs a\n", "b")
+  await write(a, "roadmap\n[ ] a [A]\n[ ] b [B]\n  needs a\n", "b")
   await click(a, await middle(a, '.node[data-id="a"] .badge'))
   await a.until(`document.getElementById("picture").shadowRoot.querySelectorAll(".menu button").length === 8`, "the menu")
   await a.evaluate(`[...document.getElementById("picture").shadowRoot.querySelectorAll(".menu button")].find((b) => b.textContent.includes("Done")).click()`)
-  await a.until(`${text}.includes("[x] task a [A]")`, "the box in the text")
-  assert.match(await a.evaluate(text), /\[ \] task b \[B\]/, "and nothing else")
+  await a.until(`${text}.includes("[x] a [A]")`, "the box in the text")
+  assert.match(await a.evaluate(text), /\[ \] b \[B\]/, "and nothing else")
 })
 
 test("dragging from a badge to a card adds a need", async () => {
   const a = await open("need")
-  await write(a, "roadmap\n[ ] task a [A]\n[ ] task b [B]\n[ ] task c [C]\n  needs b\n", "c")
+  await write(a, "roadmap\n[ ] a [A]\n[ ] b [B]\n[ ] c [C]\n  needs b\n", "c")
   await drag(a, await middle(a, '.node[data-id="c"] .badge'), await middle(a, '.node[data-id="a"] .card'))
   await a.until(`${text}.includes("needs b, a")`, "the need in the text")
 
@@ -93,7 +93,7 @@ test("dragging a card into another era re-scopes it", async () => {
   const a = await open("rescope")
   await write(
     a,
-    "roadmap\n[ ] task a [A]\n[ ] task b [B]\n\nmilestone first [First]\n  a\n\nmilestone second [Second]\n  b\n",
+    "roadmap\n[ ] a [A]\n[ ] b [B]\n\nmilestone first [First]\n  a\n\nmilestone second [Second]\n  b\n",
     "second",
   )
   const card = await middle(a, '.node[data-id="b"] .card')
@@ -108,7 +108,7 @@ test("dragging a card into another era re-scopes it", async () => {
 
 test("dragging a gate past another reorders the eras", async () => {
   const a = await open("reorder")
-  await write(a, "roadmap\n[ ] task a [A]\n[ ] task b [B]\n\nmilestone first [First]\n  a\n\nmilestone second [Second]\n  b\n", "second")
+  await write(a, "roadmap\n[ ] a [A]\n[ ] b [B]\n\nmilestone first [First]\n  a\n\nmilestone second [Second]\n  b\n", "second")
   const gate = await middle(a, '.node[data-id="first"] .gate')
   const above = await middle(a, '.node[data-id="second"] .gate')
   await drag(a, gate, { x: gate.x, y: above.y - 60 })
@@ -117,7 +117,7 @@ test("dragging a gate past another reorders the eras", async () => {
 
 test("dragging a milestone's line reorders it, as its gate does", async () => {
   const a = await open("line")
-  await write(a, "roadmap\n[ ] task a [A]\n[ ] task b [B]\n\nmilestone first [First]\n  a\n\nmilestone second [Second]\n  b\n", "second")
+  await write(a, "roadmap\n[ ] a [A]\n[ ] b [B]\n\nmilestone first [First]\n  a\n\nmilestone second [Second]\n  b\n", "second")
   const line = await a.evaluate(`(() => {
     const { x, y } = document.getElementById("picture").shadowRoot.querySelector('.era[data-milestone="first"] line.hit').getBoundingClientRect()
     return { x: x + 40, y: y + 7 }
@@ -129,7 +129,7 @@ test("dragging a milestone's line reorders it, as its gate does", async () => {
 
 test("a refused drag says why, where it was dropped", async () => {
   const a = await open("refused")
-  await write(a, "roadmap\n[ ] task a [A]\n\nmilestone first [First]\n  a\n\nmilestone second [Second]\n  first\n", "second")
+  await write(a, "roadmap\n[ ] a [A]\n\nmilestone first [First]\n  a\n\nmilestone second [Second]\n  first\n", "second")
   const gate = await middle(a, '.node[data-id="first"] .gate')
   const above = await middle(a, '.node[data-id="second"] .gate')
   const drop = { x: gate.x, y: above.y - 60 }
@@ -158,7 +158,7 @@ const onLine = (tab, id) =>
 
 test("dragging a milestone's line up past a card brings it in", async () => {
   const a = await open("bring")
-  await write(a, "roadmap\n[ ] task a [A]\n[ ] task c [C]\n\nmilestone first [First]\n  a\n", "first")
+  await write(a, "roadmap\n[ ] a [A]\n[ ] c [C]\n\nmilestone first [First]\n  a\n", "first")
   const line = await onLine(a, "first")
   const card = await middle(a, '.node[data-id="c"] .card')
   await drag(a, line, { x: line.x, y: card.y - 30 })
@@ -169,7 +169,7 @@ test("dragging a milestone's line down past a card hands it to the era above", a
   const a = await open("hand")
   await write(
     a,
-    "roadmap\n[ ] task a [A]\n[ ] task b [B]\n  needs a\n[ ] task c [C]\n\nmilestone first [First]\n  a\n  b\n\nmilestone second [Second]\n  c\n",
+    "roadmap\n[ ] a [A]\n[ ] b [B]\n  needs a\n[ ] c [C]\n\nmilestone first [First]\n  a\n  b\n\nmilestone second [Second]\n  c\n",
     "second",
   )
   const line = await onLine(a, "first")
@@ -182,7 +182,7 @@ test("dragging a milestone's line down past a card hands it to the era above", a
 
 test("a milestone's grab area is never drawn", async () => {
   const a = await open("thin")
-  await write(a, "roadmap\n[x] task a [A]\n\nmilestone first [First]\n  a\n", "first")
+  await write(a, "roadmap\n[x] a [A]\n\nmilestone first [First]\n  a\n", "first")
   await a.evaluate(`document.getElementById("picture").setAttribute("theme", "dark")`)
   const hit = await a.evaluate(`(() => {
     const hit = document.getElementById("picture").shadowRoot.querySelector('.era[data-milestone="first"] line.hit')
@@ -196,7 +196,7 @@ const BIG = [
   "roadmap",
   ...["a", "b", "c", "d"].flatMap((track) => [
     `track ${track}`,
-    ...[0, 1, 2, 3, 4, 5].flatMap((n) => [`  [ ] task ${track}${n}`, ...(n > 0 ? [`    needs ${track}${n - 1}`] : [])]),
+    ...[0, 1, 2, 3, 4, 5].flatMap((n) => [`  [ ] ${track}${n}`, ...(n > 0 ? [`    needs ${track}${n - 1}`] : [])]),
   ]),
 ].join("\n")
 

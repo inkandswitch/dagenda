@@ -34,7 +34,7 @@ impl Document {
     ///
     /// ```
     /// let document = dagenda_core::parser::document(
-    ///     "roadmap\ntrack core\n  [ ] task parser\n    [ ] task lexer\n",
+    ///     "roadmap\ntrack core\n  [ ] parser\n    [ ] lexer\n",
     /// )?;
     /// let ids: Vec<&str> = document.definitions().iter().map(|(id, _)| id.as_str()).collect();
     /// assert_eq!(ids, ["core", "parser", "lexer"]);

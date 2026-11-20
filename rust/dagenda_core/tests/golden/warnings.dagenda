@@ -2,17 +2,17 @@ roadmap
 title Every warning
 
 track work [Work]
-  [x] task shipped [Shipped]
+  [x] shipped [Shipped]
     needs unfinished
-  [ ] task unfinished [Unfinished]
-  [~] task dropped [Dropped]
-  [>] task deferred [Deferred]
-  [ ] task waiting [Waiting]
+  [ ] unfinished [Unfinished]
+  [~] dropped [Dropped]
+  [>] deferred [Deferred]
+  [ ] waiting [Waiting]
     needs dropped
-  [x] task parent [Parent]
-    [ ] task child [Open child]
-    [x] task doneChild [Done child]
-    [~] task droppedChild [Dropped child]
+  [x] parent [Parent]
+    [ ] child [Open child]
+    [x] doneChild [Done child]
+    [~] droppedChild [Dropped child]
 
 extend unfinished
   dri @bob

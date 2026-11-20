@@ -33,8 +33,8 @@
 //! let plan = dagenda_core::parse(
 //!     "roadmap
 //!      track core [Core]
-//!        [x] task parser [Parser]
-//!        [ ] task resolver [Resolver]
+//!        [x] parser [Parser]
+//!        [ ] resolver [Resolver]
 //!          needs parser",
 //! )?;
 //! let tree = TechTree::new(&plan);

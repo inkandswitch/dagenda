@@ -14,7 +14,7 @@ use core::{
 /// [`first`](Self::first).
 ///
 /// ```
-/// let source = "roadmap\n[ ] task a\n  needs x\n[ ] task b\n  needs y\n";
+/// let source = "roadmap\n[ ] a\n  needs x\n[ ] b\n  needs y\n";
 /// let Err(dagenda_core::Error::Resolve(errors)) = dagenda_core::parse(source) else {
 ///     panic!("two unknown ids");
 /// };

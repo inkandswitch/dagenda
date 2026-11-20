@@ -41,10 +41,10 @@ fn row(tree: &TechTree, id: &str) -> Option<usize> {
 fn lines_a_longer_path_implies_are_left_out() -> TestResult {
     let tree = tree(
         "roadmap
-[ ] task a
-[ ] task b
+[ ] a
+[ ] b
   needs a
-[ ] task c
+[ ] c
   needs a, b
 milestone m
   a
@@ -73,10 +73,10 @@ milestone m
 fn a_path_through_a_band_doesnt_hide_a_line() -> TestResult {
     let tree = tree(
         "roadmap
-[ ] task x
+[ ] x
 milestone m
   x
-[ ] task y
+[ ] y
   needs x, m",
     )?;
     assert_eq!(
@@ -92,8 +92,8 @@ milestone m
 fn a_nice_to_have_the_milestone_needs_anyway_has_no_line() -> TestResult {
     let tree = tree(
         "roadmap
-[ ] task part
-[ ] task whole
+[ ] part
+[ ] whole
   needs part
 milestone m
   whole
@@ -112,8 +112,8 @@ milestone m
 fn prerequisites_sit_below_what_they_unlock() -> TestResult {
     let tree = tree(
         "roadmap
-[ ] task a
-[ ] task b
+[ ] a
+[ ] b
   needs a",
     )?;
     let (a, b) = (
@@ -128,10 +128,10 @@ fn prerequisites_sit_below_what_they_unlock() -> TestResult {
 fn nice_to_haves_are_dashed_and_sit_under_their_milestone() -> TestResult {
     let tree = tree(
         "roadmap
-[ ] task a
-[ ] task later
+[ ] a
+[ ] later
   needs a
-[ ] task muchLater
+[ ] muchLater
   needs later
 milestone m
   a
@@ -154,9 +154,9 @@ milestone m
 fn nice_to_haves_sit_in_the_era_that_wants_them() -> TestResult {
     let tree = tree(
         "roadmap
-[ ] task must
-[ ] task groundwork
-[ ] task polish
+[ ] must
+[ ] groundwork
+[ ] polish
   needs groundwork
 milestone first
   must
@@ -164,7 +164,7 @@ milestone first
     polish
 milestone second
   must
-[ ] task after
+[ ] after
   needs first",
     )?;
     let gate = |band: usize| {
@@ -189,13 +189,13 @@ milestone second
 fn milestones_are_eras_holding_the_work_they_need() -> TestResult {
     let tree = tree(
         "roadmap
-[x] task a
-[ ] task b
+[x] a
+[ ] b
   needs a
-[ ] task c
+[ ] c
   needs b
-[ ] task beyond
-[x] task aside
+[ ] beyond
+[x] aside
   needs a
 milestone first
   b
@@ -241,8 +241,8 @@ milestone second
 fn a_milestone_needing_all_another_needs_goes_above_it() -> TestResult {
     let tree = tree(
         "roadmap
-[ ] task a
-[ ] task b
+[ ] a
+[ ] b
   needs a
 milestone big
   b
@@ -265,10 +265,10 @@ fn a_task_written_under_another_is_one_it_needs() -> TestResult {
     let tree = tree(
         "roadmap
 track core
-  [ ] task setup
-  [-] task parent
-    [x] task first
-    [ ] task second
+  [ ] setup
+  [-] parent
+    [x] first
+    [ ] second
       needs setup",
     )?;
     assert_eq!(tree.nodes.len(), 4, "every task is a card");
@@ -293,7 +293,7 @@ track core
         Some("1 of 3 done below"),
         "how close it is to unlocking: first, second, and setup through second"
     );
-    let svg = dagenda_core::parse("roadmap\n[-] task a\n  [ ] task b\n")?.to_svg();
+    let svg = dagenda_core::parse("roadmap\n[-] a\n  [ ] b\n")?.to_svg();
     assert!(
         svg.contains(r#"class="node task in-progress waiting""#),
         "under way, so not dimmed as locked"
@@ -305,11 +305,11 @@ track core
 fn tasks_waiting_on_unfinished_work_are_locked() -> TestResult {
     let tree = tree(
         "roadmap
-[x] task done
-[ ] task open
-[ ] task afterDone
+[x] done
+[ ] open
+[ ] afterDone
   needs done
-[ ] task afterOpen
+[ ] afterOpen
   needs open",
     )?;
     let locked = |id: &str| {
@@ -326,11 +326,11 @@ fn tracks_are_branches_under_banners_then_everything_else() -> TestResult {
         "roadmap
 track sync [Sync]
   track repo [Repo]
-    [ ] task a
+    [ ] a
   track subduction
-    [ ] task b
+    [ ] b
 track keyhive [Keyhive]
-[ ] task loose
+[ ] loose
 milestone m
   a",
     )?;
@@ -408,7 +408,7 @@ fn a_long_heading_widens_its_branch() -> TestResult {
         "roadmap
 track comms [Communications (writing and demos), and then some more]
 track other
-  [ ] task a",
+  [ ] a",
     )?;
     let (comms, other) = (
         tree.branches.first().ok_or("no comms branch")?,
@@ -427,11 +427,11 @@ track other
 fn a_crowded_row_wraps_onto_two_staggered_lines() -> TestResult {
     let tree = tree(
         "roadmap
-[ ] task a
-[ ] task b
-[ ] task c
-[ ] task d
-[ ] task e",
+[ ] a
+[ ] b
+[ ] c
+[ ] d
+[ ] e",
     )?;
     let tops: std::collections::BTreeSet<u32> = tree.nodes.iter().map(|node| node.y).collect();
     assert_eq!(tops.len(), 2, "five cards wrap onto two lines");
@@ -459,13 +459,13 @@ fn cards_say_who_is_on_them_when_and_where_to_read_more() -> TestResult {
         "roadmap
 track core [Core]
   dri @alice
-  [-] task sync [Sync]
+  [-] sync [Sync]
     dri @bob
     est 2026-11-19
     pr gh:owner/repo#7
     link https://github.com/owner/repo/issues/3#issuecomment-9
     note Ask carol first.
-    [ ] task part
+    [ ] part
       dri @carol",
     )?;
     let card = node(&tree, "sync").ok_or("no sync")?;
@@ -491,9 +491,8 @@ track core [Core]
     );
     assert_eq!(card.notes.len(), 1);
 
-    let svg =
-        dagenda_core::parse("roadmap\n[ ] task a\n  link https://example.com/a?b=1&c=2 [Spec]\n")?
-            .to_svg();
+    let svg = dagenda_core::parse("roadmap\n[ ] a\n  link https://example.com/a?b=1&c=2 [Spec]\n")?
+        .to_svg();
     assert!(svg.contains(r#"<a href="https://example.com/a?b=1&amp;c=2" target="_blank">"#));
 
     let banner = tree.banners.first().ok_or("no banner")?;
@@ -510,7 +509,7 @@ fn banners_sit_over_their_branches() -> TestResult {
         "roadmap
 track sync [Sync]
   track repo [Repo]
-    [ ] task a",
+    [ ] a",
     )?;
     let (sync, repo) = (
         tree.banners.first().ok_or("no Sync")?,
@@ -530,12 +529,12 @@ track sync [Sync]
 fn every_line_has_ports_of_its_own() -> TestResult {
     let tree = tree(
         "roadmap
-[x] task parser
-[-] task resolver
+[x] parser
+[-] resolver
   needs parser
-[ ] task techTree
+[ ] techTree
   needs resolver, itParses
-[?] task skillTree
+[?] skillTree
 milestone itParses
   parser
   resolver
@@ -584,14 +583,14 @@ fn tracks_take_the_colour_they_set() -> TestResult {
         "roadmap
 track a
   colour plum
-  [ ] task one
+  [ ] one
 track b
-  [ ] task two
+  [ ] two
 track c
   color #2A9D8F
-  [ ] task three
+  [ ] three
 track d
-  [ ] task four",
+  [ ] four",
     )?;
     let colours: Vec<Option<Colour>> = tree.banners.iter().map(|banner| banner.colour).collect();
     assert_eq!(
@@ -628,7 +627,7 @@ track d
 fn long_labels_wrap() -> TestResult {
     let tree = tree(
         "roadmap
-[ ] task long [A label long enough that it has to wrap onto a second line, and maybe a third]",
+[ ] long [A label long enough that it has to wrap onto a second line, and maybe a third]",
     )?;
     let node = tree.nodes.first().ok_or("no node")?;
     assert!(node.lines.len() > 1, "{:?}", node.lines);
@@ -645,7 +644,7 @@ fn svg_escapes_what_it_quotes() -> TestResult {
         "roadmap
 title Ampersands & <angles>
 track t [\"Quotes\" & <tags>]
-  [ ] task a [Fish & chips <3]",
+  [ ] a [Fish & chips <3]",
     )?;
     let svg = plan.to_svg();
     assert!(svg.contains("Ampersands &amp; &lt;angles&gt;"));

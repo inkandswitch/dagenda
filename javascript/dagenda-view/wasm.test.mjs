@@ -24,8 +24,8 @@ initSync({ module: readFileSync(new URL("./pkg/dagenda_wasm_bg.wasm", import.met
 const PLAN = `roadmap
 title Bindings
 track core [Core]
-  [x] task parser [Parser]
-  [ ] task resolver [Resolver]
+  [x] parser [Parser]
+  [ ] resolver [Resolver]
     needs parser
 milestone first [First]
   resolver
@@ -33,8 +33,8 @@ milestone first [First]
 
 const problems = (source) => check(source)
 
-const PUBLIC = "roadmap\n[ ] task signatures [Signatures]\n"
-const PRIVATE = "roadmap\nextend signatures\n  dri @alice\n  [ ] task wireFormat [Pick the wire format]\n"
+const PUBLIC = "roadmap\n[ ] signatures [Signatures]\n"
+const PRIVATE = "roadmap\nextend signatures\n  dri @alice\n  [ ] wireFormat [Pick the wire format]\n"
 const BOTH = [
   { name: "public", source: PUBLIC },
   { name: "private", source: PRIVATE },
@@ -56,14 +56,14 @@ test("a good plan has no problems", () => {
 })
 
 test("an error comes with its line and column", () => {
-  assert.deepEqual(problems("roadmap\n[ ] task a\n  needs b\n"), [
+  assert.deepEqual(problems("roadmap\n[ ] a\n  needs b\n"), [
     { document: 0, line: 3, column: 9, severity: "error", message: "nothing in the plan is called `b`" },
   ])
 })
 
 test("every error comes back at once", () => {
   assert.deepEqual(
-    problems("roadmap\n[ ] task a\n  needs x\n[ ] task b\n  needs y\n").map((p) => `${p.line}:${p.column} ${p.message}`),
+    problems("roadmap\n[ ] a\n  needs x\n[ ] b\n  needs y\n").map((p) => `${p.line}:${p.column} ${p.message}`),
     ["3:9 nothing in the plan is called `x`", "5:9 nothing in the plan is called `y`"],
   )
 })
@@ -79,7 +79,7 @@ test("results are plain data: they serialize, spread, and need no freeing", () =
 })
 
 test("warnings come back when the plan resolves", () => {
-  const [warning] = problems("roadmap\n[~] task a\nmilestone m\n  a\n")
+  const [warning] = problems("roadmap\n[~] a\nmilestone m\n  a\n")
   assert.equal(warning.severity, "warning")
   assert.equal(warning.line, 4)
 })
@@ -93,9 +93,9 @@ test("renders the tech tree and the text", () => {
 })
 
 test("rendering a broken plan throws every problem, and says where the first is", () => {
-  const error = thrown(() => renderSvg("roadmap\n[ ] task a\n[ ] task a\n  needs ghost\n"))
+  const error = thrown(() => renderSvg("roadmap\n[ ] a\n[ ] a\n  needs ghost\n"))
   assert.ok(error instanceof Error)
-  assert.equal(error.message, "3:10: `a` is defined more than once (first at 2:1) (and 1 more problem)")
+  assert.equal(error.message, "3:5: `a` is defined more than once (first at 2:1) (and 1 more problem)")
   assert.equal(error.kind, "problems")
   assert.deepEqual(
     error.problems.map((problem) => problem.message),
@@ -107,7 +107,7 @@ test("locates definitions, even when the plan doesn't resolve", () => {
   assert.equal(locate(PLAN, "resolver"), 5)
   assert.equal(locate(PLAN, "first"), 7)
   assert.equal(locate(PLAN, "nowhere"), undefined)
-  assert.equal(locate("roadmap\n[ ] task a\n  needs missing\n", "a"), 2)
+  assert.equal(locate("roadmap\n[ ] a\n  needs missing\n", "a"), 2)
 })
 
 test("a plan of several documents is one picture", () => {
@@ -119,7 +119,7 @@ test("a plan of several documents is one picture", () => {
 })
 
 test("problems say which document they're in", () => {
-  const [problem] = checkPlan([BOTH[0], { name: "private", source: `${PRIVATE}[ ] task signatures\n` }])
+  const [problem] = checkPlan([BOTH[0], { name: "private", source: `${PRIVATE}[ ] signatures\n` }])
   assert.equal(problem.document, 1)
   assert.equal(problem.message, "`signatures` is defined more than once (first at public:2:1)")
   assert.match(thrown(() => renderPlanSvg([BOTH[0], { name: "private", source: "roadmap\n  oops\n" }])).message, /^private:2:/)
@@ -141,15 +141,15 @@ test("locates definitions across documents", () => {
 })
 
 test("a status click rewrites the box, in the document that defines the task", () => {
-  assert.deepEqual(setStatus(BOTH, "signatures", "x"), [{ document: 0, source: "roadmap\n[x] task signatures [Signatures]\n" }])
+  assert.deepEqual(setStatus(BOTH, "signatures", "x"), [{ document: 0, source: "roadmap\n[x] signatures [Signatures]\n" }])
   const error = thrown(() => setStatus(one(PUBLIC), "signatures", "q"))
   assert.equal(error.message, "`[q]` isn't a status box")
   assert.deepEqual({ ...error }, { kind: "status", mark: "q" })
 })
 
 test("connecting two cards writes a need, and refuses a loop, saying which", () => {
-  const [{ source }] = addNeed(one("roadmap\n[ ] task a\n[ ] task b\n"), "b", "a")
-  assert.equal(source, "roadmap\n[ ] task a\n[ ] task b\n  needs a\n")
+  const [{ source }] = addNeed(one("roadmap\n[ ] a\n[ ] b\n"), "b", "a")
+  assert.equal(source, "roadmap\n[ ] a\n[ ] b\n  needs a\n")
   const loop = thrown(() => addNeed(one(source), "a", "b"))
   assert.equal(loop.message, "`b` already waits on `a`, so `a` can't need it")
   assert.deepEqual({ ...loop }, { kind: "loop", dependent: "a", prerequisite: "b" })
@@ -158,12 +158,12 @@ test("connecting two cards writes a need, and refuses a loop, saying which", () 
 })
 
 test("re-scoping and reordering milestones", () => {
-  const plan = "roadmap\n[ ] task a\n\nmilestone one\n  a\n\nmilestone two\n"
+  const plan = "roadmap\n[ ] a\n\nmilestone one\n  a\n\nmilestone two\n"
   const [{ source }] = rescope(one(plan), "a", "one", "two")
-  assert.equal(source, "roadmap\n[ ] task a\n\nmilestone one\n\nmilestone two\n  a\n")
+  assert.equal(source, "roadmap\n[ ] a\n\nmilestone one\n\nmilestone two\n  a\n")
   assert.deepEqual(rescope(one(plan), "a", undefined, "one"), [], "already there")
   assert.deepEqual(rescope(one(plan), "a", null, "one"), [], "null is no milestone too")
   const [{ source: reordered }] = reorder(one(plan), "one", "two", true)
-  assert.equal(reordered, "roadmap\n[ ] task a\n\nmilestone two\n\nmilestone one\n  a\n")
+  assert.equal(reordered, "roadmap\n[ ] a\n\nmilestone two\n\nmilestone one\n  a\n")
   assert.deepEqual({ ...thrown(() => reorder(one(plan), "a", "two", true)) }, { kind: "notAMilestone", id: "a" })
 })

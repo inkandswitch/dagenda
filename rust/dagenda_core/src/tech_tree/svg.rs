@@ -42,7 +42,7 @@ impl TechTree {
     /// Draw as a standalone SVG document.
     ///
     /// ```
-    /// let plan = dagenda_core::parse("roadmap\n[x] task parser [Parser]\n")?;
+    /// let plan = dagenda_core::parse("roadmap\n[x] parser [Parser]\n")?;
     /// let svg = dagenda_core::tech_tree::TechTree::new(&plan).to_svg();
     /// assert!(svg.starts_with("<svg"));
     /// assert!(svg.contains(r#"data-id="parser""#));

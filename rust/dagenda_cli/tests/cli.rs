@@ -9,9 +9,9 @@ use std::{
 };
 use testresult::TestResult;
 
-const CLEAN: &str = "roadmap\n[x] task parser\n[ ] task resolver\n  needs parser\n";
-const WARNS: &str = "roadmap\n[~] task dropped\nmilestone m\n  dropped\n";
-const BROKEN: &str = "roadmap\n[ ] task a\n  needs ghost\n";
+const CLEAN: &str = "roadmap\n[x] parser\n[ ] resolver\n  needs parser\n";
+const WARNS: &str = "roadmap\n[~] dropped\nmilestone m\n  dropped\n";
+const BROKEN: &str = "roadmap\n[ ] a\n  needs ghost\n";
 
 /// A scratch directory, removed when dropped.
 struct Scratch(PathBuf);

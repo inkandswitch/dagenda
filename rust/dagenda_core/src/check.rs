@@ -36,7 +36,7 @@ pub struct Source {
 ///
 /// let source = Source {
 ///     name: "plan.dagenda".into(),
-///     text: "roadmap\n[ ] task x\n  needs y\n".into(),
+///     text: "roadmap\n[ ] x\n  needs y\n".into(),
 /// };
 /// let (plan, problems) = check(&[source]);
 /// assert!(plan.is_none());

@@ -119,7 +119,7 @@ fn dag(tasks: &[(u8, u8, u16)], milestones: &[(u16, u16)]) -> String {
                 .copied()
                 .unwrap_or(' ');
             let pad = " ".repeat(indent);
-            let _ = writeln!(source, "{pad}[{mark}] task x{index}");
+            let _ = writeln!(source, "{pad}[{mark}] x{index}");
             let needs = ids(needs, index);
             if !needs.is_empty() {
                 let _ = writeln!(source, "{pad}  needs {}", needs.join(", "));
@@ -302,7 +302,7 @@ fn build(lines: &[(u8, u8, u8, u8)]) -> String {
                     .get(usize::from(second) % BOXES.len())
                     .copied()
                     .unwrap_or(' ');
-                format!("[{mark}] task {}", pick(&TASKS, first))
+                format!("[{mark}] {}", pick(&TASKS, first))
             }
             1 => format!("needs {}, {}", pick(&ANY, first), pick(&ANY, second)),
             2 => format!("milestone {}", pick(&MILESTONES, first)),

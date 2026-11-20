@@ -2,7 +2,7 @@
 // them into HTML for a <pre> laid under its (transparent) textarea, and the
 // collaborative editor into CodeMirror decorations. Line for line.
 
-const BLOCKS = new Set(["extend", "milestone", "nice-to-have", "roadmap", "task", "title", "track"])
+const BLOCKS = new Set(["extend", "milestone", "nice-to-have", "roadmap", "title", "track"])
 const DETAILS = new Set(["color", "colour", "dri", "est", "issue", "link", "needs", "note", "pr", "target"])
 
 /** The status class for each box's mark, as the SVG uses. */
@@ -62,8 +62,10 @@ const colour = (text) => {
   let rest = text
   const box = /^\[(.)\](\s*)/u.exec(rest)
   if (box) {
+    // A task: its status box, its id, then its label
     parts.push(token(`box ${STATUS[box[1]] ?? "unknown"}`, `[${box[1]}]`), token("", box[2]))
-    rest = rest.slice(box[0].length)
+    const [, id = "", space = "", label = ""] = /^([^\s[]*)(\s*)(.*)$/su.exec(rest.slice(box[0].length)) ?? []
+    return [...parts, token("id", id), token("", space), token("label", label)]
   }
 
   const [, word = "", gap = "", after = ""] = /^(\S*)(\s*)(.*)$/su.exec(rest) ?? []

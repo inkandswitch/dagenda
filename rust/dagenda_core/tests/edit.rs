@@ -29,12 +29,12 @@ fn texts(edits: Vec<Edit>) -> Vec<(usize, String)> {
 
 #[test]
 fn a_status_click_swaps_the_box_and_nothing_else() -> TestResult {
-    let plan = one("roadmap\ntrack t\n  [ ] task a [A]\n    est 2026-12\n");
+    let plan = one("roadmap\ntrack t\n  [ ] a [A]\n    est 2026-12\n");
     assert_eq!(
         texts(edit::set_status(&plan, &id("a")?, Status::InProgress)?),
         [(
             0,
-            String::from("roadmap\ntrack t\n  [-] task a [A]\n    est 2026-12\n")
+            String::from("roadmap\ntrack t\n  [-] a [A]\n    est 2026-12\n")
         )]
     );
     assert!(
@@ -49,7 +49,7 @@ fn a_status_click_edits_the_document_that_defines_the_task() -> TestResult {
     let plan = vec![
         Source {
             name: "public".into(),
-            text: "roadmap\n[ ] task a\n".into(),
+            text: "roadmap\n[ ] a\n".into(),
         },
         Source {
             name: "private".into(),
@@ -58,7 +58,7 @@ fn a_status_click_edits_the_document_that_defines_the_task() -> TestResult {
     ];
     assert_eq!(
         texts(edit::set_status(&plan, &id("a")?, Status::Done)?),
-        [(0, String::from("roadmap\n[x] task a\n"))]
+        [(0, String::from("roadmap\n[x] a\n"))]
     );
     Ok(())
 }
@@ -67,27 +67,22 @@ fn a_status_click_edits_the_document_that_defines_the_task() -> TestResult {
 fn a_new_need_gets_a_line_in_the_block_s_own_indent() -> TestResult {
     assert_eq!(
         texts(edit::add_need(
-            &one("roadmap\ntrack t\n  [ ] task a\n  [ ] task b\n      est 2026-12\n"),
+            &one("roadmap\ntrack t\n  [ ] a\n  [ ] b\n      est 2026-12\n"),
             &id("b")?,
             &id("a")?
         )?),
         [(
             0,
-            String::from(
-                "roadmap\ntrack t\n  [ ] task a\n  [ ] task b\n      needs a\n      est 2026-12\n"
-            )
+            String::from("roadmap\ntrack t\n  [ ] a\n  [ ] b\n      needs a\n      est 2026-12\n")
         )]
     );
     assert_eq!(
         texts(edit::add_need(
-            &one("roadmap\n[ ] task a\n[ ] task b"),
+            &one("roadmap\n[ ] a\n[ ] b"),
             &id("b")?,
             &id("a")?
         )?),
-        [(
-            0,
-            String::from("roadmap\n[ ] task a\n[ ] task b\n  needs a\n")
-        )],
+        [(0, String::from("roadmap\n[ ] a\n[ ] b\n  needs a\n"))],
         "a last line with no line break"
     );
     Ok(())
@@ -97,13 +92,13 @@ fn a_new_need_gets_a_line_in_the_block_s_own_indent() -> TestResult {
 fn a_new_need_joins_the_last_needs_line() -> TestResult {
     assert_eq!(
         texts(edit::add_need(
-            &one("roadmap\n[ ] task a\n[ ] task c\n[ ] task b\n  needs c\n"),
+            &one("roadmap\n[ ] a\n[ ] c\n[ ] b\n  needs c\n"),
             &id("b")?,
             &id("a")?
         )?),
         [(
             0,
-            String::from("roadmap\n[ ] task a\n[ ] task c\n[ ] task b\n  needs c, a\n")
+            String::from("roadmap\n[ ] a\n[ ] c\n[ ] b\n  needs c, a\n")
         )]
     );
     Ok(())
@@ -111,7 +106,7 @@ fn a_new_need_joins_the_last_needs_line() -> TestResult {
 
 #[test]
 fn needs_that_make_no_sense_are_refused() -> TestResult {
-    let plan = one("roadmap\n[ ] task a\n  needs b\n[ ] task b\n  [ ] task c\nmilestone m\n  a\n");
+    let plan = one("roadmap\n[ ] a\n  needs b\n[ ] b\n  [ ] c\nmilestone m\n  a\n");
     let need = |dependent: &str, prerequisite: &str| -> Result<_, Box<dyn std::error::Error>> {
         Ok(edit::add_need(&plan, &id(dependent)?, &id(prerequisite)?)
             .map_err(|error| error.to_string()))
@@ -141,7 +136,7 @@ fn needs_that_make_no_sense_are_refused() -> TestResult {
         Err(String::from("nothing in the plan is called `nowhere`"))
     );
 
-    let broken = one("roadmap\n[ ] task a\n  needs missing\n[ ] task b\n");
+    let broken = one("roadmap\n[ ] a\n  needs missing\n[ ] b\n");
     assert_eq!(
         edit::add_need(&broken, &id("b")?, &id("a")?),
         Err(EditError::Unresolved)
@@ -150,9 +145,9 @@ fn needs_that_make_no_sense_are_refused() -> TestResult {
 }
 
 const ERAS: &str = "roadmap
-[ ] task a
-[ ] task b
-[ ] task c
+[ ] a
+[ ] b
+[ ] c
   needs a
 
 milestone first
@@ -208,7 +203,7 @@ fn rescoping_to_no_milestone_takes_it_off_the_list() -> TestResult {
     .map_err(|_| "one edit")?;
     assert!(off.ends_with("milestone second\n"), "{off}");
 
-    let looped = one("roadmap\n[ ] task a\n  needs m\n[ ] task b\nmilestone m\n  b\n");
+    let looped = one("roadmap\n[ ] a\n  needs m\n[ ] b\nmilestone m\n  b\n");
     assert_eq!(
         edit::rescope(&looped, &id("a")?, None, Some(&id("m")?)).map_err(|error| error.to_string()),
         Err(String::from(
@@ -216,19 +211,19 @@ fn rescoping_to_no_milestone_takes_it_off_the_list() -> TestResult {
         ))
     );
 
-    let already = one("roadmap\n[ ] task a\n[ ] task b\n  needs a\nmilestone m\n  b\n");
+    let already = one("roadmap\n[ ] a\n[ ] b\n  needs a\nmilestone m\n  b\n");
     assert!(
         edit::rescope(&already, &id("a")?, None, Some(&id("m")?))?.is_empty(),
         "m needs a through b already"
     );
 
-    let gone = one("roadmap\n[ ] task a\n[ ] task b\n  needs a\nmilestone m\n  a\n");
+    let gone = one("roadmap\n[ ] a\n[ ] b\n  needs a\nmilestone m\n  a\n");
     assert!(
         edit::rescope(&gone, &id("b")?, Some(&id("m")?), None)?.is_empty(),
         "m doesn't need b at all: nothing to take off"
     );
 
-    let through = one("roadmap\n[ ] task a\n[ ] task b\n  needs a\nmilestone m\n  b\n");
+    let through = one("roadmap\n[ ] a\n[ ] b\n  needs a\nmilestone m\n  b\n");
     assert_eq!(
         edit::rescope(&through, &id("a")?, Some(&id("m")?), None)
             .map_err(|error| error.to_string()),
@@ -243,31 +238,31 @@ fn rescoping_to_no_milestone_takes_it_off_the_list() -> TestResult {
 fn a_milestone_with_no_members_gets_its_first() -> TestResult {
     assert_eq!(
         texts(edit::rescope(
-            &one("roadmap\n[ ] task a\nmilestone m [M]\n  target 2026-Q4\n"),
+            &one("roadmap\n[ ] a\nmilestone m [M]\n  target 2026-Q4\n"),
             &id("a")?,
             None,
             Some(&id("m")?)
         )?),
         [(
             0,
-            String::from("roadmap\n[ ] task a\nmilestone m [M]\n  target 2026-Q4\n  a\n")
+            String::from("roadmap\n[ ] a\nmilestone m [M]\n  target 2026-Q4\n  a\n")
         )]
     );
     assert_eq!(
         texts(edit::rescope(
-            &one("roadmap\n[ ] task a\nmilestone m"),
+            &one("roadmap\n[ ] a\nmilestone m"),
             &id("a")?,
             None,
             Some(&id("m")?)
         )?),
-        [(0, String::from("roadmap\n[ ] task a\nmilestone m\n  a\n"))]
+        [(0, String::from("roadmap\n[ ] a\nmilestone m\n  a\n"))]
     );
     Ok(())
 }
 
 const ORDER: &str = "roadmap
-[ ] task x
-[ ] task y
+[ ] x
+[ ] y
 
 milestone a
   x
@@ -283,18 +278,14 @@ fn reordering_moves_a_milestone_block_whole() -> TestResult {
         texts(edit::reorder(&plan, &id("a")?, &id("b")?, true)?),
         [(
             0,
-            String::from(
-                "roadmap\n[ ] task x\n[ ] task y\n\nmilestone b\n  y\n\nmilestone a\n  x\n"
-            )
+            String::from("roadmap\n[ ] x\n[ ] y\n\nmilestone b\n  y\n\nmilestone a\n  x\n")
         )]
     );
     assert_eq!(
         texts(edit::reorder(&plan, &id("b")?, &id("a")?, false)?),
         [(
             0,
-            String::from(
-                "roadmap\n[ ] task x\n[ ] task y\n\nmilestone b\n  y\n\nmilestone a\n  x\n"
-            )
+            String::from("roadmap\n[ ] x\n[ ] y\n\nmilestone b\n  y\n\nmilestone a\n  x\n")
         )]
     );
     assert!(
@@ -306,7 +297,7 @@ fn reordering_moves_a_milestone_block_whole() -> TestResult {
 
 #[test]
 fn an_order_one_milestone_builds_on_is_fixed() -> TestResult {
-    let plan = one("roadmap\n[ ] task x\n\nmilestone a\n  x\n\nmilestone b\n  a\n");
+    let plan = one("roadmap\n[ ] x\n\nmilestone a\n  x\n\nmilestone b\n  a\n");
     assert_eq!(
         edit::reorder(&plan, &id("b")?, &id("a")?, false).map_err(|error| error.to_string()),
         Err(String::from("`b` builds on `a`, so it stays above it"))
@@ -315,7 +306,7 @@ fn an_order_one_milestone_builds_on_is_fixed() -> TestResult {
     let split = vec![
         Source {
             name: "one".into(),
-            text: "roadmap\n[ ] task x\nmilestone a\n  x\n".into(),
+            text: "roadmap\n[ ] x\nmilestone a\n  x\n".into(),
         },
         Source {
             name: "two".into(),
@@ -337,7 +328,7 @@ fn a_document_that_doesn_t_parse_is_named() -> TestResult {
     let plan = vec![
         Source {
             name: "public".into(),
-            text: "roadmap\n[ ] task a\n".into(),
+            text: "roadmap\n[ ] a\n".into(),
         },
         Source {
             name: "private".into(),

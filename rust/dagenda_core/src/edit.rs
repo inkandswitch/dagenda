@@ -13,10 +13,10 @@
 //!
 //! let plan = Source {
 //!     name: "plan".into(),
-//!     text: "roadmap\n[ ] task a\n[ ] task b\n".into(),
+//!     text: "roadmap\n[ ] a\n[ ] b\n".into(),
 //! };
 //! let edits = edit::set_status(&[plan], &Id::new("a")?, Status::Done)?;
-//! assert_eq!(edits[0].text, "roadmap\n[x] task a\n[ ] task b\n");
+//! assert_eq!(edits[0].text, "roadmap\n[x] a\n[ ] b\n");
 //! # Ok::<(), Box<dyn core::error::Error>>(())
 //! ```
 
@@ -685,23 +685,23 @@ mod tests {
 
     #[test]
     fn a_block_ends_where_the_indent_comes_back() {
-        let text = "milestone m\n  a\n\n  b\n[ ] task c\n";
+        let text = "milestone m\n  a\n\n  b\n[ ] c\n";
         assert_eq!(block_end(text, 0), text.find("[ ]").unwrap_or_default());
         assert_eq!(child_indent(text, 0), 2);
-        assert_eq!(child_indent("[ ] task a\n", 0), 2);
+        assert_eq!(child_indent("[ ] a\n", 0), 2);
     }
 
     #[test]
     fn line_breaks_follow_the_text() {
         let edits = add_need(
-            &source("roadmap\r\n[ ] task a\r\n[ ] task b\r\n"),
+            &source("roadmap\r\n[ ] a\r\n[ ] b\r\n"),
             &Id::new("b").expect("a valid id"),
             &Id::new("a").expect("a valid id"),
         );
         assert_eq!(
             edits.map(|edits| edits.into_iter().map(|edit| edit.text).collect::<Vec<_>>()),
             Ok(vec![String::from(
-                "roadmap\r\n[ ] task a\r\n[ ] task b\r\n  needs a\r\n"
+                "roadmap\r\n[ ] a\r\n[ ] b\r\n  needs a\r\n"
             )])
         );
     }

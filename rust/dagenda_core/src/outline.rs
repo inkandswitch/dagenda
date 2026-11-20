@@ -31,8 +31,8 @@ impl Plan {
     /// ```
     /// let plan = dagenda_core::parse(
     ///     "roadmap
-    ///      [x] task parser [Parser]
-    ///      [ ] task resolver [Resolver]
+    ///      [x] parser [Parser]
+    ///      [ ] resolver [Resolver]
     ///        needs parser",
     /// )?;
     /// assert!(plan.to_text().contains("[ ] resolver · Resolver"));

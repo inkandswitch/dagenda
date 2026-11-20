@@ -11,12 +11,12 @@
 //! title Product Roadmap
 //!
 //! track sync [Sync]
-//!   [-] task engine [New sync engine]
+//!   [-] engine [New sync engine]
 //!     needs protocol
 //!     dri @alice
 //!     pr gh:owner/repo#123
-//!   [x] task protocol [Wire protocol]
-//!   [ ] task offline [Offline mode]
+//!   [x] protocol [Wire protocol]
+//!   [ ] offline [Offline mode]
 //!
 //! milestone v2 [Version 2]
 //!   target EOY26
@@ -30,7 +30,7 @@
 //! | `roadmap`                     | The header, always the first line                                       |
 //! | `title …`                     | The document's title                                                    |
 //! | `track <id> [<label>]`        | A bucket. Tracks nest                                                   |
-//! | `<box> task <id> [<label>]`   | A unit of work, in the track around it. A task written under another is one it needs |
+//! | `<box> <id> [<label>]`        | A unit of work, in the track around it. A task written under another is one it needs |
 //! | `milestone <id> [<label>]`    | A gate, listing the tasks and milestones it needs, one per line         |
 //! | `nice-to-have`                | In a milestone: the members indented under it are wanted, not required  |
 //! | `extend <id>`                 | Details, and tasks it needs, for a task defined in another document     |
@@ -91,8 +91,8 @@
 //! let plan = dagenda_core::parse(
 //!     "roadmap
 //!      track core [Core]
-//!        [x] task parser [Parser]
-//!        [ ] task resolver [Resolver]
+//!        [x] parser [Parser]
+//!        [ ] resolver [Resolver]
 //!          needs parser
 //!      milestone itParses [It parses]
 //!        parser

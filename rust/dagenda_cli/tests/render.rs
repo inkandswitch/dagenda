@@ -8,8 +8,8 @@ use testresult::TestResult;
 const PLAN: &str = "roadmap
 title Rendering
 track core [Core]
-  [x] task parser [Parser]
-  [ ] task resolver [Resolver]
+  [x] parser [Parser]
+  [ ] resolver [Resolver]
     needs parser
 ";
 

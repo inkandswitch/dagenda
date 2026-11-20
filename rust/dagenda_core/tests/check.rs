@@ -15,7 +15,7 @@ fn report(sources: &[Source]) -> Vec<String> {
 
 #[test]
 fn a_clean_plan_has_nothing_to_say() {
-    let (plan, problems) = check(&[source("a.dagenda", "roadmap\n[ ] task x\n")]);
+    let (plan, problems) = check(&[source("a.dagenda", "roadmap\n[ ] x\n")]);
     assert!(plan.is_some());
     assert!(problems.is_empty(), "{problems:?}");
 }
@@ -28,7 +28,7 @@ fn every_document_that_fails_to_parse_is_reported() {
             source("b.dagenda", ""),
         ]),
         [
-            "a.dagenda:2:1: error: a task starts with a status box, as in `[ ] task …`",
+            "a.dagenda:2:1: error: a task is a status box and an id, as in `[ ] parser`",
             "b.dagenda:1:1: error: missing header; start with `roadmap`",
         ]
     );
@@ -36,10 +36,10 @@ fn every_document_that_fails_to_parse_is_reported() {
 
 #[test]
 fn documents_checked_together_are_one_plan() {
-    let public = source("public.dagenda", "roadmap\n[ ] task a\n");
+    let public = source("public.dagenda", "roadmap\n[ ] a\n");
     let private = source(
         "private.dagenda",
-        "roadmap\nextend a\n  dri @alice\n[ ] task b\n  needs a\n",
+        "roadmap\nextend a\n  dri @alice\n[ ] b\n  needs a\n",
     );
     let (plan, problems) = check(&[public, private]);
     assert!(problems.is_empty(), "{problems:?}");
@@ -50,7 +50,7 @@ fn documents_checked_together_are_one_plan() {
 fn a_duplicate_says_where_the_first_one_is() {
     assert_eq!(
         report(&[
-            source("a.dagenda", "roadmap\n[ ] task x\n"),
+            source("a.dagenda", "roadmap\n[ ] x\n"),
             source("b.dagenda", "roadmap\ntrack x\n"),
         ]),
         ["b.dagenda:2:7: error: `x` is defined more than once (first at a.dagenda:2:1)"]
@@ -62,7 +62,7 @@ fn every_resolve_error_is_reported_in_its_document() {
     let problems = report(&[
         source(
             "public.dagenda",
-            "roadmap\n[ ] task a\n  needs x\n  dri @alice\n",
+            "roadmap\n[ ] a\n  needs x\n  dri @alice\n",
         ),
         source(
             "private.dagenda",
@@ -81,10 +81,7 @@ fn every_resolve_error_is_reported_in_its_document() {
 
 #[test]
 fn warnings_come_with_the_plan() {
-    let (plan, problems) = check(&[source(
-        "w.dagenda",
-        "roadmap\n[~] task x\nmilestone m\n  x\n",
-    )]);
+    let (plan, problems) = check(&[source("w.dagenda", "roadmap\n[~] x\nmilestone m\n  x\n")]);
     assert!(plan.is_some());
     let found: Vec<_> = problems
         .iter()

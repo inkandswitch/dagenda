@@ -12,12 +12,12 @@ roadmap
 title Product Roadmap
 
 track sync [Sync]
-  [-] task engine [New sync engine]
+  [-] engine [New sync engine]
     needs protocol
     dri @alice
     pr gh:owner/repo#123
-  [x] task protocol [Wire protocol]
-  [ ] task offline [Offline mode]
+  [x] protocol [Wire protocol]
+  [ ] offline [Offline mode]
 
 milestone v2 [Version 2]
   target EOY26
@@ -48,7 +48,7 @@ roadmap
 
 extend engine
   note Waiting on the storage review; ask @bob before merging.
-  [ ] task inbox [Change inbox]
+  [ ] inbox [Change inbox]
     dri @bob
     est 2026-12
     link https://github.com/owner/repo/issues/12#issuecomment-345

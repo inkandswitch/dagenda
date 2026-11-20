@@ -7,14 +7,14 @@ import { highlight, tokens } from "./highlight.js"
 const lines = (html) => html.replace(/\n$/, "").split("\n")
 
 test("keeps one line of HTML per line of source", () => {
-  const source = "roadmap\n\ntrack core [Core]\n  [x] task parser\n"
+  const source = "roadmap\n\ntrack core [Core]\n  [x] parser\n"
   assert.equal(lines(highlight(source)).length, source.split("\n").length)
 })
 
 test("colours the parts of a task line", () => {
-  const [, line] = lines(highlight("roadmap\n  [x] task parser [Parser]"))
+  const [, line] = lines(highlight("roadmap\n  [x] parser [Parser]"))
   assert.match(line, /^ {2}<span class="box done">\[x\]<\/span> /)
-  assert.match(line, /<span class="keyword">task<\/span> <span class="id">parser<\/span> <span class="label">\[Parser\]<\/span>$/)
+  assert.match(line, /<span class="box done">\[x\]<\/span> <span class="id">parser<\/span> <span class="label">\[Parser\]<\/span>$/)
 })
 
 test("colours details by kind", () => {
@@ -27,7 +27,7 @@ test("colours details by kind", () => {
 })
 
 test("escapes what HTML would swallow", () => {
-  const html = highlight("[ ] task a [Fish & chips <3>]")
+  const html = highlight("[ ] a [Fish & chips <3>]")
   assert.match(html, /Fish &amp; chips &lt;3&gt;/)
   assert.doesNotMatch(html, /<3/)
 })
@@ -53,11 +53,11 @@ test("marks the error line", () => {
 })
 
 test("flags an unknown box", () => {
-  assert.match(highlight("[q] task x"), /<span class="box unknown">\[q\]<\/span>/)
+  assert.match(highlight("[q] x"), /<span class="box unknown">\[q\]<\/span>/)
 })
 
 test("tokens rebuild each line, and there's one array per line", () => {
-  const source = "roadmap\n  [x] task parser [Parser]\n    needs a, b\n  note\n    // markdown\n"
+  const source = "roadmap\n  [x] parser [Parser]\n    needs a, b\n  note\n    // markdown\n"
   const lines = tokens(source)
   assert.equal(lines.length, source.split("\n").length)
   assert.deepEqual(

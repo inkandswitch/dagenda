@@ -39,7 +39,7 @@ use warning::Warning;
 /// ```
 /// use dagenda_core::{id::Id, parser, plan::{Plan, Readiness}};
 ///
-/// let public = parser::document("roadmap\ntrack am [Automerge]\n  [ ] task signatures\n")?;
+/// let public = parser::document("roadmap\ntrack am [Automerge]\n  [ ] signatures\n")?;
 /// let private = parser::document("roadmap\nextend signatures\n  dri @alice\n")?;
 /// let plan = Plan::resolve(&[public, private])?;
 ///
@@ -195,10 +195,10 @@ impl Plan {
     ///
     /// let plan = dagenda_core::parse(
     ///     "roadmap
-    ///      [x] task parser
-    ///      [ ] task resolver
+    ///      [x] parser
+    ///      [ ] resolver
     ///        needs parser
-    ///      [ ] task views
+    ///      [ ] views
     ///        needs resolver",
     /// )?;
     /// let work = plan.work(&Id::new("views")?).ok_or("no views")?;
@@ -267,10 +267,10 @@ impl Plan {
     ///
     /// let plan = dagenda_core::parse(
     ///     "roadmap
-    ///      [ ] task a
-    ///      [ ] task b
+    ///      [ ] a
+    ///      [ ] b
     ///        needs a
-    ///      [ ] task c
+    ///      [ ] c
     ///      milestone m
     ///        b
     ///        c",

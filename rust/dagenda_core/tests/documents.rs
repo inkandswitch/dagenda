@@ -13,8 +13,8 @@ const PUBLIC: &str = "roadmap
 title The public plan
 
 track automerge [Automerge]
-  [ ] task signatures [Signatures]
-  [x] task fragments [Fragments]
+  [ ] signatures [Signatures]
+  [x] fragments [Fragments]
 
 milestone repo3 [Repo 3]
   signatures
@@ -26,7 +26,7 @@ title The team's plan
 extend signatures
   dri @alice
   needs fragments
-  [ ] task wireFormat [Pick the wire format]
+  [ ] wireFormat [Pick the wire format]
     est 2026-12-01
 ";
 
@@ -105,7 +105,7 @@ fn the_public_plan_resolves_alone() -> TestResult {
 fn an_id_defined_in_two_documents_points_at_both() -> TestResult {
     let documents = [
         parser::document(PUBLIC)?,
-        parser::document("roadmap\n[ ] task fragments\n")?,
+        parser::document("roadmap\n[ ] fragments\n")?,
     ];
     let errors = Plan::resolve(&documents).err().ok_or("resolved")?;
     assert_eq!(errors.len().get(), 1);
@@ -137,7 +137,7 @@ fn two_documents_cant_both_set_a_detail() -> TestResult {
 
 #[test]
 fn extending_a_task_in_its_own_document_is_a_warning() -> TestResult {
-    let plan = resolve(&["roadmap\n[ ] task a\nextend a\n  est 2026-12\n"])?;
+    let plan = resolve(&["roadmap\n[ ] a\nextend a\n  est 2026-12\n"])?;
     let kinds: Vec<_> = plan.warnings().iter().map(|w| &w.kind).collect();
     assert_eq!(kinds, [&WarningKind::ExtendSameDocument(id("a")?)]);
     Ok(())

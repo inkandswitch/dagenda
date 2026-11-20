@@ -61,7 +61,7 @@ test("a new workspace has one document, drawn", async () => {
 test("the picture draws from every document, and problems say which", async () => {
   const a = await open("documents")
   await a.until(ready, "the editor to load")
-  await add(a, "private", "roadmap\nextend parser\n  dri @alice\n[ ] task secret [Secret]\n  needs parser\n")
+  await add(a, "private", "roadmap\nextend parser\n  dri @alice\n[ ] secret [Secret]\n  needs parser\n")
   await a.until(`${tabNames} === "plan,private"`, "the second tab")
   await a.until(`${svg}.includes("@alice") && ${svg}.includes('data-id="secret"')`, "the private document in the picture")
   // Only the tab on show has its text on screen
@@ -80,7 +80,7 @@ test("the picture draws from every document, and problems say which", async () =
 test("selecting a card shows its line, in the document that defines it", async () => {
   const a = await open("select")
   await a.until(ready, "the editor to load")
-  await add(a, "private", "roadmap\n[ ] task secret [Secret]\n")
+  await add(a, "private", "roadmap\n[ ] secret [Secret]\n")
   await a.until(`${svg}.includes('data-id="secret"')`, "the private task drawn")
   await a.evaluate(`document.getElementById("picture").select("secret")`)
   await a.until(`window.editor.active().name === "private"`, "its tab shown")
@@ -88,7 +88,7 @@ test("selecting a card shows its line, in the document that defines it", async (
     const { state } = window.editor.active().view
     return state.doc.lineAt(state.selection.main.head).text
   })()`)
-  assert.match(line, /task secret/)
+  assert.match(line, /\] secret/)
 })
 
 test("two people edit together, and see each other", async () => {
@@ -101,7 +101,7 @@ test("two people edit together, and see each other", async () => {
   await a.evaluate(`window.editor.active().view.dispatch({ changes: { from: 0, insert: "// from A\\n" }, userEvent: "input.type" })`)
   await b.until(`window.editor.active().view.state.doc.toString().startsWith("// from A")`, "A's edit to reach B")
 
-  await add(b, "notes", "roadmap\n[ ] task jot [A note]\n")
+  await add(b, "notes", "roadmap\n[ ] jot [A note]\n")
   await a.until(`${tabNames} === "plan,notes"`, "B's new document to reach A")
   await a.until(`${svg}.includes('data-id="jot"')`, "and its task in A's picture")
 
@@ -131,12 +131,12 @@ test("an edit syncs; with no server, the page says it's kept in this browser", a
 test("Tab indents every selected line, and Shift+Tab outdents them", async () => {
   const a = await open("indent")
   await a.until(ready, "the editor to load")
-  const source = "roadmap\ntrack t\n[ ] task a\n[ ] task b\n"
+  const source = "roadmap\ntrack t\n[ ] a\n[ ] b\n"
   await a.evaluate(`(() => {
     const { view } = window.editor.active()
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: ${JSON.stringify(source)} } })
-    // From the start of "[ ] task a" to the end of "[ ] task b"
-    view.dispatch({ selection: { anchor: 16, head: 36 } })
+    // From the start of "[ ] a" into "[ ] b"
+    view.dispatch({ selection: { anchor: 16, head: 26 } })
     view.focus()
   })()`)
   const key = (modifiers) =>
@@ -144,9 +144,9 @@ test("Tab indents every selected line, and Shift+Tab outdents them", async () =>
   const text = () => a.evaluate("window.editor.active().view.state.doc.toString()")
 
   await key(0)
-  assert.equal(await text(), "roadmap\ntrack t\n  [ ] task a\n  [ ] task b\n", "both lines in by two spaces")
+  assert.equal(await text(), "roadmap\ntrack t\n  [ ] a\n  [ ] b\n", "both lines in by two spaces")
   await key(0)
-  assert.equal(await text(), "roadmap\ntrack t\n    [ ] task a\n    [ ] task b\n", "and again, still both")
+  assert.equal(await text(), "roadmap\ntrack t\n    [ ] a\n    [ ] b\n", "and again, still both")
   await key(8)
-  assert.equal(await text(), "roadmap\ntrack t\n  [ ] task a\n  [ ] task b\n", "Shift+Tab takes two spaces off each")
+  assert.equal(await text(), "roadmap\ntrack t\n  [ ] a\n  [ ] b\n", "Shift+Tab takes two spaces off each")
 })

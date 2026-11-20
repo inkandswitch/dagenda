@@ -14,7 +14,7 @@ const apply = (marked, outdent = false) => {
 }
 
 test("Tab over a selection indents every line it touches, and keeps them selected", () => {
-  assert.equal(apply("roadmap\ntrack t\n  «[ ] task a\n  [ ] task b»\nend"), "roadmap\ntrack t\n«    [ ] task a\n    [ ] task b»\nend")
+  assert.equal(apply("roadmap\ntrack t\n  «[ ] a\n  [ ] b»\nend"), "roadmap\ntrack t\n«    [ ] a\n    [ ] b»\nend")
 })
 
 test("Shift+Tab takes up to two spaces off each line", () => {
