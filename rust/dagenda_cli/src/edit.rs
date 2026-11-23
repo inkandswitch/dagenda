@@ -25,9 +25,9 @@ use std::path::PathBuf;
 /// of the plan: the edit goes where the thing it changes is written.
 #[derive(Debug, Subcommand)]
 pub enum EditCommand {
-    /// Set a task's status: a box's mark (x, -, ?, !, *, ~, >, or a space)
-    /// or its name (done, in-progress, idea, needs-attention, research,
-    /// dropped, deferred, not-started)
+    /// Set a task's status: a box's mark (x, -, ^, @, ?, !, *, ~, >, or a space)
+    /// or its name (done, in-progress, in-review, awaiting, idea,
+    /// needs-attention, research, dropped, deferred, not-started)
     Status {
         /// The task
         #[arg(value_parser = Id::new)]
@@ -249,6 +249,8 @@ pub fn status(arg: &str) -> Result<Status, String> {
         "deferred" => Some(Status::Deferred),
         "done" => Some(Status::Done),
         "in-progress" => Some(Status::InProgress),
+        "in-review" => Some(Status::InReview),
+        "awaiting" => Some(Status::Awaiting),
         "idea" => Some(Status::Idea),
         "needs-attention" => Some(Status::NeedsAttention),
         "research" => Some(Status::Research),
@@ -266,7 +268,7 @@ pub fn status(arg: &str) -> Result<Status, String> {
     };
     named.or(marked).ok_or_else(|| {
         format!(
-            "{arg:?} isn't a status; use a box's mark (x, -, ?, !, *, ~, >, or a space) or a name like done or in-progress"
+            "{arg:?} isn't a status; use a box's mark (x, -, ^, @, ?, !, *, ~, >, or a space) or a name like done or in-progress"
         )
     })
 }

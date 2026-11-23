@@ -236,6 +236,8 @@ section {
 :is(#highlight, .cm-content) .box { font-weight: 700; }
 :is(#highlight, .cm-content) .box.done { color: var(--ok); }
 :is(#highlight, .cm-content) .box.in-progress { color: var(--accent); }
+:is(#highlight, .cm-content) .box.in-review { color: var(--accent); }
+:is(#highlight, .cm-content) .box.awaiting { color: var(--warning); }
 :is(#highlight, .cm-content) .box.needs-attention { color: var(--error); }
 :is(#highlight, .cm-content) .box.research { color: var(--keyword); }
 :is(#highlight, .cm-content) .box:is(.deferred, .dropped, .idea) { color: var(--muted); }

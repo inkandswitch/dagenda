@@ -11,6 +11,8 @@ export const STATUS = {
   ">": "deferred",
   x: "done",
   "-": "in-progress",
+  "^": "in-review",
+  "@": "awaiting",
   "?": "idea",
   "!": "needs-attention",
   "*": "research",

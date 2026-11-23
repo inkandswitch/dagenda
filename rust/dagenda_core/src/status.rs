@@ -29,6 +29,12 @@ pub enum Status {
     /// `[-]`: in progress.
     InProgress,
 
+    /// `[^]`: in review: the work is up for review, as a pull request.
+    InReview,
+
+    /// `[@]`: awaiting a reply: the next move is someone else's.
+    Awaiting,
+
     /// `[?]`: an idea, or work that needs clarifying before it can start.
     Idea,
 
@@ -45,11 +51,13 @@ pub enum Status {
 
 impl Status {
     /// Every status, in the order the boxes are documented.
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 10] = [
         Self::NotStarted,
         Self::Deferred,
         Self::Done,
         Self::InProgress,
+        Self::InReview,
+        Self::Awaiting,
         Self::Idea,
         Self::NeedsAttention,
         Self::Research,
@@ -64,6 +72,8 @@ impl Status {
             '>' => Some(Self::Deferred),
             'x' => Some(Self::Done),
             '-' => Some(Self::InProgress),
+            '^' => Some(Self::InReview),
+            '@' => Some(Self::Awaiting),
             '?' => Some(Self::Idea),
             '!' => Some(Self::NeedsAttention),
             '*' => Some(Self::Research),
@@ -80,6 +90,8 @@ impl Status {
             Self::Deferred => '>',
             Self::Done => 'x',
             Self::InProgress => '-',
+            Self::InReview => '^',
+            Self::Awaiting => '@',
             Self::Idea => '?',
             Self::NeedsAttention => '!',
             Self::Research => '*',
@@ -95,6 +107,8 @@ impl Status {
             Self::Deferred => "deferred",
             Self::Done => "done",
             Self::InProgress => "in progress",
+            Self::InReview => "in review",
+            Self::Awaiting => "awaiting a reply",
             Self::Idea => "an idea",
             Self::NeedsAttention => "needs attention",
             Self::Research => "research",

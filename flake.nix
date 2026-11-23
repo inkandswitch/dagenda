@@ -140,7 +140,6 @@
           '';
         };
 
-
         # Collaboration (javascript/editor). On its own, the collaborative
         # editor's dev server: it installs the JS dependencies if needed,
         # builds the component's Wasm, and serves the editor with Vite at

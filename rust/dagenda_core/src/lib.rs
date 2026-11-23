@@ -59,6 +59,8 @@
 //! | `[>]` | Deferred                     |
 //! | `[x]` | Done                         |
 //! | `[-]` | In progress                  |
+//! | `[^]` | In review, as a pull request |
+//! | `[@]` | Awaiting a reply             |
 //! | `[?]` | Idea, or needs clarification |
 //! | `[!]` | Needs attention              |
 //! | `[*]` | Research                     |
