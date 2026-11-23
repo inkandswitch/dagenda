@@ -327,6 +327,8 @@
           ci-mutants = mkCheckWith [pkgs.cargo-mutants] "ci-mutants" ''
             out=target/mutants/mutants.out
             rm -rf "$out"
+            # cargo-mutants makes mutants.out, but not the directory it goes in
+            mkdir -p target/mutants
             status=0
             if [ -f "''${1:-}" ]; then
               cargo mutants --in-diff "$1" --no-shuffle -j 2 --output target/mutants || status=$?
