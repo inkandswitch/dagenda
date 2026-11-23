@@ -293,17 +293,27 @@ fn task(
     locked: bool,
     era: Option<&crate::id::Id>,
 ) -> fmt::Result {
-    let class = status_class(status);
+    let class = status.name();
     // Work under way that waits on something (a task waiting on its own
     // parts, say) isn't dimmed: only work that hasn't started is locked
     let access = match status {
         Status::Done | Status::Dropped => "",
-        Status::InProgress | Status::NeedsAttention | Status::Research if locked => " waiting",
+        Status::InProgress
+        | Status::InReview
+        | Status::Awaiting
+        | Status::NeedsAttention
+        | Status::Research
+            if locked =>
+        {
+            " waiting"
+        }
         Status::NotStarted | Status::Deferred | Status::Idea if locked => " locked",
         Status::NotStarted
         | Status::Deferred
         | Status::Idea
         | Status::InProgress
+        | Status::InReview
+        | Status::Awaiting
         | Status::NeedsAttention
         | Status::Research => " available",
     };
@@ -369,6 +379,8 @@ fn task(
         )?,
         Status::Deferred
         | Status::InProgress
+        | Status::InReview
+        | Status::Awaiting
         | Status::Idea
         | Status::NeedsAttention
         | Status::Research
@@ -721,6 +733,8 @@ impl fmt::Display for Era<'_> {
 const fn emoji(status: Status) -> &'static str {
     match status {
         Status::InProgress => "🚧",
+        Status::InReview => "👀",
+        Status::Awaiting => "⏳",
         Status::Idea => "💡",
         Status::NeedsAttention => "⚠\u{fe0f}",
         Status::Research => "🔬",
@@ -846,19 +860,6 @@ const fn kind_class(kind: &BranchKind) -> &'static str {
     }
 }
 
-const fn status_class(status: Status) -> &'static str {
-    match status {
-        Status::NotStarted => "not-started",
-        Status::Deferred => "deferred",
-        Status::Done => "done",
-        Status::InProgress => "in-progress",
-        Status::Idea => "idea",
-        Status::NeedsAttention => "needs-attention",
-        Status::Research => "research",
-        Status::Dropped => "dropped",
-    }
-}
-
 /// Text escaped for XML content and attribute values.
 struct Escaped<'a>(&'a str);
 
@@ -945,6 +946,12 @@ const STYLE: &str = r"<style>
 .dagenda .in-progress .card { stroke: #2f6fd6; stroke-width: 2.5; }
 .dagenda .in-progress .badge { stroke: #2f6fd6; }
 .dagenda .in-progress .mark { fill: #2f6fd6; }
+.dagenda .in-review .card { stroke: #1f8a70; stroke-width: 2.5; }
+.dagenda .in-review .badge { stroke: #1f8a70; }
+.dagenda .in-review .mark { fill: #1f8a70; }
+.dagenda .awaiting .card { stroke: #c07a1a; stroke-dasharray: 6 3; stroke-width: 2; }
+.dagenda .awaiting .badge { stroke: #c07a1a; }
+.dagenda .awaiting .mark { fill: #c07a1a; }
 .dagenda .glow { fill: none; stroke: #2f6fd6; stroke-width: 8; opacity: 0.6; }
 .dagenda .spinner {
   fill: none; stroke: #2f6fd6; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 22 78;
@@ -1012,6 +1019,10 @@ const STYLE: &str = r"<style>
   .dagenda:not(.light) .done .badge { fill: #5aa362; }
   .dagenda:not(.light) .needs-attention .card { fill: #3a1f1f; stroke: #e5615a; }
   .dagenda:not(.light) .available .card, .dagenda:not(.light) .available .badge { stroke: #d6ae3a; }
+  .dagenda:not(.light) .in-review :is(.card, .badge) { stroke: #3fb594; }
+  .dagenda:not(.light) .in-review .mark { fill: #3fb594; }
+  .dagenda:not(.light) .awaiting :is(.card, .badge) { stroke: #e0a040; }
+  .dagenda:not(.light) .awaiting .mark { fill: #e0a040; }
   .dagenda:not(.light) .gate { fill: #3a3218; stroke: #c9a227; }
   .dagenda:not(.light) .reached .gate { fill: #1f2e20; stroke: #5aa362; }
   .dagenda:not(.light) .edge { stroke: #6f6b63; }
@@ -1062,6 +1073,10 @@ const STYLE: &str = r"<style>
 .dagenda.dark .done .badge { fill: #5aa362; }
 .dagenda.dark .needs-attention .card { fill: #3a1f1f; stroke: #e5615a; }
 .dagenda.dark .available .card, .dagenda.dark .available .badge { stroke: #d6ae3a; }
+.dagenda.dark .in-review :is(.card, .badge) { stroke: #3fb594; }
+.dagenda.dark .in-review .mark { fill: #3fb594; }
+.dagenda.dark .awaiting :is(.card, .badge) { stroke: #e0a040; }
+.dagenda.dark .awaiting .mark { fill: #e0a040; }
 .dagenda.dark .gate { fill: #3a3218; stroke: #c9a227; }
 .dagenda.dark .reached .gate { fill: #1f2e20; stroke: #5aa362; }
 .dagenda.dark :is(.glow, .spinner) { stroke: #5b8ff0; }

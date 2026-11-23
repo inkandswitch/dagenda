@@ -5,7 +5,7 @@
 // undo and merges with typing). An edit that makes no sense (a loop, a
 // milestone below one it builds on) shows its reason instead.
 //
-//   click a card's badge          a menu of the eight status boxes
+//   click a card's badge          a menu of the status boxes
 //   drag from a badge to a card    "this needs that"
 //   drag a card into a band        re-scope it to that milestone (the top layer: none)
 //   drag a milestone (its gate or  move its boundary: up past cards brings them in,
@@ -21,6 +21,8 @@ import { addNeed, reorder, rescope, setStatus } from "./pkg/dagenda_wasm.js"
 const STATUSES = [
   [" ", "Not started", "not-started", ""],
   ["-", "In progress", "in-progress", "🚧"],
+  ["^", "In review", "in-review", "👀"],
+  ["@", "Awaiting a reply", "awaiting", "⏳"],
   ["x", "Done", "done", "✓"],
   ["!", "Needs attention", "needs-attention", "⚠\u{fe0f}"],
   ["*", "Research", "research", "🔬"],
@@ -42,7 +44,8 @@ export const STYLE = `
   svg.dagenda .node.drop-target :is(.card, .gate) { stroke: #2f6fd6; stroke-width: 3; }
   svg .drop-band { fill: #2f6fd6; fill-opacity: 0.08; pointer-events: none; }
   .menu {
-    position: absolute; z-index: 2; display: grid; gap: 2px; padding: 4px;
+    position: fixed; inset: auto; z-index: 10; margin: 0; overflow: auto; overscroll-behavior: contain;
+    display: grid; gap: 2px; padding: 4px;
     border: 1px solid #c9c4bb; border-radius: 8px; background: #fff; color: #1d1c1a;
     box-shadow: 0 4px 16px rgb(0 0 0 / 0.15); font: 13px system-ui, sans-serif;
   }
@@ -187,17 +190,36 @@ export const attachEditing = ({ host, root, canvas, svg, documents }) => {
     menu = null
   }
 
+  /**
+   * Under the badge, or over it when there's no room below; kept inside the
+   * window, and scrolling itself when the window is shorter than it.
+   */
+  const placeMenu = (place) => {
+    const { clientWidth: width, clientHeight: height } = document.documentElement
+    const gap = 4
+    const margin = 8
+    menu.style.maxHeight = `${height - margin * 2}px`
+    const box = menu.getBoundingClientRect()
+    const below = height - place.bottom - gap - margin
+    const above = place.top - gap - margin
+    const top =
+      box.height <= below || below >= above
+        ? Math.min(place.bottom + gap, height - margin - box.height)
+        : Math.max(margin, place.top - gap - box.height)
+    menu.style.top = `${Math.max(margin, top)}px`
+    menu.style.left = `${Math.max(margin, Math.min(place.left, width - margin - box.width))}px`
+  }
+
   const openMenu = (node, badge) => {
     closeMenu()
     const id = node.dataset.id
     const current = STATUSES.find(([, , status]) => status === node.dataset.status)?.[0] ?? " "
     const place = badge.getBoundingClientRect()
-    const frame = host.getBoundingClientRect()
     menu = document.createElement("div")
     menu.className = "menu"
     menu.setAttribute("role", "menu")
-    menu.style.left = `${place.left - frame.left + host.scrollLeft}px`
-    menu.style.top = `${place.bottom - frame.top + host.scrollTop + 4}px`
+    // In the top layer, so the pane the picture scrolls in can't clip it
+    menu.popover = "manual"
     for (const [mark, label, , badge] of STATUSES) {
       const button = document.createElement("button")
       button.type = "button"
@@ -212,6 +234,8 @@ export const attachEditing = ({ host, root, canvas, svg, documents }) => {
       menu.append(button)
     }
     root.append(menu)
+    menu.showPopover?.()
+    placeMenu(place)
     menu.querySelector('[aria-pressed="true"]')?.focus() ?? menu.querySelector("button")?.focus()
   }
 
@@ -396,5 +420,7 @@ export const attachEditing = ({ host, root, canvas, svg, documents }) => {
   window.addEventListener("pointerdown", (e) => {
     if (menu && !e.composedPath().includes(menu)) closeMenu()
   })
-  host.addEventListener("scroll", closeMenu)
+  // It's placed on the window, so it closes when anything under it scrolls
+  window.addEventListener("scroll", (e) => menu && !e.composedPath().includes(menu) && closeMenu(), { capture: true })
+  window.addEventListener("resize", closeMenu)
 }

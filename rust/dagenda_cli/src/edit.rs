@@ -25,9 +25,9 @@ use std::path::PathBuf;
 /// of the plan: the edit goes where the thing it changes is written.
 #[derive(Debug, Subcommand)]
 pub enum EditCommand {
-    /// Set a task's status: a box's mark (x, -, ?, !, *, ~, >, or a space)
-    /// or its name (done, in-progress, idea, needs-attention, research,
-    /// dropped, deferred, not-started)
+    /// Set a task's status: a box's mark (x, -, ^, @, ?, !, *, ~, >, or a space)
+    /// or its name (done, in-progress, in-review, awaiting, idea,
+    /// needs-attention, research, dropped, deferred, not-started)
     Status {
         /// The task
         #[arg(value_parser = Id::new)]
@@ -244,17 +244,7 @@ fn set(sources: &[Source], id: &Id, setting: &Setting) -> Result<(Vec<Edit>, Str
 ///
 /// Returns what's wrong if `arg` is neither.
 pub fn status(arg: &str) -> Result<Status, String> {
-    let named = match arg {
-        "not-started" => Some(Status::NotStarted),
-        "deferred" => Some(Status::Deferred),
-        "done" => Some(Status::Done),
-        "in-progress" => Some(Status::InProgress),
-        "idea" => Some(Status::Idea),
-        "needs-attention" => Some(Status::NeedsAttention),
-        "research" => Some(Status::Research),
-        "dropped" => Some(Status::Dropped),
-        _ => None,
-    };
+    let named = Status::ALL.into_iter().find(|status| status.name() == arg);
     let mark = arg
         .strip_prefix('[')
         .and_then(|rest| rest.strip_suffix(']'))
@@ -266,7 +256,7 @@ pub fn status(arg: &str) -> Result<Status, String> {
     };
     named.or(marked).ok_or_else(|| {
         format!(
-            "{arg:?} isn't a status; use a box's mark (x, -, ?, !, *, ~, >, or a space) or a name like done or in-progress"
+            "{arg:?} isn't a status; use a box's mark (x, -, ^, @, ?, !, *, ~, >, or a space) or a name like done or in-progress"
         )
     })
 }
@@ -309,4 +299,19 @@ fn milestone(arg: &str) -> Result<Milestone, String> {
     Id::new(arg)
         .map(|id| Milestone(Some(id)))
         .map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::status;
+    use dagenda_core::status::Status;
+
+    #[test]
+    fn every_status_by_its_name_or_its_box() {
+        for each in Status::ALL {
+            assert_eq!(status(each.name()), Ok(each), "by name");
+            assert_eq!(status(&each.to_string()), Ok(each), "by box");
+            assert_eq!(status(&each.mark().to_string()), Ok(each), "by mark");
+        }
+    }
 }

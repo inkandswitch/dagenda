@@ -79,12 +79,13 @@ milestone v2 [Version 2]
 
 Status boxes; only `[x]` counts as finished:
 
-| Box   | Status          | Box   | Status                       |
-|-------|-----------------|-------|------------------------------|
-| `[ ]` | Not started     | `[?]` | Idea, or needs clarification |
-| `[-]` | In progress     | `[!]` | Needs attention              |
-| `[x]` | Done            | `[*]` | Research                     |
-| `[>]` | Deferred        | `[~]` | Dropped                      |
+| Box   | Status           | Box   | Status                       |
+|-------|------------------|-------|------------------------------|
+| `[ ]` | Not started      | `[?]` | Idea, or needs clarification |
+| `[-]` | In progress      | `[!]` | Needs attention              |
+| `[x]` | Done             | `[*]` | Research                     |
+| `[>]` | Deferred         | `[~]` | Dropped                      |
+| `[^]` | In review (a PR) | `[@]` | Awaiting a reply             |
 
 Rules that trip people up:
 
@@ -138,7 +139,7 @@ A new `<name>.dagenda` in the directory becomes a new document (a new tab) on `p
 
 - _Tasks are outcomes_ ("Signed changes"), small enough that "done" is clear. A big one gets its parts written under it.
 - _Say dependencies with `needs`,_ not in prose. A milestone lists what it can't ship without. Use `nice-to-have` for the rest.
-- _Be honest with boxes:_ `[?]` for an open question, `[*]` for research, `[!]` for something blocked or at risk.
+- _Be honest with boxes:_ `[?]` for an open question, `[*]` for research, `[!]` for something blocked or at risk, `[^]` once it's up as a pull request, `[@]` while the next move is someone else's.
 - _Never invent facts._ Check pull requests and issues with `gh` (that they exist, whether they're open, who wrote them) before adding them. Leave `dri` off rather than guess who owns something. Ask when it matters.
 - _Link the evidence:_ `pr`, `issue`, and `link` lines, and a short `note` saying why, not a long essay.
 - _Keep what's private private:_ team detail, risks, and names can go in a separate document that `extend`s the public one. Until Keyhive lands, a document is only as private as its URL.

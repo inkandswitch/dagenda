@@ -71,10 +71,29 @@ test("clicking a badge sets the status from a menu", async () => {
   const a = await open("status")
   await write(a, "roadmap\n[ ] a [A]\n[ ] b [B]\n  needs a\n", "b")
   await click(a, await middle(a, '.node[data-id="a"] .badge'))
-  await a.until(`document.getElementById("picture").shadowRoot.querySelectorAll(".menu button").length === 8`, "the menu")
+  await a.until(`document.getElementById("picture").shadowRoot.querySelectorAll(".menu button").length === 10`, "the menu")
   await a.evaluate(`[...document.getElementById("picture").shadowRoot.querySelectorAll(".menu button")].find((b) => b.textContent.includes("Done")).click()`)
   await a.until(`${text}.includes("[x] a [A]")`, "the box in the text")
   assert.match(await a.evaluate(text), /\[ \] b \[B\]/, "and nothing else")
+})
+
+test("the status menu isn't cut off by the edge of the pane", async () => {
+  const a = await open("menu-edge")
+  await a.send("Emulation.setDeviceMetricsOverride", { width: 1200, height: 520, deviceScaleFactor: 1, mobile: false })
+  await write(a, "roadmap\n[ ] a [A]\n[ ] b [B]\n  needs a\n[ ] c [C]\n  needs b\n", "c")
+  const badge = await middle(a, '.node[data-id="a"] .badge')
+  assert.ok(badge.y < 520, "the lowest badge is on screen")
+  await click(a, badge)
+  await a.until(`document.getElementById("picture").shadowRoot.querySelectorAll(".menu button").length === 10`, "the menu")
+  const { top, bottom, last } = await a.evaluate(`(() => {
+    const menu = document.getElementById("picture").shadowRoot.querySelector(".menu")
+    const { top, bottom } = menu.getBoundingClientRect()
+    const last = menu.querySelector("button:last-child").getBoundingClientRect()
+    const hit = document.elementFromPoint(last.left + 4, last.top + last.height / 2)
+    return { top, bottom, last: hit === document.getElementById("picture") }
+  })()`)
+  assert.ok(top >= 0 && bottom <= 520, `the menu (${top}–${bottom}) is inside the window`)
+  assert.ok(last, "its last item is on top, not under the pane's edge")
 })
 
 test("clicking someone's sticker, or their name, shows only what they're on", async () => {

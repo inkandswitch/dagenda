@@ -36,6 +36,8 @@ Every task starts with a status box, and only `[x]` counts as finished:
 | `[>]` | Deferred                     | ⏸️              |
 | `[x]` | Done                         | ✅              |
 | `[-]` | In progress                  | 🚧, and a glow  |
+| `[^]` | In review, as a pull request | 👀              |
+| `[@]` | Awaiting a reply             | ⏳              |
 | `[?]` | Idea, or needs clarification | 💡              |
 | `[!]` | Needs attention              | ⚠️              |
 | `[*]` | Research                     | 🔬              |

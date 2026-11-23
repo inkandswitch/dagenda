@@ -399,7 +399,7 @@ fn indentation_is_relative() -> TestResult {
 }
 
 const ANY: [&str; 6] = ["a", "b", "c", "d", "m", "n"];
-const BOXES: [char; 8] = [' ', '>', 'x', '-', '?', '!', '*', '~'];
+const BOXES: [char; 10] = [' ', '>', 'x', '-', '^', '@', '?', '!', '*', '~'];
 const MILESTONES: [&str; 2] = ["m", "n"];
 const TASKS: [&str; 4] = ["a", "b", "c", "d"];
 const TRACKS: [&str; 2] = ["s", "t"];

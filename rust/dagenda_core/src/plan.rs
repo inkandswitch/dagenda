@@ -264,6 +264,8 @@ impl Plan {
             Status::NotStarted
             | Status::Deferred
             | Status::InProgress
+            | Status::InReview
+            | Status::Awaiting
             | Status::Idea
             | Status::NeedsAttention
             | Status::Research => {

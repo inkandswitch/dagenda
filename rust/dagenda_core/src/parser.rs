@@ -21,7 +21,7 @@
 //! date      = YYYY-MM-DD | YYYY-MM | YYYY-Qn | YYYY | EOYyy
 //! link      = "link" url [ label ] NL
 //! note      = "note" text NL | "note" NL INDENT markdown DEDENT
-//! box       = "[" ( " " | ">" | "x" | "-" | "?" | "!" | "*" | "~" ) "]"
+//! box       = "[" ( " " | ">" | "x" | "-" | "^" | "@" | "?" | "!" | "*" | "~" ) "]"
 //! label     = "[" text "]"
 //! ```
 //!
