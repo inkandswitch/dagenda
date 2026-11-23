@@ -293,7 +293,7 @@ fn task(
     locked: bool,
     era: Option<&crate::id::Id>,
 ) -> fmt::Result {
-    let class = status_class(status);
+    let class = status.name();
     // Work under way that waits on something (a task waiting on its own
     // parts, say) isn't dimmed: only work that hasn't started is locked
     let access = match status {
@@ -857,21 +857,6 @@ const fn kind_class(kind: &BranchKind) -> &'static str {
         BranchKind::Track(_) => "track",
         BranchKind::Untracked => "untracked",
         BranchKind::Milestones => "milestones",
-    }
-}
-
-const fn status_class(status: Status) -> &'static str {
-    match status {
-        Status::NotStarted => "not-started",
-        Status::Deferred => "deferred",
-        Status::Done => "done",
-        Status::InProgress => "in-progress",
-        Status::InReview => "in-review",
-        Status::Awaiting => "awaiting",
-        Status::Idea => "idea",
-        Status::NeedsAttention => "needs-attention",
-        Status::Research => "research",
-        Status::Dropped => "dropped",
     }
 }
 

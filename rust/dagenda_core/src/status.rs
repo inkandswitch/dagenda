@@ -99,6 +99,30 @@ impl Status {
         }
     }
 
+    /// Its name as one word: what the CLI takes, and the class on its card
+    /// in the picture.
+    ///
+    /// ```
+    /// use dagenda_core::status::Status;
+    ///
+    /// assert_eq!(Status::InReview.name(), "in-review");
+    /// ```
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::NotStarted => "not-started",
+            Self::Deferred => "deferred",
+            Self::Done => "done",
+            Self::InProgress => "in-progress",
+            Self::InReview => "in-review",
+            Self::Awaiting => "awaiting",
+            Self::Idea => "idea",
+            Self::NeedsAttention => "needs-attention",
+            Self::Research => "research",
+            Self::Dropped => "dropped",
+        }
+    }
+
     /// What the status means, in a few words.
     #[must_use]
     pub const fn describe(self) -> &'static str {
@@ -126,5 +150,20 @@ impl Status {
 impl fmt::Display for Status {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[{}]", self.mark())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Status;
+    use alloc::collections::BTreeSet;
+
+    #[test]
+    fn marks_and_names_are_each_status_s_own() {
+        let names: BTreeSet<_> = Status::ALL.iter().map(|status| status.name()).collect();
+        assert_eq!(names.len(), Status::ALL.len(), "a name per status");
+        for status in Status::ALL {
+            assert_eq!(Status::from_mark(status.mark()), Some(status));
+        }
     }
 }
