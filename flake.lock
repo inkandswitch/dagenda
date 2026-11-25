@@ -8,11 +8,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791923390,
-        "narHash": "sha256-GHkbKwj0cFJ3u8m7rqPWjCVkHKtZwxTnN3HwupPoKK0=",
+        "lastModified": 1795635404,
+        "narHash": "sha256-gbI6/kB+fAIT8jl7lNDuK1+bq7G980qaEhTvxXlE9vU=",
         "ref": "refs/heads/main",
-        "rev": "68c01feec6c1c80b68951a5c678aab131dd3c2ec",
-        "revCount": 8,
+        "rev": "43b7b25bd945c3880f53abb90666aa899290d181",
+        "revCount": 9,
         "type": "git",
         "url": "https://tangled.org/expede.wtf/nix-command-utils"
       },
