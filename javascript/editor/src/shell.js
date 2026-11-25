@@ -1,7 +1,6 @@
 // The page around a plan's picture: theme, zoom, the tech tree and text
-// views, export, help, and what the picture says (the status line and the list of
-// problems). Shared by the preview (main.js) and the collaborative editor
-// (../editor/), whose pages use the same ids.
+// views, export, help, and what the picture says (the status line and the
+// list of problems). Mounted by the editor (editor.js), on both pages.
 
 /**
  * @param {object} options
@@ -197,12 +196,12 @@ export const shell = ({ prefix, documents, goTo, onRender = () => {}, help = "",
     }
   })
 
-  // Sent by the preview's dev server (serve.mjs) when the Wasm rebuild fails;
-  // the page keeps running the last good build
-  window.addEventListener("dagenda:build-error", ({ detail }) => {
+  // Sent by the dev server (vite.config.js) when the Wasm rebuild fails; the
+  // page keeps running the last good build
+  import.meta.hot?.on("dagenda:build-error", (output) => {
     $("status").className = "error"
     $("status").textContent = "✗ The Wasm build failed; still running the last good build"
-    console.error(detail)
+    console.error(output)
   })
 
   return {
@@ -223,7 +222,7 @@ const HELP = `
 
   <h3>Moving around</h3>
   <table>
-    <tr><th>Pan</th><td>Scroll (<kbd>Shift</kbd> + wheel across), drag the background, or drag anywhere with the middle button. On touch, drag with one finger.</td></tr>
+    <tr><th>Pan</th><td>Scroll (<kbd>Shift</kbd> + wheel across), drag the background, or drag anywhere with <kbd>Shift</kbd> held or the middle button. On touch, drag with one finger.</td></tr>
     <tr><th>Zoom</th><td><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + wheel, or pinch on a trackpad. Or use <b>−</b>, <b>+</b>, and <b>Fit</b>; click the percentage to go back to 100%.</td></tr>
   </table>
 

@@ -1,10 +1,9 @@
-// The preview's syntax colouring (../../preview/highlight.js) as CodeMirror
-// decorations: the same tokens and classes, so the same styles colour both,
-// and the line an error points at marked.
+// The syntax colouring (highlight.js) as CodeMirror decorations, with the
+// line an error points at marked.
 
 import { RangeSetBuilder, StateEffect, StateField } from "@codemirror/state"
 import { Decoration, EditorView } from "@codemirror/view"
-import { tokens } from "../../preview/highlight.js"
+import { tokens } from "./highlight.js"
 
 /** The line an error in this document points at (1-based), or null. */
 export const paint = StateEffect.define()

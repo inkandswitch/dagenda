@@ -3,15 +3,16 @@
 > [!NOTE]
 > Early, on alpha dependencies. Text and picture edits sync between browsers through Subduction, with presence, per-person undo, and offline use.
 
-A collaborative editor for dagenda plans. A plan is several documents (public, private, and later one per commenter), so the editor opens a _workspace_: an Automerge document listing them. Each has a tab, its text in CodeMirror, and one tech tree is drawn from all of them. It shares its page with the single-user [preview](../preview/) (`shell.js`, `highlight.js`, `examples.js`, `style.css`), which stays build-free and dependency-free.
+A collaborative editor for dagenda plans. A plan is several documents (public, private, and later one per commenter), so the editor opens a _workspace_: an Automerge document listing them. Each has a tab, its text in CodeMirror, and one tech tree is drawn from all of them. The preview is the same editor on one document kept in the browser: the two pages differ only in their _store_, where the documents live.
 
 To run it locally:
 
 ```console
-$ nix run .#collab        # from the repo root: http://localhost:5173 (PORT=… to change)
+$ nix run .#collab        # from the repo root: http://localhost:8080/collab/ (PORT=… to change)
+$ nix run .#preview       # the same server and port; the preview is at /preview/
 ```
 
-It installs the JS dependencies if needed, builds the component's Wasm, and starts Vite. Open the page, then open its URL (with the `#automerge:…` it adds) in another browser. `?sync=wss://…` picks a different Subduction server. `#source=…` (URL-encoded text) starts a new workspace with that text, which is how the preview's _Collaborate_ button hands its plan over; `nix run .#preview` sends `/collab/` here (`EDITOR_PORT`).
+It installs the JS dependencies if needed, builds the component's Wasm, and starts Vite, which rebuilds the Wasm when the Rust changes ([`vite.config.js`](vite.config.js)). Open the page, then open its URL (with the `#automerge:…` it adds) in another browser. `?sync=wss://…` picks a different Subduction server. `#source=…` (URL-encoded text) starts a new workspace with that text, which is how the preview's _Collaborate_ button hands its plan over.
 
 ## What it does
 
@@ -24,6 +25,23 @@ It installs the JS dependencies if needed, builds the component's Wasm, and star
 - **Undo is per person.** Undo covers your own typing and the examples you load, never someone else's edits.
 - **Sync status.** _synced_ once the server holds everything this tab has, for the workspace and every document in it; _syncing…_ on the way; _not synced_ offline, with where the changes are kept.
 - **Offline.** One tab per browser keeps documents in IndexedDB, under the browser's own identity. Other tabs sync live, in memory. A document not on the server yet is looked for until it turns up.
+
+## Two pages, one editor
+
+```
+            mountEditor({ prefix, store, help })      src/editor.js
+           ┌──────────────────────────────────────┐
+           │ a CodeMirror tab per document, indent,│
+           │ undo, picture edits as splices, go to │
+           │ a line, the page shell (shell.js)     │
+           └───────────────────┬──────────────────┘
+                               │ store: list, watch, open, [rename, create, presence]
+              ┌────────────────┴────────────────┐
+     src/preview.js                      src/collab.js
+     one document, in localStorage       an Automerge workspace, synced, with presence
+```
+
+Both pages share their panes and header ([`src/panes.html`](src/panes.html), [`src/header-end.html`](src/header-end.html)), the page shell, styles, examples, and syntax colouring. A store without `create` or `rename` has no _+_ and no renaming.
 
 ## How it fits together
 
@@ -64,7 +82,7 @@ flowchart LR
 ## Tests
 
 ```console
-$ nix run .#ci-editor     # builds the site, then drives it in headless Chromium
+$ nix run .#ci-editor     # builds both pages, then drives them in headless Chromium
 ```
 
 The browser tests ([`browser-test/`](browser-test/)) talk to Chromium over the DevTools protocol, with no dependencies. Sync goes through the public Subduction server unless `DAGENDA_SYNC` names another.

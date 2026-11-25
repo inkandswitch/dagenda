@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>dagenda Preview</title>
+  <script>
+    // Before first paint, so a chosen theme doesn't flash the other one
+    try {
+      const theme = localStorage.getItem("dagenda-preview:theme");
+      if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+    } catch {}
+  </script>
+</head>
+<body>
+  <header>
+    <h1>dagenda</h1>
+    <span class="tagline">roadmaps as dependency graphs · live from <code>dagenda_wasm</code></span>
+    <!-- include src/header-end.html -->
+  </header>
+
+  <!-- include src/panes.html -->
+
+  <script type="module" src="/src/preview.js"></script>
+</body>
+</html>

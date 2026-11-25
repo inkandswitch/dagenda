@@ -12,10 +12,12 @@ import { DummySubductionStorageAdapter } from "@automerge/automerge-repo-subduct
 import { WebSocketSubductionNetworkAdapter } from "@automerge/automerge-repo-subduction-network-websocket"
 import { IndexedDBSubductionStorageAdapter } from "@automerge/automerge-repo-subduction-storage-indexeddb"
 import { createMemorySigner, createWebCryptoSigner } from "@automerge/subduction"
-import "../../preview/style.css"
-import "./editor.css"
-import { BASIC } from "../../preview/examples.js"
-import { mountWorkspace } from "./mount.js"
+import { automergeSyncPlugin } from "@automerge/automerge-codemirror"
+import "./style.css"
+import "./collab.css"
+import { mountEditor } from "./editor.js"
+import { BASIC } from "./examples.js"
+import { carets, identity, remoteCarets, roster } from "./presence.js"
 
 const SYNC_SERVER = new URLSearchParams(location.search).get("sync") ?? "wss://subduction.sync.inkandswitch.com"
 
@@ -123,15 +125,74 @@ const watch = (handle) => {
 watch(workspace)
 server.subscribe(showSync)
 
-const editor = await mountWorkspace({
-  repo,
-  workspace,
-  find,
-  onHandles: (handles) => {
-    handles.forEach(watch)
+/** The collaborative editor's own help, after the shared help. */
+const HELP = `
+  <h3>Working together</h3>
+  <ul>
+    <li>Share the link in the header: anyone with it edits the same plan, live.</li>
+    <li><b>+</b> adds a document to the plan (a private one, say). Double-click a tab to rename it.</li>
+    <li>Click your own name in the header to change it.</li>
+    <li><b>↶</b> and <b>↷</b> undo and redo your own edits, never anyone else's.</li>
+  </ul>
+`
+
+/**
+ * The workspace as the editor's store: its list of documents, each an
+ * Automerge document with a `source` string. Until Keyhive, a private
+ * document is one whose URL isn't linked from anything public.
+ */
+const store = (page) => ({
+  list: () => (workspace.doc()?.documents ?? []).map(({ name, url }) => ({ id: url, name })),
+  watch: (onChange) => workspace.on("change", onChange),
+  open: async (url) => {
+    const handle = await find(url)
+    watch(handle)
     showSync()
+    return {
+      handle,
+      source: () => handle.doc()?.source ?? "",
+      extensions: automergeSyncPlugin({ handle, path: ["source"] }),
+      subscribe: (onChange) => {
+        handle.on("change", onChange)
+        return () => handle.off("change", onChange)
+      },
+    }
+  },
+  rename: (url, name) =>
+    workspace.change((doc) => {
+      const entry = doc.documents.find((entry) => entry.url === url)
+      if (entry) entry.name = name
+    }),
+  create: async (name) => {
+    const handle = await repo.create({ source: "roadmap\n" })
+    workspace.change((doc) => {
+      doc.documents.push({ name, url: handle.url })
+    })
+    return handle.url
+  },
+  presence: () => {
+    const user = identity(page)
+    const attached = new Set()
+    const here = roster({
+      handle: workspace,
+      user,
+      list: $("people"),
+      save: page.save,
+      onRename: () => attached.forEach((tab) => tab.announce()),
+    })
+    return {
+      extensions: remoteCarets,
+      attach: ({ handle }, view) => {
+        const tab = carets({ handle, view, user })
+        attached.add(tab)
+        return { update: tab.update, stop: () => (attached.delete(tab), tab.stop()) }
+      },
+      on: (name) => here.on(name),
+    }
   },
 })
+
+const editor = await mountEditor({ prefix: "dagenda-editor", store, help: HELP })
 
 // For poking at in the console, and for the browser tests
 window.workspace = workspace

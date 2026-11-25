@@ -33,9 +33,9 @@
 // until what they wait on is done). It stays, whatever's hovered, until you
 // click them again, click the background, or press Escape.
 //
-// Drag the background to pan (or drag anywhere with the middle button). It
-// scrolls whatever scrolls the picture, as zoom does; a press that doesn't
-// move past a few pixels is still a click.
+// Drag the background to pan, or drag anywhere with the middle button or
+// with Shift held. It scrolls whatever scrolls the picture, as zoom does; a
+// press that doesn't move past a few pixels is still a click.
 //
 // Text that doesn't parse or resolve keeps the last good picture up, so the
 // tree doesn't flicker while someone types.
@@ -221,13 +221,14 @@ class DagendaView extends HTMLElement {
 
   /**
    * A press on the picture: the middle button anywhere, or the main one
-   * where it doesn't do something else (a link, or with `editable`, a card
-   * or a milestone's line), may become a pan. Touch scrolls natively.
+   * where it doesn't do something else (a link, or with `editable` and no
+   * Shift, a card or a milestone's line), may become a pan. Touch scrolls
+   * natively.
    */
   #press(e) {
     const target = e.composedPath()[0]
     if (e.pointerType === "touch" || target.closest?.("a, .menu")) return
-    const claimed = this.hasAttribute("editable") && target.closest?.(".node, .era")
+    const claimed = this.hasAttribute("editable") && !e.shiftKey && target.closest?.(".node, .era")
     if (e.button !== 1 && (e.button !== 0 || claimed)) return
     this.#pan = { x: e.clientX, y: e.clientY, moved: false }
     // Not a text selection; but still focus, for Escape

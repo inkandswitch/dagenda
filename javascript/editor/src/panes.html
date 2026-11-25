@@ -1,0 +1,39 @@
+<main>
+    <section id="source-pane" aria-label="Source">
+      <div class="toolbar">
+        <span id="tabs" role="tablist" aria-label="The plan's documents"></span>
+        <button type="button" id="add-document" title="Add a document to the plan, such as a private one" hidden>+</button>
+        <span class="spacer"></span>
+        <button type="button" id="undo" title="Undo your last edit" aria-label="Undo" disabled>↶</button>
+        <button type="button" id="redo" title="Redo" aria-label="Redo" disabled>↷</button>
+        <button type="button" id="example-basic" title="Replace this document with a small plan">Small plan</button>
+        <button type="button" id="example-tour" title="Replace this document with a plan that uses every form">Tour</button>
+        <a class="button" id="collaborate" href="../collab/" title="Edit this plan with others: opens it as a shared document" hidden>Collaborate</a>
+      </div>
+      <div id="code" aria-label="Plan source"></div>
+    </section>
+
+    <section id="output-pane" aria-label="Output">
+      <div class="toolbar">
+        <span role="tablist" aria-label="View">
+          <button type="button" role="tab" data-view="tree">Tech tree</button>
+          <button type="button" role="tab" data-view="text">Text</button>
+        </span>
+        <span class="spacer"></span>
+        <span class="zoom" role="group" aria-label="Zoom">
+          <button type="button" id="zoom-out" title="Zoom out (Ctrl/⌘ + wheel)">−</button>
+          <button type="button" id="zoom-level" title="Reset to 100%">100%</button>
+          <button type="button" id="zoom-in" title="Zoom in (Ctrl/⌘ + wheel)">+</button>
+          <button type="button" id="zoom-fit" title="Fit the tree to the pane">Fit</button>
+        </span>
+        <button type="button" id="copy">Copy</button>
+        <button type="button" id="download">Download</button>
+      </div>
+      <div id="status" role="status">loading Wasm…</div>
+      <div id="views">
+        <dagenda-view id="picture" editable aria-label="Tech tree"></dagenda-view>
+        <pre id="text" hidden aria-label="The plan as text"></pre>
+      </div>
+      <ul id="problems" aria-label="Problems"></ul>
+    </section>
+  </main>

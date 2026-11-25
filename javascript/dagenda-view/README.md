@@ -3,7 +3,7 @@
 `<dagenda-view>`, a web component that draws a roadmap's tech tree from the dagenda notation. All the logic (parsing, resolving, layout, and drawing) is the Rust core compiled to Wasm; `dagenda-view.js` only wires the SVG's `data-*` hooks to the page.
 
 > [!NOTE]
-> Not published yet (`"private": true`). The [preview](../preview/) (`nix run .#preview`) imports it from here, so it always runs this exact component.
+> Not published yet (`"private": true`). The [preview and the collaborative editor](../editor/) (`nix run .#preview`) import it from here, so it always runs this exact component.
 
 ## Build
 
@@ -69,4 +69,4 @@ The picture never changes the text itself. It asks the Wasm for the edit and fir
 
 Hover a node to light up everything it needs and everything waiting on it, all the way up and down. Click to select; click again or press Escape to clear. A card's pull requests, issues, and links open in a new tab, without selecting the card. Click someone's sticker, or their `@name` on a card, to light up everything they're assigned to, the way hovering lights up a chain: their cards (outlined, and at full strength even if locked), the lines between them, and the banners of tracks they run, with everything else faded and their stickers ringed. It stays, whatever's hovered, until you click them again, click the background, or press Escape.
 
-Drag the background to pan, or drag anywhere with the middle button (with `editable`, a main-button drag on a card or a milestone's line edits instead). Panning scrolls whatever scrolls the picture, as zoom does, and a press that doesn't move is still a click. Touch scrolls natively. Text that doesn't parse keeps the last good picture up, so the tree doesn't flicker while someone types.
+Drag the background to pan, or drag anywhere with the middle button or with Shift held (with `editable`, a plain main-button drag on a card or a milestone's line edits instead). Panning scrolls whatever scrolls the picture, as zoom does, and a press that doesn't move is still a click. Touch scrolls natively. Text that doesn't parse keeps the last good picture up, so the tree doesn't flicker while someone types.

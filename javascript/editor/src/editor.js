@@ -1,11 +1,9 @@
-// The collaborative editor on a workspace: an Automerge document listing a
-// plan's documents, `{ documents: [{ name, url }] }`, each its own Automerge
-// document with a `source` string. A tab per document, its text in
-// CodeMirror; one picture drawn from all of them, through the preview's page
-// shell (../../preview/shell.js). Until Keyhive, a private document is one
-// whose URL isn't linked from anything public.
+// The editor both pages share: a plan's documents, a tab each, their text in
+// CodeMirror, and one picture drawn from all of them, in the page shell
+// (shell.js). Where the documents live is the page's: a `store`. The
+// preview's is one document in this browser (preview.js); the
+// collaborative editor's is an Automerge workspace (collab.js).
 
-import { automergeSyncPlugin } from "@automerge/automerge-codemirror"
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete"
 import {
   defaultKeymap,
@@ -32,10 +30,35 @@ import {
 } from "@codemirror/view"
 import init, { locatePlan, renderPlanText } from "../../dagenda-view/pkg/dagenda_wasm.js"
 import "../../dagenda-view/dagenda-view.js"
-import { BASIC, TOUR } from "../../preview/examples.js"
-import { shell } from "../../preview/shell.js"
+import { BASIC, TOUR } from "./examples.js"
 import { highlighting, paint } from "./highlighting.js"
-import { carets, identity, remoteCarets, roster } from "./presence.js"
+import { shell } from "./shell.js"
+
+/**
+ * Where a plan's documents live.
+ *
+ * @typedef {object} Store
+ * @property {() => { id: string, name: string }[]} list  the documents, in order
+ * @property {(onChange: () => void) => void} watch  call `onChange` when the list changes
+ * @property {(id: string) => Promise<Document>} open  a document, to show in a tab
+ * @property {(id: string, name: string) => void} [rename]  without it, tabs can't be renamed
+ * @property {(name: string) => Promise<string>} [create]  a new document's id; without it, there's no _+_
+ * @property {(page: ReturnType<typeof shell>) => Presence} [presence]  who else is here
+ *
+ * One document's text.
+ *
+ * @typedef {object} Document
+ * @property {() => string} source  its text, now
+ * @property {import("@codemirror/state").Extension} extensions  what keeps the text and the store in step
+ * @property {(onChange: () => void) => () => void} subscribe  call `onChange` on every change; returns how to stop
+ *
+ * Everyone else here: their carets in each tab, and which tab this person is on.
+ *
+ * @typedef {object} Presence
+ * @property {import("@codemirror/state").Extension} extensions
+ * @property {(document: Document, view: EditorView) => { update: (update: object) => void, stop: () => void }} attach
+ * @property {(name: string) => void} on  this person is on the tab called `name`
+ */
 
 // CodeMirror's basic setup, less what needs a language (folding, its
 // highlighting: ours is highlighting.js) or has nothing to do here
@@ -56,8 +79,7 @@ const setup = [
 ]
 
 // Indentation is structure: Enter keeps the line's indent; Tab indents with
-// two spaces (every line a selection touches), and Shift+Tab outdents, as
-// in the preview
+// two spaces (every line a selection touches), and Shift+Tab outdents
 const indentation = keymap.of([
   {
     key: "Enter",
@@ -109,35 +131,30 @@ const splice = (from, to) => {
   return ChangeSet.of({ from: start, to: from.length - end, insert: to.slice(start, to.length - end) }, from.length)
 }
 
-const sourceOf = (handle) => handle.doc()?.source ?? ""
-
 /**
- * Mount the editor on `workspace`, in the page's ids (index.html).
+ * Mount the editor on `store`, in the page's ids (src/panes.html).
  *
  * @param {object} options
- * @param {import("@automerge/automerge-repo").Repo} options.repo
- * @param {import("@automerge/automerge-repo").DocHandle} options.workspace
- * @param {(url: string) => Promise<import("@automerge/automerge-repo").DocHandle>} options.find
- *   a document by URL, waiting for it to turn up
- * @param {(handles: import("@automerge/automerge-repo").DocHandle[]) => void} [options.onHandles]
- *   the plan documents' handles, whenever the list changes
- * @returns {Promise<{ active: () => { name: string, view: EditorView, handle: object } | undefined, tabs: () => object[] }>}
+ * @param {string} options.prefix  key prefix for per-viewer settings in localStorage
+ * @param {(page: ReturnType<typeof shell>) => Store} options.store  given the page, for its settings
+ * @param {string} [options.help]  this page's own help, as `<h3>` sections
+ * @returns {Promise<{ page: ReturnType<typeof shell>, active: () => object | undefined, tabs: () => object[] }>}
  */
-export const mountWorkspace = async ({ repo, workspace, find, onHandles = () => {} }) => {
+export const mountEditor = async ({ prefix, store: makeStore, help = "" }) => {
   const $ = (id) => document.getElementById(id)
   const picture = $("picture")
   await init()
 
-  /** @type {{ name: string, url: string, handle: object, view: EditorView, here: object }[]} */
+  /** @type {{ id: string, name: string, document: Document, view: EditorView, button: HTMLButtonElement }[]} */
   let tabs = []
   let active = 0
-  let wanted = null // a tab's URL to show once it's open
+  let wanted = null // a tab's id to show once it's open
 
-  const documents = () => tabs.map((tab) => ({ name: tab.name, source: sourceOf(tab.handle) }))
+  const documents = () => tabs.map((tab) => ({ name: tab.name, source: tab.document.source() }))
   const page = shell({
-    prefix: "dagenda-editor",
+    prefix,
     documents,
-    help: HELP,
+    help,
     goTo: (document, line) => goTo(document, line),
     onRender: (problems) => {
       // Each tab marks its own error (deferred: a render can follow a
@@ -146,21 +163,15 @@ export const mountWorkspace = async ({ repo, workspace, find, onHandles = () => 
         tabs.forEach((tab, index) => {
           const error = problems.find((problem) => problem.severity === "error" && problem.document === index)
           tab.view.dispatch({ effects: paint.of(error?.line ?? null) })
-          tab.button?.classList.toggle("has-error", Boolean(error))
+          tab.button.classList.toggle("has-error", Boolean(error))
         }),
       )
     },
     wasm: { renderPlanText },
   })
-
-  const user = identity(page)
-  const here = roster({
-    handle: workspace,
-    user,
-    list: $("people"),
-    save: page.save,
-    onRename: () => tabs.forEach((tab) => tab.here.announce()),
-  })
+  const store = makeStore(page)
+  const presence = store.presence?.(page)
+  $("add-document").hidden = !store.create
 
   // --- The picture, from every document ------------------------------------
 
@@ -192,10 +203,7 @@ export const mountWorkspace = async ({ repo, workspace, find, onHandles = () => 
   // Clicking a box shows its line, in whichever document defines it
   picture.addEventListener("dagenda-select", ({ detail: { id } }) => {
     if (id === null) return
-    const place = locatePlan(
-      tabs.map((tab) => ({ source: sourceOf(tab.handle) })),
-      id,
-    )
+    const place = locatePlan(documents(), id)
     if (place) goTo(place.document, place.line)
   })
 
@@ -215,7 +223,7 @@ export const mountWorkspace = async ({ repo, workspace, find, onHandles = () => 
       else tab.view.dom.style.setProperty("display", "none", "important")
       tab.button.setAttribute("aria-selected", String(at === active))
     })
-    here.on(tabs[active]?.name ?? "")
+    presence?.on(tabs[active]?.name ?? "")
     syncHistory()
   }
 
@@ -229,12 +237,12 @@ export const mountWorkspace = async ({ repo, workspace, find, onHandles = () => 
     tab.view.focus()
   }
 
-  /** A tab for the document at `url`, called `name`. */
-  const open = async (name, url) => {
-    const handle = await find(url)
-    const tab = { name, url, handle }
+  /** A tab for the document `id`, called `name`. */
+  const open = async (id, name) => {
+    const document_ = await store.open(id)
+    const tab = { id, name, document: document_ }
     tab.view = new EditorView({
-      doc: sourceOf(handle),
+      doc: document_.source(),
       extensions: [
         indentation,
         setup,
@@ -242,8 +250,8 @@ export const mountWorkspace = async ({ repo, workspace, find, onHandles = () => 
         theme,
         highlighting,
         ownEditsOnly,
-        remoteCarets,
-        automergeSyncPlugin({ handle, path: ["source"] }),
+        presence?.extensions ?? [],
+        document_.extensions,
         EditorView.updateListener.of((update) => {
           if (tab === tabs[active]) syncHistory()
           tab.here?.update(update)
@@ -251,41 +259,38 @@ export const mountWorkspace = async ({ repo, workspace, find, onHandles = () => 
       ],
       parent: $("code"),
     })
-    tab.here = carets({ handle, view: tab.view, user })
-    handle.on("change", draw)
+    tab.here = presence?.attach(document_, tab.view)
+    tab.stop = document_.subscribe(draw)
 
     tab.button = document.createElement("button")
     tab.button.type = "button"
     tab.button.setAttribute("role", "tab")
-    tab.button.title = "Double-click to rename"
     tab.button.addEventListener("click", () => show(tabs.indexOf(tab)))
-    tab.button.addEventListener("dblclick", () => {
-      const next = prompt("This document's name", tab.name)?.trim()
-      if (!next || next === tab.name) return
-      workspace.change((doc) => {
-        const entry = doc.documents.find((entry) => entry.url === tab.url)
-        if (entry) entry.name = next
+    if (store.rename) {
+      tab.button.title = "Double-click to rename"
+      tab.button.addEventListener("dblclick", () => {
+        const next = prompt("This document's name", tab.name)?.trim()
+        if (next && next !== tab.name) store.rename(tab.id, next)
       })
-    })
+    }
     return tab
   }
 
   const close = (tab) => {
-    tab.handle.off("change", draw)
-    tab.here.stop()
+    tab.stop()
+    tab.here?.stop()
     tab.view.destroy()
     tab.button.remove()
   }
 
-  // The workspace's list of documents, as tabs: new ones opened, renamed
-  // ones relabelled, removed ones closed. One at a time, since opening one
-  // can wait for it to turn up
+  // The store's list of documents, as tabs: new ones opened, renamed ones
+  // relabelled, removed ones closed. One at a time, since opening one can
+  // wait for it to turn up
   const reconcile = async () => {
-    const listed = workspace.doc()?.documents ?? []
-    const shown = tabs[active]?.url
+    const shown = tabs[active]?.id
     const next = []
-    for (const { name, url } of listed) {
-      const tab = tabs.find((tab) => tab.url === url) ?? (await open(name, url))
+    for (const { id, name } of store.list()) {
+      const tab = tabs.find((tab) => tab.id === id) ?? (await open(id, name))
       tab.name = name
       tab.button.textContent = name
       next.push(tab)
@@ -295,22 +300,18 @@ export const mountWorkspace = async ({ repo, workspace, find, onHandles = () => 
     $("tabs").replaceChildren(...tabs.map((tab) => tab.button))
     const target = wanted ?? shown
     wanted = null
-    show(Math.max(0, tabs.findIndex((tab) => tab.url === target)))
-    onHandles(tabs.map((tab) => tab.handle))
+    show(Math.max(0, tabs.findIndex((tab) => tab.id === target)))
     draw()
   }
   let reconciling = Promise.resolve()
   const refresh = () => (reconciling = reconciling.then(reconcile))
-  workspace.on("change", refresh)
+  store.watch(refresh)
 
   $("add-document").addEventListener("click", async () => {
     const name = prompt("The new document's name (a private one, say)", "private")?.trim()
     if (!name) return
-    const handle = await repo.create({ source: "roadmap\n" })
-    wanted = handle.url
-    workspace.change((doc) => {
-      doc.documents.push({ name, url: handle.url })
-    })
+    wanted = await store.create(name)
+    refresh()
   })
 
   // --- Editing ---------------------------------------------------------------
@@ -318,8 +319,8 @@ export const mountWorkspace = async ({ repo, workspace, find, onHandles = () => 
   $("undo").addEventListener("click", () => tabs[active] && undo(tabs[active].view))
   $("redo").addEventListener("click", () => tabs[active] && redo(tabs[active].view))
 
-  // The examples replace this tab's document for everyone, as one undoable
-  // edit
+  // The examples replace this tab's document (for everyone, when shared), as
+  // one undoable edit
   for (const [id, example] of [
     ["example-basic", BASIC],
     ["example-tour", TOUR],
@@ -336,20 +337,10 @@ export const mountWorkspace = async ({ repo, workspace, find, onHandles = () => 
   await refresh()
 
   return {
+    page,
     /** The tab on show. */
     active: () => tabs[active],
-    /** Every tab, in the workspace's order. */
+    /** Every tab, in the store's order. */
     tabs: () => [...tabs],
   }
 }
-
-/** The editor's own help, after the preview's. */
-const HELP = `
-  <h3>Working together</h3>
-  <ul>
-    <li>Share the link in the header: anyone with it edits the same plan, live.</li>
-    <li><b>+</b> adds a document to the plan (a private one, say). Double-click a tab to rename it.</li>
-    <li>Click your own name in the header to change it.</li>
-    <li><b>↶</b> and <b>↷</b> undo and redo your own edits, never anyone else's.</li>
-  </ul>
-`

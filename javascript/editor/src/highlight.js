@@ -1,6 +1,5 @@
-// Syntax colouring for the dagenda notation, as tokens: the preview turns
-// them into HTML for a <pre> laid under its (transparent) textarea, and the
-// collaborative editor into CodeMirror decorations. Line for line.
+// Syntax colouring for the dagenda notation, as tokens, line for line:
+// highlighting.js turns them into CodeMirror decorations.
 
 const BLOCKS = new Set(["extend", "milestone", "nice-to-have", "roadmap", "title", "track"])
 const DETAILS = new Set(["avatar", "color", "colour", "dri", "est", "issue", "link", "needs", "note", "pr", "target"])
@@ -19,7 +18,6 @@ export const STATUS = {
   "~": "dropped",
 }
 
-const escape = (text) => text.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c])
 const token = (kind, text) => ({ kind, text })
 
 /**
@@ -41,19 +39,6 @@ export const tokens = (source) => {
     noteIndent = /^note\s*$/.test(text) ? indent.text.length : null
     return [indent, ...colour(text)].filter((part) => part.text)
   })
-}
-
-/**
- * Colour `source` as HTML, marking `errorLine` (1-based) if given. The result
- * has exactly as many lines as `source`, plus a final newline so a <pre> is
- * as tall as the textarea.
- */
-export const highlight = (source, errorLine = null) => {
-  const lines = tokens(source).map((line, index) => {
-    const html = line.map(({ kind, text }) => (kind ? `<span class="${kind}">${escape(text)}</span>` : escape(text))).join("")
-    return index + 1 === errorLine ? `<span class="error-line">${html}</span>` : html
-  })
-  return `${lines.join("\n")}\n`
 }
 
 /** One line's tokens, after its indent. */
