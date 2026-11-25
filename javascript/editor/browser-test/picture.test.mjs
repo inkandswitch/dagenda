@@ -291,3 +291,51 @@ test("zooming with the buttons keeps the middle of the view still", async () => 
     `the same point stays in the middle: ${JSON.stringify({ before, after })}`,
   )
 })
+
+test("dragging the background, or anything with the middle button, pans", async () => {
+  const a = await open("pan")
+  await write(a, BIG, "d5")
+  for (let step = 0; step < 3; step++) await a.evaluate(`document.getElementById("zoom-in").click()`)
+  await sleep(100)
+  // The picture scrolls itself, and in the pane around it
+  const scrolled = `[document.getElementById("picture"), document.getElementById("views")].reduce(
+    (sum, element) => ({ x: sum.x + element.scrollLeft, y: sum.y + element.scrollTop }), { x: 0, y: 0 })`
+  const pan = async (from, by, button) => {
+    const buttons = button === "middle" ? 4 : 1
+    await a.send("Input.dispatchMouseEvent", { type: "mousePressed", ...from, button, buttons, clickCount: 1 })
+    for (let step = 1; step <= 8; step++) {
+      const along = { x: from.x + (by.x * step) / 8, y: from.y + (by.y * step) / 8 }
+      await a.send("Input.dispatchMouseEvent", { type: "mouseMoved", ...along, button, buttons })
+    }
+    await a.send("Input.dispatchMouseEvent", { type: "mouseReleased", x: from.x + by.x, y: from.y + by.y, button, buttons: 0, clickCount: 1 })
+    await sleep(50)
+  }
+
+  // Somewhere in view with no card, line, or link under it
+  const corner = await a.evaluate(`(() => {
+    const pane = document.getElementById("views")
+    pane.scrollTo(0, 0)
+    document.getElementById("picture").scrollTo(0, 0)
+    const { x, y } = pane.getBoundingClientRect()
+    const root = document.getElementById("picture").shadowRoot
+    for (let down = 20; ; down += 10) {
+      for (let across = 20; across < 400; across += 10) {
+        const hit = root.elementFromPoint(x + across, y + down)
+        if (hit && !hit.closest(".node, .era, a")) return { x: x + across, y: y + down }
+      }
+    }
+  })()`)
+  const before = await a.evaluate(scrolled)
+  await pan(corner, { x: -120, y: -80 }, "left")
+  const after = await a.evaluate(scrolled)
+  assert.ok(Math.abs(after.x - before.x - 120) < 2 && Math.abs(after.y - before.y - 80) < 2, `panned with the drag: ${JSON.stringify({ before, after })}`)
+
+  // With the middle button, a card pans too, and isn't moved or selected
+  const source = await a.evaluate(text)
+  const card = await middle(a, '.node[data-id="b2"] .card')
+  await pan(card, { x: 60, y: 40 }, "middle")
+  const last = await a.evaluate(scrolled)
+  assert.ok(Math.abs(after.x - last.x - 60) < 2 && Math.abs(after.y - last.y - 40) < 2, `panned back: ${JSON.stringify({ after, last })}`)
+  assert.equal(await a.evaluate(text), source, "the text is untouched")
+  assert.equal(await a.evaluate(`document.getElementById("picture").selected`), null, "nothing selected")
+})

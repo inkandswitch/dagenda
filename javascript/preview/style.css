@@ -137,7 +137,6 @@ h1 {
 #theme {
   display: flex;
   gap: 4px;
-  margin-left: auto;
 }
 
 /* --- Panes -------------------------------------------------------------- */
@@ -302,6 +301,97 @@ section {
 #problems .error { color: var(--error); }
 #problems .warning { color: var(--warning); }
 
+/* --- Help ------------------------------------------------------------------ */
+
+#help {
+  margin-left: auto;
+  min-width: 2em;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+#help-dialog {
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  padding: 4px 24px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--fg);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 0.25);
+  overscroll-behavior: contain;
+}
+
+#help-dialog::backdrop {
+  background: rgb(0 0 0 / 0.35);
+}
+
+#help-dialog form {
+  position: sticky;
+  top: 0;
+  float: right;
+  margin: 12px -12px 0 0;
+}
+
+#help-dialog form button {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+#help-dialog h2 {
+  margin: 18px 0 8px;
+  font-size: 18px;
+}
+
+#help-dialog h3 {
+  margin: 18px 0 6px;
+  font-size: 14px;
+}
+
+#help-dialog :is(p, ul, table) {
+  margin: 0 0 8px;
+}
+
+#help-dialog ul {
+  padding-left: 20px;
+}
+
+#help-dialog li + li {
+  margin-top: 3px;
+}
+
+#help-dialog table {
+  border-collapse: collapse;
+}
+
+#help-dialog th {
+  padding: 3px 14px 3px 0;
+  font-weight: 600;
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+#help-dialog td {
+  padding: 3px 0;
+}
+
+#help-dialog .note {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+kbd {
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--bg);
+  font: 12px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
 /* --- Narrow screens: one pane above the other ---------------------------- */
 
 @media (max-width: 760px) {
@@ -315,7 +405,7 @@ section {
     border-bottom: 1px solid var(--border);
   }
 
-  #theme {
+  #help {
     margin-left: 0;
   }
 }

@@ -162,3 +162,27 @@ test("Tab indents every selected line, and Shift+Tab outdents them", async () =>
   await key(8)
   assert.equal(await text(), "roadmap\ntrack t\n  [ ] a\n  [ ] b\n", "Shift+Tab takes two spaces off each")
 })
+
+test("the ? button, or the ? key, opens the help; Escape closes it", async () => {
+  const a = await open("help")
+  await a.until(ready, "the editor to load")
+  const open_ = `document.getElementById("help-dialog").open`
+  await a.evaluate(`document.getElementById("help").click()`)
+  assert.equal(await a.evaluate(open_), true)
+  const text = await a.evaluate(`document.getElementById("help-dialog").textContent`)
+  assert.match(text, /Moving around/, "the shared help")
+  assert.match(text, /Working together/, "and the editor's own")
+
+  const key = (key, code) => a.send("Input.dispatchKeyEvent", { type: "keyDown", key, code, windowsVirtualKeyCode: code === "Escape" ? 27 : 191 })
+  await key("Escape", "Escape")
+  await a.until(`!${open_}`, "Escape to close it")
+
+  // Typed in the text, "?" is just a question mark
+  await a.evaluate(`window.editor.active().view.focus()`)
+  await a.send("Input.insertText", { text: "?" })
+  assert.equal(await a.evaluate(open_), false, "typing ? doesn't open it")
+
+  await a.evaluate(`document.activeElement.blur(); document.getElementById("picture").focus()`)
+  await key("?", "Slash")
+  await a.until(open_, "? to open it")
+})

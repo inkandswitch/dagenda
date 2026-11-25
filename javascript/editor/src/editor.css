@@ -19,7 +19,7 @@
 }
 #people { display: flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
 #people:empty { display: none; }
-#people ~ #theme { margin-left: 0; }
+#people ~ #help { margin-left: 0; }
 /* Scoped: the plan text has .person tokens too, which are only coloured */
 #people .person {
   border: 1px solid var(--person);

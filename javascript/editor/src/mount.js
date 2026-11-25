@@ -137,6 +137,7 @@ export const mountWorkspace = async ({ repo, workspace, find, onHandles = () => 
   const page = shell({
     prefix: "dagenda-editor",
     documents,
+    help: HELP,
     goTo: (document, line) => goTo(document, line),
     onRender: (problems) => {
       // Each tab marks its own error (deferred: a render can follow a
@@ -341,3 +342,14 @@ export const mountWorkspace = async ({ repo, workspace, find, onHandles = () => 
     tabs: () => [...tabs],
   }
 }
+
+/** The editor's own help, after the preview's. */
+const HELP = `
+  <h3>Working together</h3>
+  <ul>
+    <li>Share the link in the header: anyone with it edits the same plan, live.</li>
+    <li><b>+</b> adds a document to the plan (a private one, say). Double-click a tab to rename it.</li>
+    <li>Click your own name in the header to change it.</li>
+    <li><b>↶</b> and <b>↷</b> undo and redo your own edits, never anyone else's.</li>
+  </ul>
+`

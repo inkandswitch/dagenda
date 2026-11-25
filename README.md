@@ -103,6 +103,19 @@ $ nix run .#preview   # http://127.0.0.1:8080, rebuilding the Wasm when Rust cha
 $ nix run .#site      # the preview as a static site in _site/, as GitHub Pages deploys it
 ```
 
+### Moving Around
+
+The preview and the editor move the picture the same way:
+
+| Input    | Pan                                                       | Zoom                                    |
+|----------|-----------------------------------------------------------|-----------------------------------------|
+| Mouse    | Wheel (Shift + wheel across); drag the background, or drag anything with the middle button | Ctrl/⌘ + wheel                          |
+| Trackpad | Two-finger scroll; drag the background                    | Pinch                                   |
+| Touch    | One-finger drag                                           | Not yet: a pinch zooms the whole page   |
+| Any      |                                                           | The toolbar's −, +, _Fit_, and the percentage (back to 100%) |
+
+Zooming keeps the point under the pointer still, or with the buttons, the middle of the view. A press that doesn't move is still a click, so panning never selects a card. The picture's edits (below) need a mouse or a trackpad for now; on touch, use the text.
+
 The picture is [`<dagenda-view>`](javascript/dagenda-view/), a web component any page can use; everything it draws comes from the Rust core compiled to Wasm (about 180 KB, 75 KB gzipped).
 
 ## Edit Together

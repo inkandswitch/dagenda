@@ -33,6 +33,10 @@
 // until what they wait on is done). It stays, whatever's hovered, until you
 // click them again, click the background, or press Escape.
 //
+// Drag the background to pan (or drag anywhere with the middle button). It
+// scrolls whatever scrolls the picture, as zoom does; a press that doesn't
+// move past a few pixels is still a click.
+//
 // Text that doesn't parse or resolve keeps the last good picture up, so the
 // tree doesn't flicker while someone types.
 //
@@ -53,8 +57,12 @@ import init, { checkPlan, renderPlanSvg } from "./pkg/dagenda_wasm.js"
 
 const ready = init()
 
+/** How far a press moves before it's a pan, in CSS pixels. */
+const SLOP = 4
+
 const STYLE = `
-  :host { display: block; overflow: auto; position: relative; }
+  :host { display: block; overflow: auto; position: relative; cursor: grab; }
+  :host(:state(panning)), :host(:state(panning)) svg * { cursor: grabbing !important; }
   svg { display: block; max-width: none; }
   svg .node { cursor: pointer; transition: opacity 120ms; }
   svg .edge { transition: opacity 120ms; }
@@ -105,6 +113,10 @@ class DagendaView extends HTMLElement {
   #down = new Map()
   // Where the pointer is over the picture, in client coordinates, or null
   #pointer = null
+  // A press that may become a pan: where it last was, and whether it's moved
+  // past the slop yet
+  #pan = null
+  #internals = this.attachInternals()
 
   constructor() {
     super()
@@ -140,6 +152,23 @@ class DagendaView extends HTMLElement {
       if (!node) this.person = null
       this.select(node && node.dataset.id !== this.#selected ? node.dataset.id : null)
     })
+    // On this element, so its padding pans too
+    this.addEventListener("pointerdown", (e) => this.#press(e))
+    // The middle button's own default (autoscroll, or paste on Linux)
+    this.addEventListener("mousedown", (e) => e.button === 1 && e.preventDefault())
+    window.addEventListener("pointermove", (e) => this.#drag(e))
+    window.addEventListener("pointerup", () => this.#release())
+    window.addEventListener("pointercancel", () => this.#release())
+    // After a pan, the click that follows isn't a selection
+    this.#canvas.addEventListener(
+      "click",
+      (e) => {
+        if (!this.#pan?.moved) return
+        this.#pan = null
+        e.stopImmediatePropagation()
+      },
+      { capture: true },
+    )
     this.addEventListener("keydown", (e) => {
       if (e.key !== "Escape") return
       this.select(null)
@@ -187,8 +216,56 @@ class DagendaView extends HTMLElement {
 
     this.#style()
     const after = svg.getBoundingClientRect()
-    let dx = after.left + across * after.width - anchor.x
-    let dy = after.top + down * after.height - anchor.y
+    this.#scrollBy(after.left + across * after.width - anchor.x, after.top + down * after.height - anchor.y)
+  }
+
+  /**
+   * A press on the picture: the middle button anywhere, or the main one
+   * where it doesn't do something else (a link, or with `editable`, a card
+   * or a milestone's line), may become a pan. Touch scrolls natively.
+   */
+  #press(e) {
+    const target = e.composedPath()[0]
+    if (e.pointerType === "touch" || target.closest?.("a, .menu")) return
+    const claimed = this.hasAttribute("editable") && target.closest?.(".node, .era")
+    if (e.button !== 1 && (e.button !== 0 || claimed)) return
+    this.#pan = { x: e.clientX, y: e.clientY, moved: false }
+    // Not a text selection; but still focus, for Escape
+    e.preventDefault()
+    this.focus({ preventScroll: true })
+  }
+
+  #drag(e) {
+    const pan = this.#pan
+    if (!pan) return
+    // Let go outside the window
+    if (e.buttons === 0) return this.#release()
+    if (!pan.moved) {
+      if (Math.hypot(e.clientX - pan.x, e.clientY - pan.y) < SLOP) return
+      pan.moved = true
+      this.#internals.states.add("panning")
+      this.#focus(null)
+    }
+    // Scrolling snaps to whole pixels: carry what's left of one into the
+    // next move, but not what an edge stopped
+    const left = this.#scrollBy(pan.x - e.clientX, pan.y - e.clientY)
+    pan.x = e.clientX + (Math.abs(left.dx) < 1 ? left.dx : 0)
+    pan.y = e.clientY + (Math.abs(left.dy) < 1 ? left.dy : 0)
+  }
+
+  #release() {
+    if (!this.#pan) return
+    this.#internals.states.delete("panning")
+    // Kept until the click that follows a pan, which it swallows
+    if (!this.#pan.moved) this.#pan = null
+    else setTimeout(() => (this.#pan = null))
+  }
+
+  /**
+   * Scroll by (dx, dy), this element first, then whatever scrolls it.
+   * Returns what no scroller took.
+   */
+  #scrollBy(dx, dy) {
     for (const scroller of this.#scrollers()) {
       if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) break
       const [left, top] = [scroller.scrollLeft, scroller.scrollTop]
@@ -197,6 +274,7 @@ class DagendaView extends HTMLElement {
       dx -= scroller.scrollLeft - left
       dy -= scroller.scrollTop - top
     }
+    return { dx, dy }
   }
 
   /** This element, then each ancestor that clips or scrolls it, then the page. */
