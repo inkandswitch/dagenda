@@ -1,7 +1,7 @@
 # dagenda
 
 > [!WARNING]
-> Early. The notation parses and resolves across documents, `dagenda check` reports what's wrong with a plan, `dagenda render` draws it as text or as a tech tree, the preview draws it in the browser as you type, and the collaborative editor lets a team edit a plan's documents together.
+> Early work -- use at your own risk.
 
 Roadmaps as dependency graphs. The world should be able to see the milestones and the features that lead to them. The day-to-day tasks, who's on them, and the notes stay with the team.
 
@@ -96,11 +96,11 @@ The tech tree grows upward, like a game's: everything a task needs sits below it
 
 ## In the Browser
 
-The preview is a live editor for roadmaps: type a plan on one side, and its tech tree redraws on the other. Hover a box to light up everything it needs and everything waiting on it; click one to jump to its line. Text that doesn't parse keeps the last good picture up, with the problem marked. It's single-user, with no sync, and keeps the source in the browser.
+The preview is a live editor for roadmaps: type a plan on one side, and its tech tree redraws on the other. Hover a box to light up everything it needs and everything waiting on it; click one to jump to its line. Text that doesn't parse keeps the last good picture up, with the problem marked. It's the [collaborative editor](javascript/editor/) on one document kept in the browser, with no sync.
 
 ```console
-$ nix run .#preview   # http://127.0.0.1:8080, rebuilding the Wasm when Rust changes
-$ nix run .#site      # the preview as a static site in _site/, as GitHub Pages deploys it
+$ nix run .#preview   # http://localhost:8080/preview/ (and /collab/), rebuilding the Wasm when Rust changes
+$ nix run .#site      # both pages as a static site in _site/, as GitHub Pages deploys it
 ```
 
 ### Moving Around
@@ -109,7 +109,7 @@ The preview and the editor move the picture the same way:
 
 | Input    | Pan                                                       | Zoom                                    |
 |----------|-----------------------------------------------------------|-----------------------------------------|
-| Mouse    | Wheel (Shift + wheel across); drag the background, or drag anything with the middle button | Ctrl/⌘ + wheel                          |
+| Mouse    | Wheel (Shift + wheel across); drag the background, or drag anything with Shift held or the middle button | Ctrl/⌘ + wheel                          |
 | Trackpad | Two-finger scroll; drag the background                    | Pinch                                   |
 | Touch    | One-finger drag                                           | Not yet: a pinch zooms the whole page   |
 | Any      |                                                           | The toolbar's −, +, _Fit_, and the percentage (back to 100%) |
@@ -122,10 +122,10 @@ The picture is [`<dagenda-view>`](javascript/dagenda-view/), a web component any
 
 Both pages edit the picture too: click a card's badge to set its status, drag from a badge onto a card to add a need, drag a card into another milestone's band to re-scope it, or drag a milestone's line to move its boundary over cards (or past another milestone's, to reorder them). Each edit lands in the text as the smallest splice, so text and picture stay one.
 
-The [collaborative editor](javascript/editor/) is the preview with sync. A plan's documents (public, private, …) live in Automerge, synced over [Subduction], and a _workspace_ document lists them: a tab per document, with presence, per-person undo, and offline use, and one picture drawn from all of them. The preview's _Collaborate_ button opens its text there as a new shared plan.
+The [collaborative editor](javascript/editor/) is the preview with sync: the same editor, on a different store. A plan's documents (public, private, …) live in Automerge, synced over [Subduction], and a _workspace_ document lists them: a tab per document, with presence, per-person undo, and offline use, and one picture drawn from all of them. The preview's _Collaborate_ button opens its text there as a new shared plan.
 
 ```console
-$ nix run .#collab    # http://localhost:5173; share the URL it gives you
+$ nix run .#collab    # http://localhost:8080/collab/; share the URL it gives you
 ```
 
 Give `collab` a command and it works on a shared plan from the command line instead, as files, alongside the people in the editor. `pull` writes each document to `<name>.dagenda`; `push` merges your edits with whatever was typed since, instead of overwriting it:
@@ -162,8 +162,7 @@ rust/
 └── dagenda_wasm/   JS bindings
 javascript/
 ├── dagenda-view/   <dagenda-view> web component
-├── editor/         the collaborative editor (Vite, CodeMirror, automerge-repo over Subduction), and `cli/collab.mjs`
-└── preview/        the preview page, its page shell (shared with the editor), and its hot-reloading dev server
+└── editor/         both pages (Vite, CodeMirror): the preview, and the collaborative editor (automerge-repo over Subduction); and `cli/collab.mjs`
 ```
 
 ## Development

@@ -19,13 +19,13 @@
 in {
   collab =
     tool "collab"
-    "Collaborative editor at http://localhost:5173 (PORT to change); with pull, push, diff, …: a shared plan as files"
+    "Collaborative editor at http://localhost:8080/collab/ (PORT to change); with pull, push, diff, …: a shared plan as files"
     (rust ++ wasm-pkgs ++ js-pkgs);
 
   preview =
     tool "preview"
-    "Hot-reloading preview at http://127.0.0.1:8080 (PORT to change)"
-    (rust ++ wasm-pkgs);
+    "Hot-reloading preview at http://localhost:8080/preview/, and the editor at /collab/ (PORT to change)"
+    (rust ++ wasm-pkgs ++ js-pkgs);
 
   site =
     tool "site"

@@ -183,65 +183,40 @@ section {
   flex: 1;
 }
 
-/* --- Source: a transparent textarea over its colouring ------------------ */
+/* --- Source: a tab per document, its text in CodeMirror ----------------- */
 
-.editor {
-  position: relative;
+#tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+#tabs button { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+#tabs button.has-error { border-color: var(--error); }
+
+#code {
+  display: flex;
   flex: 1;
+  flex-direction: column;
   min-height: 240px;
-}
-
-#highlight,
-#source {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  padding: 12px 14px;
-  border: 0;
-  overflow: auto;
-  font: 13px/20px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  tab-size: 2;
-  white-space: pre;
-  overflow-wrap: normal;
-}
-
-#highlight {
   background: var(--panel);
-  color: var(--fg);
-  pointer-events: none;
 }
 
-#source {
-  resize: none;
-  background: transparent;
-  color: transparent;
-  caret-color: var(--fg);
-  outline: none;
-}
+#code .cm-editor { flex: 1; min-height: 0; }
 
-#source::selection {
-  background: color-mix(in srgb, var(--accent) 28%, transparent);
-  color: transparent;
-}
-
-:is(#highlight, .cm-content) .keyword { color: var(--keyword); font-weight: 600; }
-:is(#highlight, .cm-content) .id { color: var(--id); }
-:is(#highlight, .cm-content) .label { color: var(--label); }
-:is(#highlight, .cm-content) .detail { color: var(--detail); }
-:is(#highlight, .cm-content) :is(.value, .person, .ref) { color: var(--value); }
-:is(#highlight, .cm-content) .comment { color: var(--comment); font-style: italic; }
-:is(#highlight, .cm-content) .markdown { color: var(--markdown); }
-:is(#highlight, .cm-content) .cut { color: var(--muted); }
-:is(#highlight, .cm-content) .box { font-weight: 700; }
-:is(#highlight, .cm-content) .box.done { color: var(--ok); }
-:is(#highlight, .cm-content) .box.in-progress { color: var(--accent); }
-:is(#highlight, .cm-content) .box.in-review { color: var(--accent); }
-:is(#highlight, .cm-content) .box.awaiting { color: var(--warning); }
-:is(#highlight, .cm-content) .box.needs-attention { color: var(--error); }
-:is(#highlight, .cm-content) .box.research { color: var(--keyword); }
-:is(#highlight, .cm-content) .box:is(.deferred, .dropped, .idea) { color: var(--muted); }
-:is(#highlight, .cm-content) .box.unknown { color: var(--error); text-decoration: wavy underline; }
-:is(#highlight, .cm-content) .error-line { background: var(--error-bg); }
+.cm-content .keyword { color: var(--keyword); font-weight: 600; }
+.cm-content .id { color: var(--id); }
+.cm-content .label { color: var(--label); }
+.cm-content .detail { color: var(--detail); }
+.cm-content :is(.value, .person, .ref) { color: var(--value); }
+.cm-content .comment { color: var(--comment); font-style: italic; }
+.cm-content .markdown { color: var(--markdown); }
+.cm-content .cut { color: var(--muted); }
+.cm-content .box { font-weight: 700; }
+.cm-content .box.done { color: var(--ok); }
+.cm-content .box.in-progress { color: var(--accent); }
+.cm-content .box.in-review { color: var(--accent); }
+.cm-content .box.awaiting { color: var(--warning); }
+.cm-content .box.needs-attention { color: var(--error); }
+.cm-content .box.research { color: var(--keyword); }
+.cm-content .box:is(.deferred, .dropped, .idea) { color: var(--muted); }
+.cm-content .box.unknown { color: var(--error); text-decoration: wavy underline; }
+.cm-content .error-line { background: var(--error-bg); }
 
 /* --- Output ------------------------------------------------------------- */
 

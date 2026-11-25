@@ -16,7 +16,7 @@ const open = async (name) => {
   browsers.push(b)
   const tab = await b.tab()
   await tab.send("Emulation.setDeviceMetricsOverride", { width: 1600, height: 1200, deviceScaleFactor: 1, mobile: false })
-  await tab.open(`${site.url}${sync}`)
+  await tab.open(`${site.url}collab/${sync}`)
   await tab.until(ready, "the editor to load")
   return tab
 }
@@ -292,7 +292,7 @@ test("zooming with the buttons keeps the middle of the view still", async () => 
   )
 })
 
-test("dragging the background, or anything with the middle button, pans", async () => {
+test("dragging the background, or anything with the middle button or Shift held, pans", async () => {
   const a = await open("pan")
   await write(a, BIG, "d5")
   for (let step = 0; step < 3; step++) await a.evaluate(`document.getElementById("zoom-in").click()`)
@@ -300,14 +300,14 @@ test("dragging the background, or anything with the middle button, pans", async 
   // The picture scrolls itself, and in the pane around it
   const scrolled = `[document.getElementById("picture"), document.getElementById("views")].reduce(
     (sum, element) => ({ x: sum.x + element.scrollLeft, y: sum.y + element.scrollTop }), { x: 0, y: 0 })`
-  const pan = async (from, by, button) => {
+  const pan = async (from, by, button, modifiers = 0) => {
     const buttons = button === "middle" ? 4 : 1
-    await a.send("Input.dispatchMouseEvent", { type: "mousePressed", ...from, button, buttons, clickCount: 1 })
+    await a.send("Input.dispatchMouseEvent", { type: "mousePressed", ...from, button, buttons, clickCount: 1, modifiers })
     for (let step = 1; step <= 8; step++) {
       const along = { x: from.x + (by.x * step) / 8, y: from.y + (by.y * step) / 8 }
-      await a.send("Input.dispatchMouseEvent", { type: "mouseMoved", ...along, button, buttons })
+      await a.send("Input.dispatchMouseEvent", { type: "mouseMoved", ...along, button, buttons, modifiers })
     }
-    await a.send("Input.dispatchMouseEvent", { type: "mouseReleased", x: from.x + by.x, y: from.y + by.y, button, buttons: 0, clickCount: 1 })
+    await a.send("Input.dispatchMouseEvent", { type: "mouseReleased", x: from.x + by.x, y: from.y + by.y, button, buttons: 0, clickCount: 1, modifiers })
     await sleep(50)
   }
 
@@ -338,4 +338,12 @@ test("dragging the background, or anything with the middle button, pans", async 
   assert.ok(Math.abs(after.x - last.x - 60) < 2 && Math.abs(after.y - last.y - 40) < 2, `panned back: ${JSON.stringify({ after, last })}`)
   assert.equal(await a.evaluate(text), source, "the text is untouched")
   assert.equal(await a.evaluate(`document.getElementById("picture").selected`), null, "nothing selected")
+
+  // With Shift held, the main button pans from a card too, instead of moving it
+  const shifted = await middle(a, '.node[data-id="b2"] .card')
+  await pan(shifted, { x: -60, y: -40 }, "left", 8)
+  const end = await a.evaluate(scrolled)
+  assert.ok(Math.abs(end.x - last.x - 60) < 2 && Math.abs(end.y - last.y - 40) < 2, `panned with Shift: ${JSON.stringify({ last, end })}`)
+  assert.equal(await a.evaluate(text), source, "the text is still untouched")
+  assert.equal(await a.evaluate(`document.getElementById("picture").selected`), null, "still nothing selected")
 })

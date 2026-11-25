@@ -65,7 +65,7 @@ in
 
     # Sync goes through the public Subduction server (DAGENDA_SYNC for another)
     ci-editor = {
-      description = "CI: the collaborative editor, built, in headless Chromium";
+      description = "CI: the preview and the collaborative editor, built, in headless Chromium";
       extra = wasm-pkgs ++ js-pkgs ++ [pkgs.chromium];
       text = ''
         wasm-pack build --dev --target web --out-dir ../../javascript/dagenda-view/pkg rust/dagenda_wasm
@@ -86,16 +86,16 @@ in
       '';
     };
 
-    # There's no JS build step, so every script is syntax-checked
+    # Every script is syntax-checked, built or not
     ci-js = {
       description = "CI: syntax-check the scripts, build the Wasm, run the JS tests";
       extra = wasm-pkgs;
       text = ''
-        for file in javascript/*/*.js javascript/*/*.mjs; do
+        for file in javascript/*/*.js javascript/*/*.mjs javascript/editor/src/*.js; do
           node --check "$file"
         done
         wasm-pack build --dev --target web --out-dir ../../javascript/dagenda-view/pkg rust/dagenda_wasm
-        node --test javascript/*/*.test.mjs
+        node --test javascript/*/*.test.mjs javascript/editor/src/*.test.mjs
       '';
     };
 

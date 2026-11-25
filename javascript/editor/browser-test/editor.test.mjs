@@ -19,7 +19,7 @@ const open = async (name, hash = "") => {
   const b = await browser(name)
   browsers.push(b)
   const tab = await b.tab()
-  await tab.open(`${site.url}${sync}${hash}`)
+  await tab.open(`${site.url}collab/${sync}${hash}`)
   return tab
 }
 
@@ -117,7 +117,7 @@ test("an edit syncs; with no server, the page says it's kept in this browser", a
   const b = await browser("offline")
   browsers.push(b)
   const c = await b.tab()
-  await c.open(`${site.url}${NOWHERE}`)
+  await c.open(`${site.url}collab/${NOWHERE}`)
   await c.until("!!window.editor?.active()", "the editor to load offline", 20_000)
   await c.evaluate(`window.editor.active().view.dispatch({ changes: { from: 0, insert: "// offline\\n" }, userEvent: "input.type" })`)
   const title = await c.until(

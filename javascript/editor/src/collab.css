@@ -1,4 +1,4 @@
-/* The editor's own additions to the preview's page (../../preview/style.css) */
+/* The collaborative editor's own additions to the shared page (style.css) */
 
 /* --- Header: the connection, sync, the link to share, and who's here ---- */
 
@@ -33,13 +33,3 @@
 }
 #people button.person { cursor: pointer; }
 
-/* --- A tab per document ---------------------------------------------------- */
-
-#tabs { display: flex; flex-wrap: wrap; gap: 4px; }
-#tabs button { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
-#tabs button.has-error { border-color: var(--error); }
-
-/* --- The text, in CodeMirror ----------------------------------------------- */
-
-#code { display: flex; flex-direction: column; background: var(--panel); }
-#code .cm-editor { flex: 1; min-height: 0; }

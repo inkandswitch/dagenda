@@ -357,7 +357,8 @@ export const attachEditing = ({ host, root, canvas, svg, documents }) => {
   // --- Wiring -----------------------------------------------------------------------
 
   canvas.addEventListener("pointerdown", (e) => {
-    if (!editable() || e.button !== 0 || e.target.closest?.("a")) return
+    // Shift + drag pans instead (dagenda-view.js)
+    if (!editable() || e.button !== 0 || e.shiftKey || e.target.closest?.("a")) return
     // A milestone's line (or its label) moves it as its gate does
     const era = e.target.closest?.(".era")
     const node =
