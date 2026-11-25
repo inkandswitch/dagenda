@@ -1,5 +1,5 @@
 // The page around a plan's picture: theme, zoom, the tech tree and text
-// views, export, and what the picture says (the status line and the list of
+// views, export, help, and what the picture says (the status line and the list of
 // problems). Shared by the preview (main.js) and the collaborative editor
 // (../editor/), whose pages use the same ids.
 
@@ -9,9 +9,10 @@
  * @param {() => { name: string, source: string }[]} options.documents  the plan's documents, now
  * @param {(document: number, line: number) => void} options.goTo  show a problem's line
  * @param {(problems: object[]) => void} [options.onRender]  after every render, with its problems
+ * @param {string} [options.help]  this page's own help, as `<h3>` sections, after the shared ones
  * @param {{ renderPlanText: Function }} options.wasm  from dagenda_wasm, once initialized
  */
-export const shell = ({ prefix, documents, goTo, onRender = () => {}, wasm }) => {
+export const shell = ({ prefix, documents, goTo, onRender = () => {}, help = "", wasm }) => {
   const $ = (id) => document.getElementById(id)
   const picture = $("picture")
 
@@ -168,6 +169,34 @@ export const shell = ({ prefix, documents, goTo, onRender = () => {}, wasm }) =>
     URL.revokeObjectURL(link.href)
   })
 
+  // --- Help ----------------------------------------------------------------------
+
+  const dialog = document.createElement("dialog")
+  dialog.id = "help-dialog"
+  dialog.setAttribute("aria-labelledby", "help-title")
+  dialog.innerHTML = `
+    <form method="dialog"><button type="submit" aria-label="Close">✕</button></form>
+    <h2 id="help-title">How to use dagenda</h2>
+    ${HELP}
+    ${help}
+    <p class="note">Press <kbd>?</kbd> to open or close this.</p>
+  `
+  document.body.append(dialog)
+  // A click on the backdrop (outside the box) closes it, as Escape does
+  dialog.addEventListener("click", (e) => {
+    const { left, right, top, bottom } = dialog.getBoundingClientRect()
+    if (e.target === dialog && (e.clientX < left || e.clientX > right || e.clientY < top || e.clientY > bottom)) dialog.close()
+  })
+  $("help").addEventListener("click", () => dialog.showModal())
+  // "?" opens it, unless it's being typed
+  document.addEventListener("keydown", (e) => {
+    const typing = e.composedPath().some((element) => element.matches?.("input, textarea, [contenteditable]"))
+    if (e.key === "?" && !typing && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault()
+      dialog.open ? dialog.close() : dialog.showModal()
+    }
+  })
+
   // Sent by the preview's dev server (serve.mjs) when the Wasm rebuild fails;
   // the page keeps running the last good build
   window.addEventListener("dagenda:build-error", ({ detail }) => {
@@ -187,3 +216,40 @@ export const shell = ({ prefix, documents, goTo, onRender = () => {}, wasm }) =>
     },
   }
 }
+
+/** What both pages share: moving around, looking, and editing the picture. */
+const HELP = `
+  <p>Write the plan as text on the left; its tech tree draws on the right. Text and picture are one: an edit on the picture lands in the text.</p>
+
+  <h3>Moving around</h3>
+  <table>
+    <tr><th>Pan</th><td>Scroll (<kbd>Shift</kbd> + wheel across), drag the background, or drag anywhere with the middle button. On touch, drag with one finger.</td></tr>
+    <tr><th>Zoom</th><td><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + wheel, or pinch on a trackpad. Or use <b>−</b>, <b>+</b>, and <b>Fit</b>; click the percentage to go back to 100%.</td></tr>
+  </table>
+
+  <h3>Looking around</h3>
+  <ul>
+    <li><b>Hover</b> a card to light up everything it needs and everything waiting on it.</li>
+    <li><b>Click</b> a card to select it and show its line in the text. Click it again, or press <kbd>Esc</kbd>, to clear.</li>
+    <li><b>Click someone's sticker</b>, or their <code>@name</code> on a card, to see only what they're on. Click again, click the background, or press <kbd>Esc</kbd> to see everything.</li>
+    <li>A card's pull requests, issues, and links open in a new tab.</li>
+    <li>Click a problem under the picture to go to its line.</li>
+  </ul>
+
+  <h3>Editing the picture</h3>
+  <table>
+    <tr><th>Set a status</th><td>Click a card's badge, then pick a box.</td></tr>
+    <tr><th>Add a need</th><td>Drag from a card's badge onto the card it needs.</td></tr>
+    <tr><th>Re-scope a card</th><td>Drag it into another milestone's band (the top layer: no milestone).</td></tr>
+    <tr><th>Move a milestone</th><td>Drag its dashed line or its gate: up past cards brings them in, down hands them to the era above. Past another milestone's line, the two swap.</td></tr>
+  </table>
+  <p class="note">Picture edits need a mouse or a trackpad for now. An edit that makes no sense says why, where you let go.</p>
+
+  <h3>The text</h3>
+  <ul>
+    <li><kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> indent and outdent the selected lines.</li>
+    <li><b>Small plan</b> and <b>Tour</b> load examples; <b>Tour</b> uses every form.</li>
+    <li><b>Text</b> shows the plan as an outline. <b>Copy</b> and <b>Download</b> export what's showing, as SVG or text.</li>
+  </ul>
+
+`
